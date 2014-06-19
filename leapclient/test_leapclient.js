@@ -57,7 +57,7 @@ lc.on_connect = function() {
 	}
 };
 
-var con_err = lc.connect('ws://localhost:8080', mock_websocket);
+var con_err = lc.connect('ws://localhost:8080/leapsocket', mock_websocket);
 if ( con_err !== undefined ) {
 	console.log(con_err);
 }

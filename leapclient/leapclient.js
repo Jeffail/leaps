@@ -102,7 +102,7 @@ _leap_model.prototype._collide_transforms = function(unapplied, unsent) {
 	if ( unapplied.position <= unsent.position ) {
 		earlier = unapplied;
 		later = unsent;
-	else {
+	} else {
 		earlier = unsent;
 		later = unapplied;
 	}
@@ -437,9 +437,9 @@ leap_client.prototype.connect = function(address, _websocket) {
 
 	try {
 		if ( _websocket !== undefined ) {
-				this._socket = new _websocket(address + '/leapsocket');
+				this._socket = new _websocket(address);
 		} else if ( window.WebSocket !== undefined ) {
-				this._socket = new WebSocket(address + '/leapsocket');
+				this._socket = new WebSocket(address);
 		} else {
 			return "no websocket support in this browser";
 		}
