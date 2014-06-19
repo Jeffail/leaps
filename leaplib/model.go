@@ -109,6 +109,70 @@ func (m *OModel) PushTransform(ot OTransform) (*OTransform, error) {
 	return &ot, nil
 }
 
+/*--------------------------------------------------------------------------------------------------
+ */
+
+/*
+PushTransforms - Inserts a slice of transforms onto the unapplied stack and increments the version
+number of the document for each new item. Whilst doing so it fixes the transforms in relation to
+earlier transforms it was unaware of, the fixed version of the base transform (the first) gets sent
+back for distributing across other clients.
+
+This method is important for systems where clients can submit multiple transforms simultaneously, as
+each transform in the array will be aware of its immediate predecessors, but not the server held
+transforms before it.
+*/
+func (m *OModel) PushTransforms(ots []*OTransform) ([]*OTransform, error) {
+	copyOTs := make([]*OTransform, len(ots))
+	for i, ot := range ots {
+		tmp := *ot
+		copyOTs[i] = &tmp
+	}
+
+	if len(ots) <= 0 {
+		return copyOTs, errors.New("submitted empty slice of transforms")
+	}
+
+	baseVersion := copyOTs[0].Version
+
+	lenApplied, lenUnapplied := len(m.Applied), len(m.Unapplied)
+
+	diff := (m.Version + 1) - baseVersion
+
+	if diff > lenApplied+lenUnapplied {
+		return copyOTs, errors.New("transform diff greater than transform archive")
+	}
+	if diff < 0 {
+		return copyOTs, fmt.Errorf(
+			"transform version %v greater than expected doc version (%v)", baseVersion, (m.Version + 1))
+	}
+
+	for _, ot := range copyOTs {
+		if ot.Delete < 0 {
+			return copyOTs, errors.New("transform contained negative delete")
+		}
+
+		for j := lenApplied - (diff - lenUnapplied); j < lenApplied; j++ {
+			updateTransform(ot, m.Applied[j])
+			diff--
+		}
+		for j := lenUnapplied - diff; j < lenUnapplied; j++ {
+			updateTransform(ot, m.Unapplied[j])
+		}
+	}
+
+	for _, ot := range copyOTs {
+		m.Version++
+
+		ot.Version = m.Version
+		ot.TReceived = time.Now().Unix()
+
+		m.Unapplied = append(m.Unapplied, ot)
+	}
+
+	return copyOTs, nil
+}
+
 /*
 GetTransforms - Returns transforms from a document starting from a specific version number. Along
 with the current version number of the document. Also returns an error if the target version is so

@@ -185,8 +185,8 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 						tform.Insert != bstory.TCorrected[tformIndex][i].Insert ||
 						tform.Delete != bstory.TCorrected[tformIndex][i].Delete ||
 						tform.Position != bstory.TCorrected[tformIndex][i].Position {
-						t.Errorf("Transform (%v) not expected, %v != %v",
-							tformIndex, tform, bstory.TCorrected[tformIndex][i])
+						t.Errorf("Transform (%v,%v) not expected, %v != %v",
+							tformIndex, i, tform, bstory.TCorrected[tformIndex][i])
 					}
 				}
 			} else {

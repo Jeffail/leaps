@@ -23,6 +23,7 @@ THE SOFTWARE.
 package leaplib
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -258,30 +259,54 @@ func (b *Binder) log(level, message string) {
 processJob - Processes a clients sent transforms, also returns the conditioned transforms to be
 broadcast to other listening clients.
 */
-func (b *Binder) processJob(request BinderRequest) []*OTransform {
-	fixedTransforms := make([]*OTransform, len(request.Transforms))
+func (b *Binder) processJob(request BinderRequest) {
 	version := b.model.Version
 
-	var err error
-	var i int
-	for i = 0; err == nil && i < len(request.Transforms); i++ {
-		fixedTransforms[i], err = b.model.PushTransform(*request.Transforms[i])
+	if len(request.Transforms) <= 0 {
+		select {
+		case request.ErrorChan <- errors.New("received job of zero transforms"):
+		default:
+		}
+		return
 	}
 
+	newOTs, err := b.model.PushTransforms(request.Transforms)
 	if err != nil {
 		select {
 		case request.ErrorChan <- err:
 		default:
 		}
-		// Decrement i since the last transform was rejected
-		i--
+		return
 	}
+
 	select {
 	case request.VersionChan <- (version + 1):
 	default:
 	}
 
-	return fixedTransforms[:i]
+	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Microsecond)
+	deadClients := []int{}
+
+	for i, clientChan := range b.clients {
+		select {
+		case clientChan <- newOTs:
+		case <-time.After(clientKickPeriod):
+			/* The client may have stopped listening, or is just being slow.
+			 * Either way, we have a strict policy here of no time wasters.
+			 */
+			deadClients = append(deadClients, i)
+		}
+		// Currently also sends to client that submitted it, oops, or no oops?
+	}
+	if len(deadClients) > 0 {
+		b.log("info", fmt.Sprintf("Kicking %v inactive clients", len(deadClients)))
+	}
+	// This is most likely just one client, so do a quick delete
+	for i := len(deadClients) - 1; i >= 0; i-- {
+		close(b.clients[i])
+		b.clients[i], b.clients[len(b.clients)-1], b.clients =
+			b.clients[len(b.clients)-1], nil, b.clients[:len(b.clients)-1]
+	}
 }
 
 /*
@@ -310,7 +335,6 @@ flushes must be specified.
 */
 func (b *Binder) loop() {
 	flushPeriod := (time.Duration(b.config.FlushPeriod) * time.Millisecond)
-	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Microsecond)
 
 	flushTime := time.After(flushPeriod)
 	for {
@@ -344,30 +368,7 @@ func (b *Binder) loop() {
 			}
 		case job, open := <-b.jobs:
 			if running && open {
-				deadClients := []int{}
-				tforms := b.processJob(job)
-				if len(tforms) > 0 {
-					for i, clientChan := range b.clients {
-						select {
-						case clientChan <- tforms:
-						case <-time.After(clientKickPeriod):
-							/* The client may have stopped listening, or is just being slow.
-							 * Either way, we have a strict policy here of no time wasters.
-							 */
-							deadClients = append(deadClients, i)
-						}
-						// Currently also sends to client that submitted it, oops, or no oops?
-					}
-					if len(deadClients) > 0 {
-						b.log("info", fmt.Sprintf("Kicking %v inactive clients", len(deadClients)))
-					}
-					// This is most likely just one client, so do a quick delete
-					for i := len(deadClients) - 1; i >= 0; i-- {
-						close(b.clients[i])
-						b.clients[i], b.clients[len(b.clients)-1], b.clients =
-							b.clients[len(b.clients)-1], nil, b.clients[:len(b.clients)-1]
-					}
-				}
+				b.processJob(job)
 			} else {
 				running = false
 			}
