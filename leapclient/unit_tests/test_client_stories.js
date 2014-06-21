@@ -88,9 +88,12 @@ var run_story = function(story, test) {
 			socket.onmessage({ data : JSON.stringify(epoch_receives.shift())});
 		}
 
-		test.ok(epoch_sends.length === 0 && epoch_receives.length === 0,
-				"story '" + story.name + "' epoch " + i + ": " +
-				"sends (" + epoch_sends.length + ") and receives (" + epoch_receives.length + ") not empty");
+		while ( epoch_receives.length > 0 ) {
+			socket.onmessage({ data : JSON.stringify(epoch_receives.shift())});
+		}
+
+		test.ok(epoch_sends.length === 0,
+				"story '" + story.name + "' epoch " + i + ": epoch_sends (" + epoch_sends.length + ") != 0");
 
 		test.ok(content === story.epochs[i].result,
 				"story '" + story.name + "' epoch " + i + ": " + content + " != " + story.epochs[i].result);

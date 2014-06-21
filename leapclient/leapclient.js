@@ -145,7 +145,7 @@ _leap_model.prototype._resolve_state = function() {
 	case this.SENDING:
 		return {};
 	case this.BUFFERING:
-		if ( this._version + this._unapplied.length >= (this._corrected_version - 1) ) {
+		if ( ( this._version + this._unapplied.length ) >= (this._corrected_version - 1) ) {
 
 			this._version += this._unapplied.length + this._sending.length;
 
@@ -154,8 +154,8 @@ _leap_model.prototype._resolve_state = function() {
 
 			this._unapplied = [];
 
-			for ( var i = 0, l = unapplied.length; i < l; i++ ) {
-				for ( var j = 0, l = to_collide.length; j < l; j++ ) {
+			for ( var i = 0, li = unapplied.length; i < li; i++ ) {
+				for ( var j = 0, lj = to_collide.length; j < lj; j++ ) {
 					this._collide_transforms(unapplied[i], to_collide[j]);
 				}
 			}
