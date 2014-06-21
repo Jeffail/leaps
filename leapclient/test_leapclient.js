@@ -60,11 +60,11 @@ var mock_websocket = function(addr) {
 
 	this.close = function() {
 		ws.close.apply(ws, arguments);
-	}
+	};
 
 	this.send = function() {
 		ws.send.apply(ws, arguments);
-	}
+	};
 };
 
 var lc = new leap_client();
@@ -74,10 +74,22 @@ lc.on_error = function(err) {
 };
 
 lc.on_connect = function() {
-	var err = lc.join_document("testste");
+	var err = lc.create_document("test", "this is a test document", "hello world");
 	if ( err !== undefined ) {
 		console.log(err);
 	}
+};
+
+lc.on_document = function(doc) {
+	console.log("DOCUMENT: " + JSON.stringify(doc));
+	var err = lc.send_transform({ position : 6, num_delete : 5, insert : "space" });
+	if ( err !== undefined ) {
+		console.log(err);
+	}
+};
+
+lc.on_transforms = function(ots) {
+	console.log("TRANSFORMS: " + JSON.stringify(ots));
 };
 
 var con_err = lc.connect('ws://localhost:8080/leapsocket', mock_websocket);

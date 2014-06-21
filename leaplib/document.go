@@ -40,7 +40,7 @@ type Document struct {
 	ID          string `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	Content     []byte `json:"content"`
+	Content     string `json:"content"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ func CreateNewDocument(title, description, content string) *Document {
 		ID:          id,
 		Title:       title,
 		Description: description,
-		Content:     []byte(content),
+		Content:     content,
 	}
 
 	return doc

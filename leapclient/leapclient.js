@@ -143,13 +143,13 @@ _leap_model.prototype._resolve_state = function() {
 	switch (this._leap_state) {
 	case this.READY:
 	case this.SENDING:
-		return;
+		return {};
 	case this.BUFFERING:
 		if ( this._version + this._unapplied.length >= (this._corrected_version - 1) ) {
 
-			this._version += this._unapplied.length + this._sent.length;
+			this._version += this._unapplied.length + this._sending.length;
 
-			var to_collide = this._sent.concat(this._unsent);
+			var to_collide = this._sending.concat(this._unsent);
 			var unapplied = this._unapplied;
 
 			this._unapplied = [];
@@ -160,18 +160,18 @@ _leap_model.prototype._resolve_state = function() {
 				}
 			}
 
-			this._sent = [];
+			this._sending = [];
 
 			if ( this._unsent.length > 0 ) {
-				this._sent = this._unsent;
+				this._sending = this._unsent;
 				this._unsent = [];
 
-				for ( var i = 0, l = this._sent.length; i < l; i++ ) {
-					this._sent[i].version = this._version + 1 + i;
+				for ( var i = 0, l = this._sending.length; i < l; i++ ) {
+					this._sending[i].version = this._version + 1 + i;
 				}
 
 				this._leap_state = this.SENDING;
-				return { send : this._sent, apply : unapplied };
+				return { send : this._sending, apply : unapplied };
 			} else {
 				this._leap_state = this.READY;
 				return { apply : unapplied };
@@ -268,6 +268,29 @@ var leap_client = function() {
 	this.on_error = null;
 };
 
+/* _do_action is a call that acts accordingly provided an action_obj from our leap_model.
+ */
+leap_client.prototype._do_action = function(action_obj) {
+	"use strict";
+
+	if ( action_obj.error !== undefined ) {
+		return action_obj.error;
+	}
+	if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
+		if ( typeof(this.on_transform) === "function" ) {
+			for ( var i = 0, l = action_obj.apply.length; i < l; i++ ) {
+				this.on_transform(action_obj.apply[i]);
+			}
+		}
+	}
+	if ( action_obj.send !== undefined && action_obj.send instanceof Array ) {
+		this._socket.send(JSON.stringify({
+			command : "submit",
+			transforms : action_obj.send
+		}));
+	}
+};
+
 /* _process_message is a call that takes a server provided message object and decides the
  * appropriate action to take. If an error occurs during this process then an error message is
  * returned.
@@ -293,11 +316,14 @@ leap_client.prototype._process_message = function(message) {
 		if ( !(message.version > 0) ) {
 			return "message document received but without valid version";
 		}
-		if ( this._document_id !== message.leap_document.id ) {
+		if ( this._document_id !== null && this.document_id !== message.leap_document.id ) {
 			return "received unexpected document, id was mismatched";
 		}
+		this.document_id = message.leap_document.id;
 		this._model = new _leap_model(message.version);
-		this.on_document(message.leap_document);
+		if ( typeof(this.on_document) === "function" ) {
+			this.on_document(message.leap_document);
+		}
 		break;
 	case "transforms":
 		if ( this._model === null ) {
@@ -311,21 +337,9 @@ leap_client.prototype._process_message = function(message) {
 			return "received transforms with error: " + validate_error;
 		}
 		var action_obj = this._model.receive(message.transforms);
-		if ( action_obj.error !== undefined ) {
-			return "model failed to receive transforms: " + action_obj.error;
-		}
-		if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
-			if ( typeof(this.on_transform) === "function" ) {
-				for ( var i = 0, l = action_obj.apply.length; i < l; i++ ) {
-					this.on_transform(action_obj[i]);
-				}
-			}
-		}
-		if ( action_obj.send !== undefined && action_obj.send instanceof Array ) {
-			this._socket.send(JSON.stringify({
-				command : "submit",
-				transforms : action_obj.send
-			}));
+		var action_err = this._do_action(action_obj);
+		if ( action_err !== undefined ) {
+			return "failed to receive transforms: " + action_err;
 		}
 		break;
 	case "correction":
@@ -339,21 +353,9 @@ leap_client.prototype._process_message = function(message) {
 			}
 		}
 		var action_obj = this._model.correct(message.version);
-		if ( action_obj.error !== undefined ) {
-			return "model failed to correct: " + action_obj.error;
-		}
-		if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
-			if ( typeof(this.on_transform) === "function" ) {
-				for ( var i = 0, l = action_obj.apply.length; i < l; i++ ) {
-					this.on_transform(action_obj[i]);
-				}
-			}
-		}
-		if ( action_obj.send !== undefined && action_obj.send instanceof Array ) {
-			this._socket.send(JSON.stringify({
-				command : "submit",
-				transforms : action_obj.send
-			}));
+		var action_err = this._do_action(action_obj);
+		if ( action_err !== undefined ) {
+			return "model failed to correct: " + action_err;
 		}
 		break;
 	case "error":
@@ -383,22 +385,10 @@ leap_client.prototype.send_transform = function(transform) {
 		return "leap_client must be initialized and joined to a document before submitting transforms"
 	}
 
-	action_obj = this._model.submit([ transform ]);
-	if ( action_obj.error !== undefined ) {
-		return "model failed to submit: " + action_obj.error;
-	}
-	if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
-		if ( typeof(this.on_transform) === "function" ) {
-			for ( var i = 0, l = action_obj.apply.length; i < l; i++ ) {
-				this.on_transform(action_obj[i]);
-			}
-		}
-	}
-	if ( action_obj.send !== undefined && action_obj.send instanceof Array ) {
-		this._socket.send(JSON.stringify({
-			command : "submit",
-			transforms : action_obj.send
-		}));
+	var action_obj = this._model.submit([ transform ]);
+	var action_err = this._do_action(action_obj);
+	if ( action_err !== undefined ) {
+		return "model failed to submit: " + action_err;
 	}
 };
 
@@ -428,6 +418,42 @@ leap_client.prototype.join_document = function(id) {
 	}));
 };
 
+/* create_document will inform the server that a new document should be created with a title,
+ * description, and initial content, the client will submit any valid string values for these
+ * fields, but it is up to the leaps server to determine whether those values match its own
+ * requirements.
+ */
+leap_client.prototype.create_document = function(title, description, content) {
+	"use strict";
+
+	if ( this._socket === null || this._socket.readyState !== 1 ) {
+		return "leap_client is not currently connected";
+	}
+
+	if ( typeof(title) !== "string" ) {
+		return "new document requires a valid title";
+	}
+	if ( typeof(description) !== "string" ) {
+		return "new document requires a valid description (can be empty)";
+	}
+	if ( typeof(content) !== "string" ) {
+		return "new document requires valid content (can be empty)";
+	}
+
+	if ( this._document_id !== null ) {
+		return "a leap_client can only join a single document";
+	}
+
+	this._socket.send(JSON.stringify({
+		command : "create",
+		leap_document : {
+			title : title,
+			description : description,
+			content : content
+		}
+	}));
+};
+
 /* connect is the first interaction that should occur with the leap_client after defining your event
  * bindings. This function will generate a websocket connection with the server, ready to bind to a
  * document.
@@ -451,7 +477,7 @@ leap_client.prototype.connect = function(address, _websocket) {
 
 	this._socket.onmessage = function(e) {
 		var message_text = e.data;
-		try {
+		//try {
 			var message_obj = JSON.parse(message_text);
 
 			var err = leap_obj._process_message.apply(leap_obj, [ message_obj ]);
@@ -460,11 +486,12 @@ leap_client.prototype.connect = function(address, _websocket) {
 					leap_obj.on_error.apply(leap_obj, [ err ]);
 				}
 			}
-		} catch (e) {
+		/*} catch (e) {
 			if ( typeof(leap_obj.on_error) === "function" ) {
-				leap_obj.on_error.apply(leap_obj, [ JSON.stringify(e.message) + ": " + message_text ]);
+				leap_obj.on_error.apply(leap_obj,
+					[ JSON.stringify(e.message) + " (" + e.lineNumber + "): " + message_text ]);
 			}
-		}
+		}*/
 	};
 
 	this._socket.onclose = function() {

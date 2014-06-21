@@ -225,13 +225,15 @@ FlushTransforms - apply all unapplied transforms and append them to the applied 
 old entries from the applied stack. Accepts retention as an indicator for how long applied
 transforms should be retained.
 */
-func (m *OModel) FlushTransforms(content *[]byte, retention time.Duration) error {
+func (m *OModel) FlushTransforms(content *string, retention time.Duration) error {
 	transforms := m.Unapplied[:]
 	m.Unapplied = []*OTransform{}
 
+	byteContent := []byte(*content)
+
 	var i int
 	for i = 0; i < len(transforms); i++ {
-		if err := m.applyTransform(content, transforms[i]); err != nil {
+		if err := m.applyTransform(&byteContent, transforms[i]); err != nil {
 			return err
 		}
 	}
@@ -246,6 +248,7 @@ func (m *OModel) FlushTransforms(content *[]byte, retention time.Duration) error
 	}
 
 	m.Applied = append(m.Applied[i:], transforms...)
+	(*content) = string(byteContent)
 
 	return nil
 }
