@@ -57,7 +57,7 @@ _leap_model.prototype._validate_transforms = function(transforms) {
 	"use strict";
 
 	for ( var i = 0, l = transforms.length; i < l; i++ ) {
-		tform = transforms[i];
+		var tform = transforms[i];
 
 		if ( typeof(tform.position) !== "number" ) {
 			tform.position = parseInt(tform.position);
@@ -261,7 +261,7 @@ var leap_client = function() {
 
 	this._model = null;
 
-	this.on_transform = null;
+	this.on_transforms = null;
 	this.on_document = null;
 	this.on_connect = null;
 	this.on_disconnect = null;
@@ -277,10 +277,8 @@ leap_client.prototype._do_action = function(action_obj) {
 		return action_obj.error;
 	}
 	if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
-		if ( typeof(this.on_transform) === "function" ) {
-			for ( var i = 0, l = action_obj.apply.length; i < l; i++ ) {
-				this.on_transform(action_obj.apply[i]);
-			}
+		if ( typeof(this.on_transforms) === "function" ) {
+			this.on_transforms(action_obj.apply);
 		}
 	}
 	if ( action_obj.send !== undefined && action_obj.send instanceof Array ) {
@@ -463,7 +461,7 @@ leap_client.prototype.connect = function(address, _websocket) {
 
 	try {
 		if ( _websocket !== undefined ) {
-				this._socket = new _websocket(address);
+				this._socket = _websocket;
 		} else if ( window.WebSocket !== undefined ) {
 				this._socket = new WebSocket(address);
 		} else {
@@ -477,21 +475,24 @@ leap_client.prototype.connect = function(address, _websocket) {
 
 	this._socket.onmessage = function(e) {
 		var message_text = e.data;
-		//try {
-			var message_obj = JSON.parse(message_text);
+		var message_obj;
 
-			var err = leap_obj._process_message.apply(leap_obj, [ message_obj ]);
-			if ( typeof(err) === "string" ) {
-				if ( typeof(leap_obj.on_error) === "function" ) {
-					leap_obj.on_error.apply(leap_obj, [ err ]);
-				}
-			}
-		/*} catch (e) {
+		try {
+			message_obj = JSON.parse(message_text);
+		} catch (e) {
 			if ( typeof(leap_obj.on_error) === "function" ) {
 				leap_obj.on_error.apply(leap_obj,
 					[ JSON.stringify(e.message) + " (" + e.lineNumber + "): " + message_text ]);
 			}
-		}*/
+			return;
+		}
+
+		var err = leap_obj._process_message.apply(leap_obj, [ message_obj ]);
+		if ( typeof(err) === "string" ) {
+			if ( typeof(leap_obj.on_error) === "function" ) {
+				leap_obj.on_error.apply(leap_obj, [ err ]);
+			}
+		}
 	};
 
 	this._socket.onclose = function() {
@@ -516,8 +517,23 @@ leap_client.prototype.connect = function(address, _websocket) {
 /*--------------------------------------------------------------------------------------------------
  */
 
+/* leap_apply is a function that applies a single transform to content and returns the result.
+ */
+var leap_apply = function(transform, content) {
+	var first = content.slice(0, transform.position);
+	var second = content.slice(transform.position + transform.num_delete, content.length);
+
+	return first + transform.insert + second;
+};
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 if ( module !== undefined && typeof(module) === "object" ) {
-	module.exports = leap_client;
+	module.exports = {
+		client : leap_client,
+		apply : leap_apply
+	};
 }
 
 /*--------------------------------------------------------------------------------------------------

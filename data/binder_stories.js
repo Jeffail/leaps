@@ -1,5 +1,6 @@
 { "binder_stories" : [
 {
+	"name" : "story1",
 	"content" : "hello world",
 	"result" : "helwhenwat world",
 	"transforms" : [
@@ -12,6 +13,7 @@
 	]
 }
 ,{
+	"name" : "story2",
 	"content" : "hello world",
 	"result" : "hellwhenwatworld",
 	"transforms" : [
@@ -24,6 +26,7 @@
 	]
 }
 ,{
+	"name" : "story3",
 	"content" : "hello world, it was fun.",
 	"result" : "goodbye cruel world, it wasn't fun.",
 	"transforms" : [

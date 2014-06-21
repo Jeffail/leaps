@@ -18,7 +18,8 @@ Currently there are no releases, so to run an example service you need to check 
 
 ```bash
 go get github.com/jeffail/leaps
-go run github.com/jeffail/leaps/leapexample/example1.go
+cd $GOPATH/src/github.com/jeffail/leaps/leapexample
+go run example1.go
 ```
 
 and then visit: http://localhost:8080 to open an example document.

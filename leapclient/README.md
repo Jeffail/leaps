@@ -5,8 +5,8 @@ This is the JavaScript implementation of a leaps client. It holds a very simplis
 To test:
 
 ```bash
-npm install ws
-node test_leapclient.js
+sudo npm install nodeunit -g
+nodeunit test_leapclient.js
 ```
 
 STATUS: NOT TESTED

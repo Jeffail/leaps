@@ -25,14 +25,23 @@ THE SOFTWARE.
 
 "use strict";
 
-var fs   = require('fs')
-  , path = require('path');
+var la = require('../leapclient').apply;
 
-var unit_tests = fs.readdirSync(path.resolve(__dirname, "./unit_tests"));
+var content = "hello world";
 
-for ( var i = 0, l = unit_tests.length; i < l; i++ ) {
-	module.exports[unit_tests[i]] = require(path.resolve("./unit_tests", unit_tests[i]));
-}
+var tests = [
+	{ transform : { position : 3, insert : "123", num_delete : 0 }, result : "hel123lo world" },
+	{ transform : { position : 3, insert : "123", num_delete : 3 }, result : "hel123world" },
+	{ transform : { position : 0, insert : "", num_delete : 5 }, result : " world" }
+];
+
+module.exports = function(test) {
+	for ( var i = 0, l = tests.length; i < l; i++ ) {
+		var result = la(tests[i].transform, content);
+		test.ok(tests[i].result === result, tests[i].result + " != " + result);
+	}
+	test.done();
+};
 
 /*--------------------------------------------------------------------------------------------------
  */
