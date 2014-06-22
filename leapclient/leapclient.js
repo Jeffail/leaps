@@ -87,6 +87,33 @@ _leap_model.prototype._validate_transforms = function(transforms) {
 	};
 };
 
+/* merge_transforms takes two transforms (the next to be sent, and the one that follows) and
+ * attempts to merge them into one transform. This will not be possible with some combinations, and
+ * the function returns a boolean to indicate whether the merge was successful.
+ */
+_leap_model.prototype._merge_transforms = function(first, second) {
+	if ( first.position + first.insert.length === second.position ) {
+		first.insert = first.insert + second.insert;
+		first.num_delete += second.num_delete;
+		return true;
+	}
+	if ( second.position === first.position ) {
+		var remainder = Math.max(0, second.num_delete - first.insert.length);
+		first.num_delete += remainder;
+		first.insert = second.insert + first.insert.slice(second.num_delete);
+		return true;
+	}
+	if ( second.position > first.position && second.position < ( first.position + first.insert.length ) ) {
+		var overlap = second.position - first.position;
+		var remainder = Math.max(0, second.num_delete - (first.insert.length - overlap));
+		first.num_delete += remainder;
+		first.insert = first.insert.slice(0, overlap) + second.insert
+			+ first.insert.slice(overlap + second.num_delete);
+		return true;
+	}
+	return false;
+};
+
 /* collide_transforms takes an unapplied transform from the server, and an unsent transform from the
  * client and modifies both transforms.
  *
@@ -164,6 +191,10 @@ _leap_model.prototype._resolve_state = function() {
 
 			if ( this._unsent.length > 0 ) {
 				this._sending = this._unsent.shift();
+				while ( this._unsent.length > 0 && this._merge_transforms(this._sending, this._unsent[0]) ) {
+					this._unsent.shift();
+				}
+
 				this._sending.version = this._version + 1;
 
 				this._leap_state = this.SENDING;
@@ -527,7 +558,8 @@ var leap_apply = function(transform, content) {
 if ( module !== undefined && typeof(module) === "object" ) {
 	module.exports = {
 		client : leap_client,
-		apply : leap_apply
+		apply : leap_apply,
+		_model : _leap_model
 	};
 }
 
