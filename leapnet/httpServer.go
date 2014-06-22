@@ -30,6 +30,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -44,11 +45,19 @@ type URLConfig struct {
 }
 
 /*
+HTTPInternalConfig - Options for setting internal process behaviour
+*/
+type HTTPInternalConfig struct {
+	BindSendTimeout int `json:"bind_send_timeout_ms"`
+}
+
+/*
 HTTPServerConfig - Holds configuration options for the HTTPServer.
 */
 type HTTPServerConfig struct {
-	LogVerbose bool      `json:"verbose_logging"`
-	URL        URLConfig `json:"url"`
+	LogVerbose bool               `json:"verbose_logging"`
+	URL        URLConfig          `json:"url"`
+	Internal   HTTPInternalConfig `json:"internal"`
 }
 
 /*
@@ -61,6 +70,9 @@ func DefaultHTTPServerConfig() HTTPServerConfig {
 		URL: URLConfig{
 			Path:    "/leapsocket",
 			Address: ":8080",
+		},
+		Internal: HTTPInternalConfig{
+			BindSendTimeout: 10,
 		},
 	}
 }
@@ -80,14 +92,14 @@ type LeapLocator interface {
 
 /*
 LeapClientMessage - A structure that defines a message format to expect from clients. Commands can
-be 'create' (init with new document), 'find' (init with existing document) or 'submit' (submit
-transforms to a bound document).
+be 'create' (init with new document), 'find' (init with existing document) or 'submit' (submit a
+transform to a bound document).
 */
 type LeapClientMessage struct {
-	Command    string                `json:"command"`
-	ID         string                `json:"document_id,omitempty"`
-	Document   *leaplib.Document     `json:"leap_document,omitempty"`
-	Transforms []*leaplib.OTransform `json:"transforms,omitempty"`
+	Command   string              `json:"command"`
+	ID        string              `json:"document_id,omitempty"`
+	Document  *leaplib.Document   `json:"leap_document,omitempty"`
+	Transform *leaplib.OTransform `json:"transform,omitempty"`
 }
 
 /*
@@ -227,6 +239,8 @@ func (h *HTTPServer) launchWebsocketModel(socket *websocket.Conn, binder *leapli
 		}
 	}()
 
+	bindTOut := time.Duration(h.config.Internal.BindSendTimeout) * time.Millisecond
+
 	websocket.JSON.Send(socket, LeapServerMessage{
 		Type:     "document",
 		Document: binder.Document,
@@ -268,7 +282,7 @@ func (h *HTTPServer) launchWebsocketModel(socket *websocket.Conn, binder *leapli
 			h.log("info", fmt.Sprintf("Received %v command from client", msg.Command))
 			switch msg.Command {
 			case "submit":
-				if ver, err := binder.SendTransforms(msg.Transforms); err == nil {
+				if ver, err := binder.SendTransform(msg.Transform, bindTOut); err == nil {
 					ignoreTforms = append(ignoreTforms, ver)
 					h.log("info", "Sending correction to client")
 					websocket.JSON.Send(socket, LeapServerMessage{

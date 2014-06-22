@@ -122,7 +122,7 @@ This method is important for systems where clients can submit multiple transform
 each transform in the array will be aware of its immediate predecessors, but not the server held
 transforms before it.
 */
-func (m *OModel) PushTransforms(ots []*OTransform) ([]*OTransform, error) {
+/*func (m *OModel) PushTransforms(ots []*OTransform) ([]*OTransform, error) {
 	copyOTs := make([]*OTransform, len(ots))
 	for i, ot := range ots {
 		tmp := *ot
@@ -171,7 +171,7 @@ func (m *OModel) PushTransforms(ots []*OTransform) ([]*OTransform, error) {
 	}
 
 	return copyOTs, nil
-}
+}*/
 
 /*
 GetTransforms - Returns transforms from a document starting from a specific version number. Along

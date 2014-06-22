@@ -47,7 +47,7 @@ BinderConfig - Holds configuration options for a binder.
 type BinderConfig struct {
 	Transform        TransformConfig `json:"transform"`
 	FlushPeriod      int64           `json:"flush_period_ms"`
-	ClientKickPeriod int64           `json:"kick_period_us"`
+	ClientKickPeriod int64           `json:"kick_period_ms"`
 	LogVerbose       bool            `json:"verbose_logging"`
 }
 
@@ -61,7 +61,7 @@ func DefaultBinderConfig() BinderConfig {
 			RetentionPeriod: 60,
 		},
 		FlushPeriod:      50,
-		ClientKickPeriod: 10,
+		ClientKickPeriod: 5,
 		LogVerbose:       false,
 	}
 }
@@ -80,13 +80,13 @@ type BinderError struct {
 }
 
 /*
-BinderRequest - A container used to communicate with a binder, it holds an array of transforms to be
+BinderRequest - A container used to communicate with a binder, it holds a transform to be
 submitted to the document model. Two channels are used for return values from the request.
-VersionChan is used to send back the actual version of the first transform submitted. ErrorChan is
-used to send errors that occur. Both channels must be non-blocking, so a buffer of 1 is recommended.
+VersionChan is used to send back the actual version of the transform submitted. ErrorChan is used to
+send errors that occur. Both channels must be non-blocking, so a buffer of 1 is recommended.
 */
 type BinderRequest struct {
-	Transforms  []*OTransform
+	Transform   *OTransform
 	VersionChan chan<- int
 	ErrorChan   chan<- error
 }
@@ -105,16 +105,15 @@ type BinderPortal struct {
 }
 
 /*
-SendTransforms - A helper function for submitting a slice of transforms to the binder. The binder
-responds with either an error or a corrected version number for the document at the time of your
-submission.
+SendTransform - A helper function for submitting a transform to the binder. The binder responds
+with either an error or a corrected version number for the document at the time of your submission.
 */
-func (p *BinderPortal) SendTransforms(ots []*OTransform) (int, error) {
+func (p *BinderPortal) SendTransform(ot *OTransform, timeout time.Duration) (int, error) {
 	// Buffered channels because the server skips blocked sends
 	errChan := make(chan error, 1)
 	verChan := make(chan int, 1)
 	p.RequestSndChan <- BinderRequest{
-		Transforms:  ots,
+		Transform:   ot,
 		VersionChan: verChan,
 		ErrorChan:   errChan,
 	}
@@ -123,9 +122,9 @@ func (p *BinderPortal) SendTransforms(ots []*OTransform) (int, error) {
 		return 0, err
 	case ver := <-verChan:
 		return ver, nil
-		//TODO: Timeout
+	case <-time.After(timeout):
 	}
-	return 0, nil //wat
+	return 0, errors.New("timeout occured waiting for binder response")
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -173,6 +172,8 @@ func BindExisting(
 		closedChan:    make(chan bool),
 	}
 
+	binder.log("info", "bound to existing document, attempting flush")
+
 	if _, err := binder.flush(); err != nil {
 		return nil, err
 	}
@@ -209,6 +210,8 @@ func BindNew(
 		errorChan:     errorChan,
 		closedChan:    make(chan bool),
 	}
+
+	binder.log("info", "bound to new document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
 		return nil, err
@@ -262,7 +265,7 @@ broadcast to other listening clients.
 func (b *Binder) processJob(request BinderRequest) {
 	version := b.model.Version
 
-	if len(request.Transforms) <= 0 {
+	if request.Transform == nil {
 		select {
 		case request.ErrorChan <- errors.New("received job of zero transforms"):
 		default:
@@ -270,7 +273,10 @@ func (b *Binder) processJob(request BinderRequest) {
 		return
 	}
 
-	newOTs, err := b.model.PushTransforms(request.Transforms)
+	newOTs := make([]*OTransform, 1)
+	var err error
+
+	newOTs[0], err = b.model.PushTransform(*request.Transform)
 	if err != nil {
 		select {
 		case request.ErrorChan <- err:
@@ -284,7 +290,7 @@ func (b *Binder) processJob(request BinderRequest) {
 	default:
 	}
 
-	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Microsecond)
+	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 	deadClients := []int{}
 
 	for i, clientChan := range b.clients {
@@ -346,6 +352,7 @@ func (b *Binder) loop() {
 				doc, err := b.flush()
 				if err != nil {
 					b.errorChan <- BinderError{ID: b.ID, Err: err}
+					b.log("error", fmt.Sprintf("flush error: %v, shutting down", err))
 					running = false
 				}
 				/* Channel is buffered by one element to be non-blocking, any blocked send will
@@ -353,6 +360,7 @@ func (b *Binder) loop() {
 				 */
 				sndChan := make(chan []*OTransform, 1)
 				b.clients = append(b.clients, sndChan)
+				b.log("info", "subscribing new client")
 
 				client <- &BinderPortal{
 					Version:          b.model.Version,
@@ -364,29 +372,32 @@ func (b *Binder) loop() {
 				}
 				flushTime = time.After(flushPeriod)
 			} else {
+				b.log("info", "subscribe channel closed, shutting down")
 				running = false
 			}
 		case job, open := <-b.jobs:
 			if running && open {
 				b.processJob(job)
 			} else {
+				b.log("info", "jobs channel closed, shutting down")
 				running = false
 			}
 		case <-flushTime:
 			if _, err := b.flush(); err != nil {
+				b.log("error", fmt.Sprintf("flush error: %v, shutting down", err))
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 				running = false
 			}
 			flushTime = time.After(flushPeriod)
 		}
 		if !running {
-			b.log("info", "Closing, shutting down client channels")
+			b.log("info", "closing, shutting down client channels")
 			oldClients := b.clients[:]
 			b.clients = [](chan<- []*OTransform){}
 			for _, client := range oldClients {
 				close(client)
 			}
-			b.log("info", fmt.Sprintf("Attempting final flush of %v", b.ID))
+			b.log("info", fmt.Sprintf("attempting final flush of %v", b.ID))
 			if _, err := b.flush(); err != nil {
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 			}

@@ -64,9 +64,7 @@ func TestCuratorClients(t *testing.T) {
 		}
 	}
 
-	if v, err := portal.SendTransforms(
-		[]*OTransform{tform(portal.Version + 1)},
-	); v != 2 || err != nil {
+	if v, err := portal.SendTransform(tform(portal.Version+1), time.Second); v != 2 || err != nil {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
 
@@ -89,7 +87,6 @@ func TestCuratorClients(t *testing.T) {
 	wg.Add(50)
 
 	for i := 0; i < 50; i++ {
-		vstart := i*3 + 3
 		if i%2 == 0 {
 			if b, e := curator.FindDocument(doc.ID); e != nil {
 				t.Errorf("error: %v", e)
@@ -102,14 +99,11 @@ func TestCuratorClients(t *testing.T) {
 				go badClient(b, t, &wg)
 			}
 		}
-		if v, err := portal.SendTransforms(
-			[]*OTransform{tform(vstart), tform(vstart + 1), tform(vstart + 2)},
-		); v != vstart || err != nil {
-			t.Errorf("Send Transform error, expected v: %v, got v: %v, err: %v", vstart, v, err)
+		if v, err := portal.SendTransform(tform(i+3), time.Second); v != i+3 || err != nil {
+			t.Errorf("Send Transform error, expected v: %v, got v: %v, err: %v", i+3, v, err)
 		}
 	}
 
-	curator.Close()
 	for {
 		select {
 		case err := <-curator.errorChan:
@@ -119,5 +113,20 @@ func TestCuratorClients(t *testing.T) {
 		}
 	}
 
-	wg.Wait()
+	closeChan := make(chan bool)
+
+	go func() {
+		curator.Close()
+		wg.Wait()
+		closeChan <- true
+	}()
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		closeChan <- false
+	}()
+
+	if closeStatus := <-closeChan; !closeStatus {
+		t.Errorf("Timeout occured waiting for test finish.")
+	}
 }

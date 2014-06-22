@@ -34,10 +34,10 @@ import (
 )
 
 type binderStory struct {
-	Content    string                  `json:"content"`
-	Transforms [][]*leaplib.OTransform `json:"transforms"`
-	TCorrected [][]*leaplib.OTransform `json:"corrected_transforms"`
-	Result     string                  `json:"result"`
+	Content    string                `json:"content"`
+	Transforms []*leaplib.OTransform `json:"transforms"`
+	TCorrected []*leaplib.OTransform `json:"corrected_transforms"`
+	Result     string                `json:"result"`
 }
 
 type binderStoriesContainer struct {
@@ -66,7 +66,7 @@ func findDocument(id string, ws *websocket.Conn) error {
 	return nil
 }
 
-func senderClient(id string, feeds <-chan []*leaplib.OTransform, t *testing.T) {
+func senderClient(id string, feeds <-chan *leaplib.OTransform, t *testing.T) {
 	origin := "http://localhost/"
 	url := "ws://localhost:8787/leapsocket"
 
@@ -111,8 +111,8 @@ func senderClient(id string, feeds <-chan []*leaplib.OTransform, t *testing.T) {
 				return
 			}
 			websocket.JSON.Send(ws, LeapClientMessage{
-				Command:    "submit",
-				Transforms: feed,
+				Command:   "submit",
+				Transform: feed,
 			})
 			select {
 			case <-crctChan:
@@ -179,23 +179,19 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 				wg.Done()
 				return
 			}
-			if lenRcvd, lenCrct := len(ret), len(bstory.TCorrected[tformIndex]); lenRcvd == lenCrct {
-				for i, tform := range ret {
-					if tform.Version != bstory.TCorrected[tformIndex][i].Version ||
-						tform.Insert != bstory.TCorrected[tformIndex][i].Insert ||
-						tform.Delete != bstory.TCorrected[tformIndex][i].Delete ||
-						tform.Position != bstory.TCorrected[tformIndex][i].Position {
-						t.Errorf("Transform (%v,%v) not expected, %v != %v",
-							tformIndex, i, tform, bstory.TCorrected[tformIndex][i])
-					}
+			for _, tform := range ret {
+				if tform.Version != bstory.TCorrected[tformIndex].Version ||
+					tform.Insert != bstory.TCorrected[tformIndex].Insert ||
+					tform.Delete != bstory.TCorrected[tformIndex].Delete ||
+					tform.Position != bstory.TCorrected[tformIndex].Position {
+					t.Errorf("Transform (%v) not expected, %v != %v",
+						tformIndex, tform, bstory.TCorrected[tformIndex])
 				}
-			} else {
-				t.Errorf("Received wrong number of transforms %v != %v", lenRcvd, lenCrct)
-			}
-			tformIndex++
-			if tformIndex == lenCorrected {
-				wg.Done()
-				return
+				tformIndex++
+				if tformIndex == lenCorrected {
+					wg.Done()
+					return
+				}
 			}
 		case <-time.After(8 * time.Second):
 			t.Errorf("Timeout occured")
@@ -279,7 +275,7 @@ func TestHttpServer(t *testing.T) {
 			return
 		}
 
-		feeds := make(chan []*leaplib.OTransform)
+		feeds := make(chan *leaplib.OTransform)
 
 		wg := sync.WaitGroup{}
 		wg.Add(10)

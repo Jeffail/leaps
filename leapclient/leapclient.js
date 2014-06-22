@@ -47,7 +47,7 @@ var _leap_model = function(base_version) {
 
 	this._unapplied = [];
 	this._unsent = [];
-	this._sending = [];
+	this._sending = null;
 };
 
 /* _validate_transforms iterates an array of transform objects and validates that each transform
@@ -147,9 +147,9 @@ _leap_model.prototype._resolve_state = function() {
 	case this.BUFFERING:
 		if ( ( this._version + this._unapplied.length ) >= (this._corrected_version - 1) ) {
 
-			this._version += this._unapplied.length + this._sending.length;
+			this._version += this._unapplied.length + 1;
 
-			var to_collide = this._sending.concat(this._unsent);
+			var to_collide = [ this._sending ].concat(this._unsent);
 			var unapplied = this._unapplied;
 
 			this._unapplied = [];
@@ -160,15 +160,11 @@ _leap_model.prototype._resolve_state = function() {
 				}
 			}
 
-			this._sending = [];
+			this._sending = null;
 
 			if ( this._unsent.length > 0 ) {
-				this._sending = this._unsent;
-				this._unsent = [];
-
-				for ( var i = 0, l = this._sending.length; i < l; i++ ) {
-					this._sending[i].version = this._version + 1 + i;
-				}
+				this._sending = this._unsent.shift();
+				this._sending.version = this._version + 1;
 
 				this._leap_state = this.SENDING;
 				return { send : this._sending, apply : unapplied };
@@ -206,20 +202,19 @@ _leap_model.prototype.correct = function(version) {
  * will determine whether it is currently safe to dispatch those changes to the server, and will
  * also provide each change with the correct version number.
  */
-_leap_model.prototype.submit = function(transforms) {
+_leap_model.prototype.submit = function(transform) {
 	"use strict";
 
 	switch (this._leap_state) {
 	case this.READY:
 		this._leap_state = this.SENDING;
-		for ( var i = 0, l = transforms.length; i < l; i++ ) {
-			transforms[i].version = this._version + i + 1;
-		}
-		this._sending = transforms;
-		return { send : transforms };
+		transform.version = this._version + 1;
+
+		this._sending = transform;
+		return { send : transform };
 	case this.BUFFERING:
 	case this.SENDING:
-		this._unsent = this._unsent.concat(transforms);
+		this._unsent = this._unsent.concat(transform);
 	}
 
 	return {};
@@ -383,7 +378,7 @@ leap_client.prototype.send_transform = function(transform) {
 		return "leap_client must be initialized and joined to a document before submitting transforms"
 	}
 
-	var action_obj = this._model.submit([ transform ]);
+	var action_obj = this._model.submit(transform);
 	var action_err = this._do_action(action_obj);
 	if ( action_err !== undefined ) {
 		return "model failed to submit: " + action_err;

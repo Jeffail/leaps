@@ -47,15 +47,14 @@ func TestNewBinder(t *testing.T) {
 	}()
 
 	portal1, portal2 := binder.Subscribe(), binder.Subscribe()
-	if v, err := portal1.SendTransforms(
-		[]*OTransform{
-			&OTransform{
-				Position: 6,
-				Version:  2,
-				Delete:   5,
-				Insert:   "universe",
-			},
+	if v, err := portal1.SendTransform(
+		&OTransform{
+			Position: 6,
+			Version:  2,
+			Delete:   5,
+			Insert:   "universe",
 		},
+		time.Second,
 	); v != 2 || err != nil {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
@@ -75,7 +74,7 @@ func TestNewBinder(t *testing.T) {
 
 func badClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
 	// Do nothing, LOLOLOLOLOL AHAHAHAHAHAHAHAHAHA! TIME WASTTTTIIINNNGGGG!!!!
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	// The first transform is free (buffered chan)
 	<-b.TransformRcvChan
@@ -130,9 +129,7 @@ func TestClients(t *testing.T) {
 
 	portal := binder.Subscribe()
 
-	if v, err := portal.SendTransforms(
-		[]*OTransform{tform(portal.Version + 1)},
-	); v != 2 || err != nil {
+	if v, err := portal.SendTransform(tform(portal.Version+1), time.Second); v != 2 || err != nil {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
 
@@ -146,15 +143,12 @@ func TestClients(t *testing.T) {
 	wg.Add(50)
 
 	for i := 0; i < 50; i++ {
-		vstart := i*3 + 3
 		if i%2 == 0 {
 			go goodClient(binder.Subscribe(), t, &wg)
 			go badClient(binder.Subscribe(), t, &wg)
 		}
-		if v, err := portal.SendTransforms(
-			[]*OTransform{tform(vstart), tform(vstart + 1), tform(vstart + 2)},
-		); v != vstart || err != nil {
-			t.Errorf("Send Transform error, expected v: %v, got v: %v, err: %v", vstart, v, err)
+		if v, err := portal.SendTransform(tform(i+3), time.Second); v != i+3 || err != nil {
+			t.Errorf("Send Transform error, expected v: %v, got v: %v, err: %v", i+3, v, err)
 		}
 	}
 
@@ -164,45 +158,38 @@ func TestClients(t *testing.T) {
 }
 
 type binderStory struct {
-	Content    string          `json:"content"`
-	Transforms [][]*OTransform `json:"transforms"`
-	TCorrected [][]*OTransform `json:"corrected_transforms"`
-	Result     string          `json:"result"`
+	Content    string        `json:"content"`
+	Transforms []*OTransform `json:"transforms"`
+	TCorrected []*OTransform `json:"corrected_transforms"`
+	Result     string        `json:"result"`
 }
 
 type binderStoriesContainer struct {
 	Stories []binderStory `json:"binder_stories"`
 }
 
-func goodStoryClient(b *BinderPortal, bstory *binderStory, feeds <-chan []*OTransform, t *testing.T) {
+func goodStoryClient(b *BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t *testing.T) {
 	tformIndex, lenCorrected := 0, len(bstory.TCorrected)
-	for {
-		select {
-		case feed := <-feeds:
-			b.SendTransforms(feed)
-		case ret, open := <-b.TransformRcvChan:
-			if !open {
-				t.Errorf("channel was closed before receiving last change")
-				return
-			}
-			if lenRcvd, lenCrct := len(ret), len(bstory.TCorrected[tformIndex]); lenRcvd == lenCrct {
-				for i, tform := range ret {
-					if tform.Version != bstory.TCorrected[tformIndex][i].Version ||
-						tform.Insert != bstory.TCorrected[tformIndex][i].Insert ||
-						tform.Delete != bstory.TCorrected[tformIndex][i].Delete ||
-						tform.Position != bstory.TCorrected[tformIndex][i].Position {
-						t.Errorf("Transform not expected, %v != %v", tform, bstory.TCorrected[tformIndex][i])
-					}
+	go func() {
+		for ret := range b.TransformRcvChan {
+			for _, tform := range ret {
+				if tform.Version != bstory.TCorrected[tformIndex].Version ||
+					tform.Insert != bstory.TCorrected[tformIndex].Insert ||
+					tform.Delete != bstory.TCorrected[tformIndex].Delete ||
+					tform.Position != bstory.TCorrected[tformIndex].Position {
+					t.Errorf("Transform not expected, %v != %v", tform, bstory.TCorrected[tformIndex])
 				}
-			} else {
-				t.Errorf("Received wrong number of transforms %v != %v", lenRcvd, lenCrct)
-			}
-			tformIndex++
-			if tformIndex == lenCorrected {
-				return
+				tformIndex++
+				if tformIndex == lenCorrected {
+					wg.Done()
+					return
+				}
 			}
 		}
-	}
+		t.Errorf("channel was closed before receiving last change")
+		wg.Done()
+		return
+	}()
 }
 
 func TestBinderStories(t *testing.T) {
@@ -214,13 +201,6 @@ func TestBinderStories(t *testing.T) {
 		return
 	}
 
-	errChan := make(chan BinderError)
-	go func() {
-		for err := range errChan {
-			t.Errorf("From error channel: %v", err.Err)
-		}
-	}()
-
 	var scont binderStoriesContainer
 	if err := json.Unmarshal(bytes, &scont); err != nil {
 		t.Errorf("Story parse error: %v", err)
@@ -229,24 +209,41 @@ func TestBinderStories(t *testing.T) {
 
 	for i, story := range scont.Stories {
 		doc := CreateNewDocument(fmt.Sprintf("story%v", i), "testing", story.Content)
-		binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan)
+		config := DefaultBinderConfig()
+		//config.LogVerbose = true
+
+		errChan := make(chan BinderError)
+		go func() {
+			for err := range errChan {
+				t.Errorf("From error channel: %v", err.Err)
+			}
+		}()
+
+		binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan)
 		if err != nil {
 			t.Errorf("error: %v", err)
+			continue
 		}
 
 		wg := sync.WaitGroup{}
 		wg.Add(nClients)
 
-		feedChan := make(chan []*OTransform, len(story.Transforms))
 		for j := 0; j < nClients; j++ {
-			go func() {
-				goodStoryClient(binder.Subscribe(), &story, feedChan, t)
-				wg.Done()
-			}()
+			goodStoryClient(binder.Subscribe(), &story, &wg, t)
 		}
 
+		time.Sleep(50 * time.Millisecond)
+
+		bp := binder.Subscribe()
+		go func() {
+			for _ = range bp.TransformRcvChan {
+			}
+		}()
+
 		for j := 0; j < len(story.Transforms); j++ {
-			feedChan <- story.Transforms[j]
+			if _, err = bp.SendTransform(story.Transforms[j], time.Second); err != nil {
+				t.Errorf("Send issue %v", err)
+			}
 		}
 
 		wg.Wait()
@@ -255,5 +252,7 @@ func TestBinderStories(t *testing.T) {
 		if got, exp := string(newClient.Document.Content), story.Result; got != exp {
 			t.Errorf("Wrong result, expected: %v, received: %v", exp, got)
 		}
+
+		binder.Close()
 	}
 }
