@@ -32,6 +32,8 @@ import (
 func main() {
 	curatorConfig := leaplib.DefaultCuratorConfig()
 	curatorConfig.BinderConfig.LogVerbose = true
+	curatorConfig.StoreConfig.Type = "mock"
+	curatorConfig.StoreConfig.Name = "test_document"
 
 	httpServerConfig := leapnet.DefaultHTTPServerConfig()
 	httpServerConfig.LogVerbose = true

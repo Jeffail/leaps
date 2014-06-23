@@ -176,7 +176,7 @@ func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (*leaplib.
 		}
 		return nil, errors.New("find request must contain a valid document ID")
 	}
-	return nil, errors.New("first message must be an initializer request")
+	return nil, fmt.Errorf("first message must be an initializer request, client sent: %v", clientMsg.Command)
 }
 
 /*

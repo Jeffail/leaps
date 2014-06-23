@@ -49,9 +49,9 @@ var run_story = function(story, test) {
 	var client = new lc();
 	client.connect("", socket);
 
-	client.on_error = function(err) {
+	client.subscribe_event("on_error", function(err) {
 		test.ok(false, "client error: " + JSON.stringify(err));
-	};
+	});
 
 	client.create_document("test", "test document", story.content);
 
@@ -59,7 +59,8 @@ var run_story = function(story, test) {
 		var epoch_sends = story.epochs[i].send;
 		var epoch_receives = story.epochs[i].receive;
 
-		client.on_transforms = function(tforms) {
+		client.clear_subscribers("on_transforms");
+		client.subscribe_event("on_transforms", function(tforms) {
 			for ( var tn = 0, ln = tforms.length; tn < ln; tn++ ) {
 				content = la(tforms[tn], content);
 			}
@@ -71,7 +72,7 @@ var run_story = function(story, test) {
 			} else if ( epoch_receives.length > 0 ) {
 				socket.onmessage({ data : JSON.stringify(epoch_receives.shift())});
 			}
-		};
+		});
 
 		socket.send = function() {
 			if ( epoch_receives.length > 0 ) {

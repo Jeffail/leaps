@@ -47,6 +47,11 @@ var tests = [
 		first : { position : 5, insert : "hello", num_delete : 0 },
 		second : { position : 7, insert : "y world", num_delete : 4 },
 		result : { position : 5, insert : "hey world", num_delete : 1 }
+	},
+	{
+		first : { position : 5, insert : "0", num_delete : 1 },
+		second : { position : 6, insert : "1", num_delete : 1 },
+		result : { position : 5, insert : "01", num_delete : 2 }
 	}
 ];
 

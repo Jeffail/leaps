@@ -35,6 +35,7 @@ DocumentStoreConfig - Holds generic configuration options for a document storage
 */
 type DocumentStoreConfig struct {
 	Type string `json:"type"`
+	Name string `json:"name"`
 }
 
 /*
@@ -43,6 +44,7 @@ DefaultDocumentStoreConfig - Returns a default generic configuration.
 func DefaultDocumentStoreConfig() DocumentStoreConfig {
 	return DocumentStoreConfig{
 		Type: "memory",
+		Name: "",
 	}
 }
 
@@ -69,6 +71,8 @@ func DocumentStoreFactory(config DocumentStoreConfig) (DocumentStore, error) {
 	switch config.Type {
 	case "memory":
 		return GetMemoryStore(config), nil
+	case "mock":
+		return GetMockStore(config), nil
 	}
 	return nil, errors.New("configuration provided invalid document store type")
 }
@@ -117,6 +121,26 @@ func GetMemoryStore(config DocumentStoreConfig) DocumentStore {
 	return &MemoryStore{
 		documents: make(map[string]*Document),
 	}
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
+/*
+GetMockStore - returns a MemoryStore with a document already created for testing purposes. The
+document has the ID of the config value 'Name'.
+*/
+func GetMockStore(config DocumentStoreConfig) DocumentStore {
+	memStore := &MemoryStore{
+		documents: make(map[string]*Document),
+	}
+	memStore.documents[config.Name] = &Document{
+		ID:          config.Name,
+		Title:       config.Name,
+		Description: config.Name,
+		Content:     "hello world",
+	}
+	return memStore
 }
 
 /*--------------------------------------------------------------------------------------------------

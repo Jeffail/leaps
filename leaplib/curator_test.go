@@ -71,11 +71,13 @@ func TestCuratorClients(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(20)
 
+	tformSending := 50
+
 	for i := 0; i < 10; i++ {
 		if b, e := curator.FindDocument(doc.ID); e != nil {
 			t.Errorf("error: %v", e)
 		} else {
-			go goodClient(b, t, &wg)
+			go goodClient(b, tformSending, t, &wg)
 		}
 		if b, e := curator.FindDocument(doc.ID); e != nil {
 			t.Errorf("error: %v", e)
@@ -91,7 +93,7 @@ func TestCuratorClients(t *testing.T) {
 			if b, e := curator.FindDocument(doc.ID); e != nil {
 				t.Errorf("error: %v", e)
 			} else {
-				go goodClient(b, t, &wg)
+				go goodClient(b, tformSending-i, t, &wg)
 			}
 			if b, e := curator.FindDocument(doc.ID); e != nil {
 				t.Errorf("error: %v", e)

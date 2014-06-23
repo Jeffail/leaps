@@ -61,7 +61,7 @@ func DefaultBinderConfig() BinderConfig {
 			RetentionPeriod: 60,
 		},
 		FlushPeriod:      50,
-		ClientKickPeriod: 5,
+		ClientKickPeriod: 10,
 		LogVerbose:       false,
 	}
 }
@@ -291,7 +291,6 @@ func (b *Binder) processJob(request BinderRequest) {
 	}
 
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
-	deadClients := []int{}
 
 	for i, clientChan := range b.clients {
 		select {
@@ -300,19 +299,27 @@ func (b *Binder) processJob(request BinderRequest) {
 			/* The client may have stopped listening, or is just being slow.
 			 * Either way, we have a strict policy here of no time wasters.
 			 */
-			deadClients = append(deadClients, i)
+			close(b.clients[i])
+			b.clients[i] = nil
 		}
 		// Currently also sends to client that submitted it, oops, or no oops?
 	}
-	if len(deadClients) > 0 {
-		b.log("info", fmt.Sprintf("Kicking %v inactive clients", len(deadClients)))
+
+	deadClients := 0
+	newClients := [](chan<- []*OTransform){}
+	for _, clientChan := range b.clients {
+		if clientChan != nil {
+			newClients = append(newClients, clientChan)
+		} else {
+			deadClients++
+		}
 	}
-	// This is most likely just one client, so do a quick delete
-	for i := len(deadClients) - 1; i >= 0; i-- {
-		close(b.clients[i])
-		b.clients[i], b.clients[len(b.clients)-1], b.clients =
-			b.clients[len(b.clients)-1], nil, b.clients[:len(b.clients)-1]
+
+	if deadClients > 0 {
+		b.log("info", fmt.Sprintf("Kicked %v inactive clients", deadClients))
 	}
+
+	b.clients = newClients
 }
 
 /*

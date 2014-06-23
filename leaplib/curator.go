@@ -37,6 +37,7 @@ CuratorConfig - Holds configuration options for a curator.
 type CuratorConfig struct {
 	StoreConfig  DocumentStoreConfig `json:"storage"`
 	BinderConfig BinderConfig        `json:"binder"`
+	LogVerbose   bool                `json:"verbose_logging"`
 }
 
 /*
@@ -47,6 +48,7 @@ func DefaultCuratorConfig() CuratorConfig {
 	return CuratorConfig{
 		StoreConfig:  DefaultDocumentStoreConfig(),
 		BinderConfig: DefaultBinderConfig(),
+		LogVerbose:   false,
 	}
 }
 
@@ -104,7 +106,9 @@ func (c *Curator) Close() {
 log - Helper function for logging events, only actually logs when verbose logging is configured.
 */
 func (c *Curator) log(level, message string) {
-	c.logger.Printf("| %v -> %v\n", level, message)
+	if c.config.LogVerbose {
+		c.logger.Printf("| %v -> %v\n", level, message)
+	}
 }
 
 /*
@@ -114,6 +118,7 @@ func (c *Curator) loop() {
 	for {
 		select {
 		case <-c.closeChan:
+			c.log("info", "received call to close, forwarding message to binders")
 			for _, b := range c.openBinders {
 				b.Close()
 			}

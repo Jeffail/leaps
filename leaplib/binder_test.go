@@ -85,9 +85,11 @@ func badClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-func goodClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
+func goodClient(b *BinderPortal, expecting int, t *testing.T, wg *sync.WaitGroup) {
 	changes := b.Version + 1
+	seen := 0
 	for change := range b.TransformRcvChan {
+		seen++
 		for _, tform := range change {
 			if tform.Insert != fmt.Sprintf("%v", changes) {
 				t.Errorf("Wrong order of transforms, expected %v, received %v",
@@ -95,6 +97,9 @@ func goodClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
 			}
 			changes++
 		}
+	}
+	if seen != expecting {
+		t.Errorf("Good client didn't receive all expected transforms: %v != %v", expecting, seen)
 	}
 	wg.Done()
 }
@@ -134,17 +139,18 @@ func TestClients(t *testing.T) {
 	}
 
 	wg.Add(20)
+	tformToSend := 50
 
 	for i := 0; i < 10; i++ {
-		go goodClient(binder.Subscribe(), t, &wg)
+		go goodClient(binder.Subscribe(), tformToSend, t, &wg)
 		go badClient(binder.Subscribe(), t, &wg)
 	}
 
-	wg.Add(50)
+	wg.Add(tformToSend)
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < tformToSend; i++ {
 		if i%2 == 0 {
-			go goodClient(binder.Subscribe(), t, &wg)
+			go goodClient(binder.Subscribe(), tformToSend-i, t, &wg)
 			go badClient(binder.Subscribe(), t, &wg)
 		}
 		if v, err := portal.SendTransform(tform(i+3), time.Second); v != i+3 || err != nil {

@@ -287,11 +287,41 @@ var leap_client = function() {
 
 	this._model = null;
 
-	this.on_transforms = null;
-	this.on_document = null;
-	this.on_connect = null;
-	this.on_disconnect = null;
-	this.on_error = null;
+	this._events = {};
+};
+
+/* subscribe_event, attach a function to an event of the leap_client. Use this to subscribe to
+ * transforms, document responses and errors etc. Returns a string if an error occurrs.
+ */
+leap_client.prototype.subscribe_event = function(name, subscriber) {
+	if ( typeof(subscriber) !== "function" ) {
+		return "subscriber was not a function";
+	}
+	var targets = this._events[name];
+	if ( targets !== undefined && targets instanceof Array ) {
+		targets.push(subscriber);
+	} else {
+		this._events[name] = [ subscriber ];
+	}
+};
+
+/* clear_subscribers, removes all functions subscribed to an event.
+ */
+leap_client.prototype.clear_subscribers = function(name) {
+	this._events[name] = [];
+};
+
+/* dispatch_event, sends args to all subscribers of an event.
+ */
+leap_client.prototype._dispatch_event = function(name, args) {
+	var targets = this._events[name];
+	if ( targets !== undefined && targets instanceof Array ) {
+		for ( var i = 0, l = targets.length; i < l; i++ ) {
+			if (typeof(targets[i]) === "function") {
+				targets[i].apply(this, args);
+			}
+		}
+	}
 };
 
 /* _do_action is a call that acts accordingly provided an action_obj from our leap_model.
@@ -303,14 +333,12 @@ leap_client.prototype._do_action = function(action_obj) {
 		return action_obj.error;
 	}
 	if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
-		if ( typeof(this.on_transforms) === "function" ) {
-			this.on_transforms(action_obj.apply);
-		}
+		this._dispatch_event("on_transforms", [ action_obj.apply ]);
 	}
-	if ( action_obj.send !== undefined && action_obj.send instanceof Array ) {
+	if ( action_obj.send !== undefined && action_obj.send instanceof Object ) {
 		this._socket.send(JSON.stringify({
 			command : "submit",
-			transforms : action_obj.send
+			transform : action_obj.send
 		}));
 	}
 };
@@ -340,14 +368,13 @@ leap_client.prototype._process_message = function(message) {
 		if ( !(message.version > 0) ) {
 			return "message document received but without valid version";
 		}
-		if ( this._document_id !== null && this.document_id !== message.leap_document.id ) {
-			return "received unexpected document, id was mismatched";
+		if ( this._document_id !== null && this._document_id !== message.leap_document.id ) {
+			return "received unexpected document, id was mismatched: "
+				+ this._document_id + " != " + message.leap_document.id;
 		}
 		this.document_id = message.leap_document.id;
 		this._model = new _leap_model(message.version);
-		if ( typeof(this.on_document) === "function" ) {
-			this.on_document(message.leap_document);
-		}
+		this._dispatch_event("on_document", [ message.leap_document ]);
 		break;
 	case "transforms":
 		if ( this._model === null ) {
@@ -506,37 +533,27 @@ leap_client.prototype.connect = function(address, _websocket) {
 		try {
 			message_obj = JSON.parse(message_text);
 		} catch (e) {
-			if ( typeof(leap_obj.on_error) === "function" ) {
-				leap_obj.on_error.apply(leap_obj,
-					[ JSON.stringify(e.message) + " (" + e.lineNumber + "): " + message_text ]);
-			}
+			leap_obj._dispatch_event.apply(leap_obj,
+				[ "on_error", [ JSON.stringify(e.message) + " (" + e.lineNumber + "): " + message_text ] ]);
 			return;
 		}
 
 		var err = leap_obj._process_message.apply(leap_obj, [ message_obj ]);
 		if ( typeof(err) === "string" ) {
-			if ( typeof(leap_obj.on_error) === "function" ) {
-				leap_obj.on_error.apply(leap_obj, [ err ]);
-			}
+			leap_obj._dispatch_event.apply(leap_obj, [ "on_error", [ err ] ]);
 		}
 	};
 
 	this._socket.onclose = function() {
-		if ( typeof(leap_obj.on_disconnect) === "function" ) {
-			leap_obj.on_disconnect.apply(leap_obj, []);
-		}
+		leap_obj._dispatch_event.apply(leap_obj, [ "on_disconnect", [] ]);
 	};
 
 	this._socket.onopen = function() {
-		if ( typeof(leap_obj.on_connect) === "function" ) {
-			leap_obj.on_connect.apply(leap_obj, arguments);
-		}
+		leap_obj._dispatch_event.apply(leap_obj, [ "on_connect", arguments ]);
 	};
 
 	this._socket.onerror = function() {
-		if ( typeof(leap_obj.on_error) === "function" ) {
-			leap_obj.on_error.apply(leap_obj, arguments);
-		}
+		leap_obj._dispatch_event.apply(leap_obj, [ "on_error", arguments ]);
 	};
 };
 
@@ -552,15 +569,20 @@ var leap_apply = function(transform, content) {
 	return first + transform.insert + second;
 };
 
+leap_client.prototype.apply = leap_apply;
+
 /*--------------------------------------------------------------------------------------------------
  */
 
-if ( module !== undefined && typeof(module) === "object" ) {
-	module.exports = {
-		client : leap_client,
-		apply : leap_apply,
-		_model : _leap_model
-	};
+try {
+	if ( module !== undefined && typeof(module) === "object" ) {
+		module.exports = {
+			client : leap_client,
+			apply : leap_apply,
+			_model : _leap_model
+		};
+	}
+} catch(e) {
 }
 
 /*--------------------------------------------------------------------------------------------------
