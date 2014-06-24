@@ -62,24 +62,24 @@ _leap_model.prototype._validate_transforms = function(transforms) {
 		if ( typeof(tform.position) !== "number" ) {
 			tform.position = parseInt(tform.position);
 			if ( isNaN(tform.position) ) {
-				return "transform contained NaN value for position";
+				return "transform contained NaN value for position: " + JSON.stringify(tform);
 			}
 		}
-		if ( typeof(tform.num_delete) !== undefined && typeof(tform.num_delete) !== "number" ) {
+		if ( tform.num_delete !== undefined && typeof(tform.num_delete) !== "number" ) {
 			tform.num_delete = parseInt(tform.num_delete);
 			if ( isNaN(tform.num_delete) ) {
-				return "transform contained NaN value for num_delete";
+				return "transform contained NaN value for num_delete: " + JSON.stringify(tform);
 			}
 		}
-		if ( typeof(tform.version) !== undefined && typeof(tform.version) !== "number" ) {
+		if ( tform.version !== undefined && typeof(tform.version) !== "number" ) {
 			tform.version = parseInt(tform.version);
 			if ( isNaN(tform.version) ) {
-				return "transform contained NaN value for version";
+				return "transform contained NaN value for version: " + JSON.stringify(tform);
 			}
 		}
-		if ( typeof(tform.insert) !== undefined ) {
+		if ( tform.insert !== undefined ) {
 			if ( typeof(tform.insert) !== "string" ) {
-				return "transform contained non-string value for insert";
+				return "transform contained non-string value for insert: " + JSON.stringify(tform);
 			}
 		} else {
 			tform.insert = "";
@@ -434,6 +434,11 @@ leap_client.prototype.send_transform = function(transform) {
 
 	if ( this._model === null ) {
 		return "leap_client must be initialized and joined to a document before submitting transforms"
+	}
+
+	var validate_error = this._model._validate_transforms([ transform ]);
+	if ( validate_error !== undefined ) {
+		return validate_error;
 	}
 
 	var action_obj = this._model.submit(transform);

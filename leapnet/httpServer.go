@@ -255,7 +255,6 @@ func (h *HTTPServer) launchWebsocketModel(socket *websocket.Conn, binder *leapli
 
 	readChan := make(chan LeapClientMessage)
 	go func() {
-		var clientMsg LeapClientMessage
 		for {
 			select {
 			case <-h.closeChan:
@@ -264,6 +263,7 @@ func (h *HTTPServer) launchWebsocketModel(socket *websocket.Conn, binder *leapli
 				return
 			default:
 			}
+			var clientMsg LeapClientMessage
 			if err := websocket.JSON.Receive(socket, &clientMsg); err == nil {
 				readChan <- clientMsg
 			} else {

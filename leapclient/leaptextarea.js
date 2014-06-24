@@ -78,6 +78,8 @@ leap_bind_textarea.prototype._apply_transform = function(transform) {
 	}
 
 	this._content = this._text_area.value = this._leap_client.apply(transform, content);
+	this._text_area.selectionStart = cursor_pos;
+	this._text_area.selectionEnd = cursor_pos; // TODO
 };
 
 /* trigger_diff triggers whenever a change may have occurred to the wrapped textarea element, and
@@ -96,8 +98,10 @@ leap_bind_textarea.prototype._trigger_diff = function() {
 	while (new_content[i] === this._content[i]) {
 		i++;
 	}
-	while ( ((new_content.length - 1 - j) === (this._content.length - 1 - j))
-	   && ((i + j) < new_content[i].length) && ((i + j) < this._content[i].length)) {
+	while ((new_content[(new_content.length - 1 - j)]
+		=== this._content[(this._content.length - 1 - j)])
+		&& ((i + j) < new_content[i].length)
+		&& ((i + j) < this._content[i].length)) {
 		j++;
 	}
 

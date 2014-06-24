@@ -27,16 +27,22 @@ import (
 	"github.com/jeffail/leaps/leaplib"
 	"github.com/jeffail/leaps/leapnet"
 	"net/http"
+	"os"
+	"os/signal"
 )
 
 func main() {
 	curatorConfig := leaplib.DefaultCuratorConfig()
+	curatorConfig.LogVerbose = true
+
 	curatorConfig.BinderConfig.LogVerbose = true
 	curatorConfig.StoreConfig.Type = "mock"
 	curatorConfig.StoreConfig.Name = "test_document"
 
 	httpServerConfig := leapnet.DefaultHTTPServerConfig()
 	httpServerConfig.LogVerbose = true
+
+	fmt.Printf("Launching a leaps example server, use CTRL+C to close.\n\n")
 
 	curator, err := leaplib.CreateNewCurator(curatorConfig)
 	if err != nil {
@@ -52,16 +58,21 @@ func main() {
 
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./files"))))
 
+	closeChan := make(chan bool)
+
 	go func() {
 		if err := leapHttp.Listen(); err != nil {
 			fmt.Printf("Http listen error: %v\n", err)
 		}
+		closeChan <- true
 	}()
 
-	fmt.Println("Listening for requests. Submit any text to close.")
-
-	var i string
-	_, _ = fmt.Scan(&i)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	select {
+	case <-c:
+	case <-closeChan:
+	}
 
 	curator.Close()
 }
