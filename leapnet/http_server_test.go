@@ -34,10 +34,10 @@ import (
 )
 
 type binderStory struct {
-	Content    string                `json:"content"`
-	Transforms []*leaplib.OTransform `json:"transforms"`
-	TCorrected []*leaplib.OTransform `json:"corrected_transforms"`
-	Result     string                `json:"result"`
+	Content    string               `json:"content"`
+	Transforms []leaplib.OTransform `json:"transforms"`
+	TCorrected []leaplib.OTransform `json:"corrected_transforms"`
+	Result     string               `json:"result"`
 }
 
 type binderStoriesContainer struct {
@@ -66,7 +66,7 @@ func findDocument(id string, ws *websocket.Conn) error {
 	return nil
 }
 
-func senderClient(id string, feeds <-chan *leaplib.OTransform, t *testing.T) {
+func senderClient(id string, feeds <-chan leaplib.OTransform, t *testing.T) {
 	origin := "http://localhost/"
 	url := "ws://localhost:8787/leapsocket"
 
@@ -81,11 +81,11 @@ func senderClient(id string, feeds <-chan *leaplib.OTransform, t *testing.T) {
 		return
 	}
 
-	rcvChan := make(chan []*leaplib.OTransform, 5)
+	rcvChan := make(chan []leaplib.OTransform, 5)
 	crctChan := make(chan bool)
 	go func() {
 		for {
-			var serverMsg LeapServerMessage
+			var serverMsg LeapTextServerMessage
 			if err := websocket.JSON.Receive(ws, &serverMsg); err == nil {
 				switch serverMsg.Type {
 				case "correction":
@@ -110,7 +110,7 @@ func senderClient(id string, feeds <-chan *leaplib.OTransform, t *testing.T) {
 			if !open {
 				return
 			}
-			websocket.JSON.Send(ws, LeapClientMessage{
+			websocket.JSON.Send(ws, LeapTextClientMessage{
 				Command:   "submit",
 				Transform: feed,
 			})
@@ -148,10 +148,10 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 		return
 	}
 
-	rcvChan := make(chan []*leaplib.OTransform, 5)
+	rcvChan := make(chan []leaplib.OTransform, 5)
 	go func() {
 		for {
-			var serverMsg LeapServerMessage
+			var serverMsg LeapTextServerMessage
 			if err := websocket.JSON.Receive(ws, &serverMsg); err == nil {
 				switch serverMsg.Type {
 				case "correction":
@@ -237,7 +237,7 @@ func TestHttpServer(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(50 * time.Millisecond)
 
 	origin := "http://localhost/"
 	url := "ws://localhost:8787/leapsocket"
@@ -275,7 +275,7 @@ func TestHttpServer(t *testing.T) {
 			return
 		}
 
-		feeds := make(chan *leaplib.OTransform)
+		feeds := make(chan leaplib.OTransform)
 
 		wg := sync.WaitGroup{}
 		wg.Add(10)
@@ -285,7 +285,7 @@ func TestHttpServer(t *testing.T) {
 			go goodStoryClient(initResponse.Document.ID, &story, &wg, t)
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(50 * time.Millisecond)
 
 		for j := 0; j < len(story.Transforms); j++ {
 			feeds <- story.Transforms[j]

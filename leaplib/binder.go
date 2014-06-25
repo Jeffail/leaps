@@ -70,67 +70,6 @@ func DefaultBinderConfig() BinderConfig {
  */
 
 /*
-BinderError - A binder has encountered a problem and needs to close. In order for this to happen it
-needs to inform its owner that it should be shut down. BinderError is a structure used to carry
-our error message and our ID over an error channel.
-*/
-type BinderError struct {
-	ID  string
-	Err error
-}
-
-/*
-BinderRequest - A container used to communicate with a binder, it holds a transform to be
-submitted to the document model. Two channels are used for return values from the request.
-VersionChan is used to send back the actual version of the transform submitted. ErrorChan is used to
-send errors that occur. Both channels must be non-blocking, so a buffer of 1 is recommended.
-*/
-type BinderRequest struct {
-	Transform   *OTransform
-	VersionChan chan<- int
-	ErrorChan   chan<- error
-}
-
-/*
-BinderPortal - A container that holds all data necessary to begin an open portal with the binder,
-allowing fresh transforms to be submitted and returned as they come.
-*/
-type BinderPortal struct {
-	Transforms       []*OTransform
-	Document         *Document
-	Version          int
-	Error            error
-	TransformRcvChan <-chan []*OTransform
-	RequestSndChan   chan<- BinderRequest
-}
-
-/*
-SendTransform - A helper function for submitting a transform to the binder. The binder responds
-with either an error or a corrected version number for the document at the time of your submission.
-*/
-func (p *BinderPortal) SendTransform(ot *OTransform, timeout time.Duration) (int, error) {
-	// Buffered channels because the server skips blocked sends
-	errChan := make(chan error, 1)
-	verChan := make(chan int, 1)
-	p.RequestSndChan <- BinderRequest{
-		Transform:   ot,
-		VersionChan: verChan,
-		ErrorChan:   errChan,
-	}
-	select {
-	case err := <-errChan:
-		return 0, err
-	case ver := <-verChan:
-		return ver, nil
-	case <-time.After(timeout):
-	}
-	return 0, errors.New("timeout occured waiting for binder response")
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-/*
 Binder - Contains a single document and acts as a broker between multiple readers, writers and the
 storage strategy.
 */
@@ -139,10 +78,10 @@ type Binder struct {
 	SubscribeChan chan (chan<- *BinderPortal)
 
 	logger     *log.Logger
-	model      *OModel
+	model      Model
 	block      DocumentStore
 	config     BinderConfig
-	clients    [](chan<- []*OTransform)
+	clients    [](chan<- []interface{})
 	jobs       chan BinderRequest
 	errorChan  chan<- BinderError
 	closedChan chan bool
@@ -163,10 +102,10 @@ func BindExisting(
 		ID:            id,
 		SubscribeChan: make(chan (chan<- *BinderPortal)),
 		logger:        log.New(os.Stdout, "[leaps.binder] ", log.LstdFlags),
-		model:         CreateModel(id),
+		model:         CreateTextModel(id), //TODO: Generic
 		block:         block,
 		config:        config,
-		clients:       [](chan<- []*OTransform){},
+		clients:       [](chan<- []interface{}){},
 		jobs:          make(chan BinderRequest),
 		errorChan:     errorChan,
 		closedChan:    make(chan bool),
@@ -202,10 +141,10 @@ func BindNew(
 		ID:            document.ID,
 		SubscribeChan: make(chan (chan<- *BinderPortal)),
 		logger:        log.New(os.Stdout, "[leaps.binder] ", log.LstdFlags),
-		model:         CreateModel(document.ID),
+		model:         CreateTextModel(document.ID), // TODO: Make generic
 		block:         block,
 		config:        config,
-		clients:       [](chan<- []*OTransform){},
+		clients:       [](chan<- []interface{}){},
 		jobs:          make(chan BinderRequest),
 		errorChan:     errorChan,
 		closedChan:    make(chan bool),
@@ -263,20 +202,20 @@ processJob - Processes a clients sent transforms, also returns the conditioned t
 broadcast to other listening clients.
 */
 func (b *Binder) processJob(request BinderRequest) {
-	version := b.model.Version
-
 	if request.Transform == nil {
 		select {
-		case request.ErrorChan <- errors.New("received job of zero transforms"):
+		case request.ErrorChan <- errors.New("received job without a transform"):
 		default:
 		}
 		return
 	}
 
-	newOTs := make([]*OTransform, 1)
+	newOTs := make([]interface{}, 1)
 	var err error
+	var version int
 
-	newOTs[0], err = b.model.PushTransform(*request.Transform)
+	newOTs[0], version, err = b.model.PushTransform(request.Transform)
+
 	if err != nil {
 		select {
 		case request.ErrorChan <- err:
@@ -286,7 +225,7 @@ func (b *Binder) processJob(request BinderRequest) {
 	}
 
 	select {
-	case request.VersionChan <- (version + 1):
+	case request.VersionChan <- version:
 	default:
 	}
 
@@ -306,7 +245,7 @@ func (b *Binder) processJob(request BinderRequest) {
 	}
 
 	deadClients := 0
-	newClients := [](chan<- []*OTransform){}
+	newClients := [](chan<- []interface{}){}
 	for _, clientChan := range b.clients {
 		if clientChan != nil {
 			newClients = append(newClients, clientChan)
@@ -365,14 +304,13 @@ func (b *Binder) loop() {
 				/* Channel is buffered by one element to be non-blocking, any blocked send will
 				 * lead to a rejected client, bad client!
 				 */
-				sndChan := make(chan []*OTransform, 1)
+				sndChan := make(chan []interface{}, 1)
 				b.clients = append(b.clients, sndChan)
 				b.log("info", "subscribing new client")
 
 				client <- &BinderPortal{
-					Version:          b.model.Version,
+					Version:          b.model.GetVersion(),
 					Document:         doc,
-					Transforms:       b.model.Unapplied,
 					Error:            nil,
 					TransformRcvChan: sndChan,
 					RequestSndChan:   b.jobs,
@@ -400,7 +338,7 @@ func (b *Binder) loop() {
 		if !running {
 			b.log("info", "closing, shutting down client channels")
 			oldClients := b.clients[:]
-			b.clients = [](chan<- []*OTransform){}
+			b.clients = [](chan<- []interface{}){}
 			for _, client := range oldClients {
 				close(client)
 			}

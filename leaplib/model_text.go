@@ -55,9 +55,9 @@ type OModel struct {
 }
 
 /*
-CreateModel - Returns a fresh transform model, with the version set to 1.
+CreateTextModel - Returns a fresh transform model, with the version set to 1.
 */
-func CreateModel(id string) *OModel {
+func CreateTextModel(id string) Model {
 	return &OModel{
 		Version:   1,
 		DocID:     id,
@@ -74,9 +74,13 @@ PushTransform - Inserts a transform onto the unapplied stack and increments the 
 the document. Whilst doing so it fixes the transform in relation to earlier transforms it was
 unaware of, this fixed version gets sent back for distributing across other clients.
 */
-func (m *OModel) PushTransform(ot OTransform) (*OTransform, error) {
+func (m *OModel) PushTransform(otBoxed interface{}) (interface{}, int, error) {
+	ot, ok := otBoxed.(OTransform)
+	if !ok {
+		return nil, 0, errors.New("received unexpected transform, expected OTransform")
+	}
 	if ot.Delete < 0 {
-		return nil, errors.New("transform contained negative delete")
+		return nil, 0, errors.New("transform contained negative delete")
 	}
 
 	lenApplied, lenUnapplied := len(m.Applied), len(m.Unapplied)
@@ -84,10 +88,10 @@ func (m *OModel) PushTransform(ot OTransform) (*OTransform, error) {
 	diff := (m.Version + 1) - ot.Version
 
 	if diff > lenApplied+lenUnapplied {
-		return nil, errors.New("transform diff greater than transform archive")
+		return nil, 0, errors.New("transform diff greater than transform archive")
 	}
 	if diff < 0 {
-		return nil, fmt.Errorf(
+		return nil, 0, fmt.Errorf(
 			"transform version %v greater than expected doc version (%v), offender: %v",
 			ot.Version, (m.Version + 1), ot)
 	}
@@ -107,65 +111,30 @@ func (m *OModel) PushTransform(ot OTransform) (*OTransform, error) {
 
 	m.Unapplied = append(m.Unapplied, &ot)
 
-	return &ot, nil
+	return ot, m.Version, nil
 }
 
 /*--------------------------------------------------------------------------------------------------
  */
 
 /*
-GetTransforms - Returns transforms from a document starting from a specific version number. Along
-with the current version number of the document. Also returns an error if the target version is so
-out of date that the client is going to suffer problems. Take any error here as an indicator that
-you should resync with the document.
+GetVersion - returns the current version of the document.
 */
-func (m *OModel) GetTransforms(version int) ([]*OTransform, int, error) {
-
-	diff := m.Version - version
-	if diff < 0 {
-		return nil, m.Version, errors.New("your target version is greater than the actual version")
-	}
-	if diff == 0 {
-		return []*OTransform{}, m.Version, nil
-	}
-
-	numApplied, numUnapplied := len(m.Applied), len(m.Unapplied)
-	if diff > (numApplied + numUnapplied) {
-		msg := fmt.Sprintf("your target version is out of date (diff: %v)", diff)
-		return nil, m.Version, errors.New(msg)
-	}
-
-	transforms := make([]*OTransform, diff)
-
-	takingApplied, tookApplied := (diff - numUnapplied), 0
-
-	if takingApplied > 0 {
-		for i := 0; i < takingApplied; i++ {
-			transforms[i] = &OTransform{}
-			*transforms[i] = *m.Applied[(numApplied-takingApplied)+i]
-		}
-		diff -= takingApplied
-		tookApplied = takingApplied
-	}
-
-	skipUnapplied := numUnapplied - diff
-	for i := 0; i < diff; i++ {
-		transforms[i+tookApplied] = &OTransform{}
-		*transforms[i+tookApplied] = *m.Unapplied[skipUnapplied+i]
-	}
-
-	return transforms, m.Version, nil
+func (m *OModel) GetVersion() int {
+	return m.Version
 }
-
-/*--------------------------------------------------------------------------------------------------
- */
 
 /*
 FlushTransforms - apply all unapplied transforms and append them to the applied stack, then remove
 old entries from the applied stack. Accepts retention as an indicator for how long applied
 transforms should be retained.
 */
-func (m *OModel) FlushTransforms(content *string, retention time.Duration) error {
+func (m *OModel) FlushTransforms(contentBoxed interface{}, retention time.Duration) error {
+	content, ok := contentBoxed.(*string)
+	if !ok {
+		return errors.New("received unexpected content, expected *string")
+	}
+
 	transforms := m.Unapplied[:]
 	m.Unapplied = []*OTransform{}
 

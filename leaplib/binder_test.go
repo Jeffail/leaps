@@ -48,7 +48,7 @@ func TestNewBinder(t *testing.T) {
 
 	portal1, portal2 := binder.Subscribe(), binder.Subscribe()
 	if v, err := portal1.SendTransform(
-		&OTransform{
+		OTransform{
 			Position: 6,
 			Version:  2,
 			Delete:   5,
@@ -90,8 +90,11 @@ func goodClient(b *BinderPortal, expecting int, t *testing.T, wg *sync.WaitGroup
 	seen := 0
 	for change := range b.TransformRcvChan {
 		seen++
-		for _, tform := range change {
-			if tform.Insert != fmt.Sprintf("%v", changes) {
+		for _, tformWrap := range change {
+			tform, ok := tformWrap.(OTransform)
+			if !ok {
+				t.Errorf("did not receive expected OTransform")
+			} else if tform.Insert != fmt.Sprintf("%v", changes) {
 				t.Errorf("Wrong order of transforms, expected %v, received %v",
 					changes, tform.Insert)
 			}
@@ -123,8 +126,8 @@ func TestClients(t *testing.T) {
 		}
 	}()
 
-	tform := func(i int) *OTransform {
-		return &OTransform{
+	tform := func(i int) OTransform {
+		return OTransform{
 			Position: 0,
 			Version:  i,
 			Delete:   0,
@@ -164,10 +167,10 @@ func TestClients(t *testing.T) {
 }
 
 type binderStory struct {
-	Content    string        `json:"content"`
-	Transforms []*OTransform `json:"transforms"`
-	TCorrected []*OTransform `json:"corrected_transforms"`
-	Result     string        `json:"result"`
+	Content    string       `json:"content"`
+	Transforms []OTransform `json:"transforms"`
+	TCorrected []OTransform `json:"corrected_transforms"`
+	Result     string       `json:"result"`
 }
 
 type binderStoriesContainer struct {
@@ -178,8 +181,11 @@ func goodStoryClient(b *BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t
 	tformIndex, lenCorrected := 0, len(bstory.TCorrected)
 	go func() {
 		for ret := range b.TransformRcvChan {
-			for _, tform := range ret {
-				if tform.Version != bstory.TCorrected[tformIndex].Version ||
+			for _, tformWrap := range ret {
+				tform, ok := tformWrap.(OTransform)
+				if !ok {
+					t.Errorf("did not receive expected OTransform")
+				} else if tform.Version != bstory.TCorrected[tformIndex].Version ||
 					tform.Insert != bstory.TCorrected[tformIndex].Insert ||
 					tform.Delete != bstory.TCorrected[tformIndex].Delete ||
 					tform.Position != bstory.TCorrected[tformIndex].Position {

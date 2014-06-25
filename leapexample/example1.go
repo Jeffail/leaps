@@ -50,7 +50,7 @@ func main() {
 		return
 	}
 
-	leapHttp, err := leapnet.CreateHTTPServer(curator, httpServerConfig)
+	leapHTTP, err := leapnet.CreateHTTPServer(curator, httpServerConfig)
 	if err != nil {
 		fmt.Printf("Http create error: %v\n", err)
 		return
@@ -61,7 +61,7 @@ func main() {
 	closeChan := make(chan bool)
 
 	go func() {
-		if err := leapHttp.Listen(); err != nil {
+		if err := leapHTTP.Listen(); err != nil {
 			fmt.Printf("Http listen error: %v\n", err)
 		}
 		closeChan <- true

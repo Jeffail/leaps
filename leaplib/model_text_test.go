@@ -30,13 +30,13 @@ import (
 	"time"
 )
 
-func TestSimpleTransforms(t *testing.T) {
+func TestTextModelSimpleTransforms(t *testing.T) {
 	doc := CreateNewDocument("Test", "Doc test", "hello world")
-	model := CreateModel(doc.ID)
+	model := CreateTextModel(doc.ID)
 	for j := 0; j < 3; j++ {
 		for i := 0; i < 3; i++ {
-			if _, err := model.PushTransform(OTransform{
-				Version:  model.Version + 1,
+			if _, _, err := model.PushTransform(OTransform{
+				Version:  model.GetVersion() + 1,
 				Position: i + (j * 3) + 5,
 				Insert:   fmt.Sprintf("%v", i+(j*3)),
 				Delete:   0,
@@ -49,8 +49,8 @@ func TestSimpleTransforms(t *testing.T) {
 		}
 	}
 
-	if _, err := model.PushTransform(OTransform{
-		Version:  model.Version + 1,
+	if _, _, err := model.PushTransform(OTransform{
+		Version:  model.GetVersion() + 1,
 		Position: 3,
 		Insert:   "*",
 		Delete:   2,
@@ -70,56 +70,28 @@ func TestSimpleTransforms(t *testing.T) {
 
 func TestPushPullTransforms(t *testing.T) {
 	numTransforms := 100
-	arrTransforms := make([]*OTransform, numTransforms)
+	arrTransforms := make([]OTransform, numTransforms)
 	doc := CreateNewDocument("Test", "Doc test", "hello world")
-	model := CreateModel(doc.ID)
+	model := CreateTextModel(doc.ID)
 
 	for j := 0; j < 2; j++ {
 		for i := 0; i < numTransforms; i++ {
-			arrTransforms[i] = &OTransform{
-				Version:  model.Version + 1,
+			arrTransforms[i] = OTransform{
+				Version:  model.GetVersion() + 1,
 				Position: 0,
 				Insert:   fmt.Sprintf("Transform%v", i+(j*numTransforms)),
 				Delete:   0,
 			}
 
-			if _, err := model.PushTransform(*arrTransforms[i]); err != nil {
+			if _, _, err := model.PushTransform(arrTransforms[i]); err != nil {
 				t.Errorf("Error: %v", err)
 			}
 
 			if i%50 == 0 {
 				model.FlushTransforms(&doc.Content, 60*time.Second)
 			}
-
-			tforms, _, err := model.GetTransforms(i + 1 + (j * numTransforms))
-			if err != nil {
-				t.Errorf("Error with i=%v, j=%v: %v", i, j, err)
-				continue
-			}
-			if len(tforms) != 1 {
-				t.Errorf("Wrong number of transforms, expected 1, received %v", len(tforms))
-				continue
-			}
-			if arrTransforms[i].Insert != tforms[0].Insert {
-				t.Errorf("\n%v\n!=\n%v", *arrTransforms[i], *tforms[0])
-			}
 		}
 
-		for i := 0; i > numTransforms; i++ {
-			tforms, _, err := model.GetTransforms(i + 1 + (j * numTransforms))
-			if err != nil {
-				t.Errorf("Error with i=%v, j=%v: %v", i, j, err)
-				continue
-			}
-			if len(tforms) != (i + 1) {
-				t.Errorf("Wrong number of transforms, expected %v, received %v",
-					(i + 1), len(tforms))
-				continue
-			}
-			if arrTransforms[i].Insert != tforms[0].Insert {
-				t.Errorf("\n%v\n!=\n%v", *arrTransforms[i], *tforms[0])
-			}
-		}
 		model.FlushTransforms(&doc.Content, 60*time.Second)
 	}
 }
@@ -154,23 +126,28 @@ func TestTransformStories(t *testing.T) {
 		stages := []byte("Stages of story:\n")
 
 		doc := CreateNewDocument("Test", "Test doc", story.Content)
-		model := CreateModel(doc.ID)
+		model := CreateTextModel(doc.ID)
 
 		stages = append(stages,
 			[]byte(fmt.Sprintf("\tInitial : %v\n", string(doc.Content)))...)
 
 		for j, change := range story.Transforms {
-			if ts, err := model.PushTransform(change); err != nil {
+			if tsWrap, _, err := model.PushTransform(change); err != nil {
 				t.Errorf("Failed to insert: %v", err)
 			} else {
-				if len(story.TCorrected) > j {
-					if story.TCorrected[j].Position != ts.Position ||
-						story.TCorrected[j].Version != ts.Version ||
-						story.TCorrected[j].Delete != ts.Delete ||
-						story.TCorrected[j].Insert != ts.Insert {
-						t.Errorf("Tform does not match corrected form: %v != %v",
-							story.TCorrected[j], *ts)
+				ts, ok := tsWrap.(OTransform)
+				if ok {
+					if len(story.TCorrected) > j {
+						if story.TCorrected[j].Position != ts.Position ||
+							story.TCorrected[j].Version != ts.Version ||
+							story.TCorrected[j].Delete != ts.Delete ||
+							story.TCorrected[j].Insert != ts.Insert {
+							t.Errorf("Tform does not match corrected form: %v != %v",
+								story.TCorrected[j], ts)
+						}
 					}
+				} else {
+					t.Errorf("did not receive expected OTransform")
 				}
 			}
 			for _, at := range story.Flushes {

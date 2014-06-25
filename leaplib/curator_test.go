@@ -55,8 +55,8 @@ func TestCuratorClients(t *testing.T) {
 		t.Errorf("error: %v", err)
 	}
 
-	tform := func(i int) *OTransform {
-		return &OTransform{
+	tform := func(i int) OTransform {
+		return OTransform{
 			Position: 0,
 			Version:  i,
 			Delete:   0,
@@ -106,14 +106,16 @@ func TestCuratorClients(t *testing.T) {
 		}
 	}
 
-	for {
-		select {
-		case err := <-curator.errorChan:
-			t.Errorf("Curator received error: %v", err)
-		case <-time.After(50 * time.Millisecond):
-			return
+	go func() {
+		for {
+			select {
+			case err := <-curator.errorChan:
+				t.Errorf("Curator received error: %v", err)
+			case <-time.After(50 * time.Millisecond):
+				return
+			}
 		}
-	}
+	}()
 
 	closeChan := make(chan bool)
 

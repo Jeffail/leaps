@@ -30,7 +30,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -45,19 +44,20 @@ type URLConfig struct {
 }
 
 /*
-HTTPInternalConfig - Options for setting internal process behaviour
+HTTPBinderConfig - Options for individual binders (one for each socket connection)
 */
-type HTTPInternalConfig struct {
-	BindSendTimeout int `json:"bind_send_timeout_ms"`
+type HTTPBinderConfig struct {
+	LogVerbose      bool `json:"verbose_logging"`
+	BindSendTimeout int  `json:"bind_send_timeout_ms"`
 }
 
 /*
 HTTPServerConfig - Holds configuration options for the HTTPServer.
 */
 type HTTPServerConfig struct {
-	LogVerbose bool               `json:"verbose_logging"`
-	URL        URLConfig          `json:"url"`
-	Internal   HTTPInternalConfig `json:"internal"`
+	LogVerbose bool             `json:"verbose_logging"`
+	URL        URLConfig        `json:"url"`
+	Binder     HTTPBinderConfig `json:"binder"`
 }
 
 /*
@@ -66,13 +66,14 @@ for each field.
 */
 func DefaultHTTPServerConfig() HTTPServerConfig {
 	return HTTPServerConfig{
-		LogVerbose: true,
+		LogVerbose: false,
 		URL: URLConfig{
 			Path:    "/leapsocket",
 			Address: ":8080",
 		},
-		Internal: HTTPInternalConfig{
+		Binder: HTTPBinderConfig{
 			BindSendTimeout: 10,
+			LogVerbose:      false,
 		},
 	}
 }
@@ -81,38 +82,24 @@ func DefaultHTTPServerConfig() HTTPServerConfig {
  */
 
 /*
-LeapLocator - An interface capable of locating and creating leaps documents. This can either be a
-curator, which deals with documents on the local service, or a TBD, which load balances between
-servers of curators.
-*/
-type LeapLocator interface {
-	FindDocument(string) (*leaplib.BinderPortal, error)
-	NewDocument(*leaplib.Document) (*leaplib.BinderPortal, error)
-}
-
-/*
 LeapClientMessage - A structure that defines a message format to expect from clients. Commands can
-be 'create' (init with new document), 'find' (init with existing document) or 'submit' (submit a
-transform to a bound document).
+be 'create' (init with new document) or 'find' (init with existing document).
 */
 type LeapClientMessage struct {
-	Command   string              `json:"command"`
-	ID        string              `json:"document_id,omitempty"`
-	Document  *leaplib.Document   `json:"leap_document,omitempty"`
-	Transform *leaplib.OTransform `json:"transform,omitempty"`
+	Command  string            `json:"command"`
+	ID       string            `json:"document_id,omitempty"`
+	Document *leaplib.Document `json:"leap_document,omitempty"`
 }
 
 /*
 LeapServerMessage - A structure that defines a response message from the server to a client. Type
-can be 'document' (init response), 'transforms' (continuous delivery), 'correction' (actual version
-of a submitted transform), or 'error' (an error message to display to the client).
+can be 'document' (init response) or 'error' (an error message to display to the client).
 */
 type LeapServerMessage struct {
-	Type       string                `json:"response_type"`
-	Document   *leaplib.Document     `json:"leap_document,omitempty"`
-	Transforms []*leaplib.OTransform `json:"transforms,omitempty"`
-	Version    *int                  `json:"version,omitempty"`
-	Error      string                `json:"error,omitempty"`
+	Type     string            `json:"response_type"`
+	Document *leaplib.Document `json:"leap_document,omitempty"`
+	Version  *int              `json:"version,omitempty"`
+	Error    string            `json:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -200,7 +187,20 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 
 	if binder, err := h.processInitMessage(&launchCmd); err == nil {
 		h.log("info", fmt.Sprintf("Client bound to document %v", binder.Document.ID))
-		h.launchWebsocketModel(ws, binder)
+
+		websocket.JSON.Send(ws, LeapServerMessage{
+			Type:     "document",
+			Document: binder.Document,
+			Version:  &binder.Version,
+		})
+
+		// TODO: Generic
+		hbind := HTTPTextModel{
+			config:    h.config.Binder,
+			logger:    log.New(os.Stdout, "[leaps.http.text] ", log.LstdFlags),
+			closeChan: h.closeChan,
+		}
+		LaunchWebsocketTextModel(&hbind, ws, binder)
 	} else {
 		h.log("info", fmt.Sprintf("Client failed to init: %v", err))
 		websocket.JSON.Send(ws, LeapServerMessage{
@@ -227,107 +227,6 @@ Stop - Stop serving web requests and close the HTTPServer.
 */
 func (h *HTTPServer) Stop() {
 	close(h.closeChan)
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-func (h *HTTPServer) launchWebsocketModel(socket *websocket.Conn, binder *leaplib.BinderPortal) {
-	defer func() {
-		if err := socket.Close(); err != nil {
-			h.log("error", fmt.Sprintf("Failed to close socket: %v", err))
-		}
-	}()
-
-	bindTOut := time.Duration(h.config.Internal.BindSendTimeout) * time.Millisecond
-
-	websocket.JSON.Send(socket, LeapServerMessage{
-		Type:     "document",
-		Document: binder.Document,
-		Version:  &binder.Version,
-	})
-
-	// TODO: Preserve reference of doc ID?
-	binder.Document = nil
-
-	// This is used to flag client submitted transforms that we shouldn't send back
-	ignoreTforms := []int{}
-
-	readChan := make(chan LeapClientMessage)
-	go func() {
-		for {
-			select {
-			case <-h.closeChan:
-				h.log("info", "Closing websocket model")
-				close(readChan)
-				return
-			default:
-			}
-			var clientMsg LeapClientMessage
-			if err := websocket.JSON.Receive(socket, &clientMsg); err == nil {
-				readChan <- clientMsg
-			} else {
-				close(readChan)
-				return
-			}
-		}
-	}()
-
-	for {
-		select {
-		case msg, open := <-readChan:
-			if !open {
-				return
-			}
-			h.log("info", fmt.Sprintf("Received %v command from client", msg.Command))
-			switch msg.Command {
-			case "submit":
-				if ver, err := binder.SendTransform(msg.Transform, bindTOut); err == nil {
-					ignoreTforms = append(ignoreTforms, ver)
-					h.log("info", "Sending correction to client")
-					websocket.JSON.Send(socket, LeapServerMessage{
-						Type:    "correction",
-						Version: &ver,
-					})
-				} else {
-					h.log("info", fmt.Sprintf("Transform request failed %v", err))
-					websocket.JSON.Send(socket, LeapServerMessage{
-						Type:  "error",
-						Error: fmt.Sprintf("submit error: %v", err),
-					})
-					return
-				}
-			default:
-				websocket.JSON.Send(socket, LeapServerMessage{
-					Type:  "error",
-					Error: "command not recognised",
-				})
-			}
-		case tforms, open := <-binder.TransformRcvChan:
-			if !open {
-				return
-			}
-			skip := false
-			for i, ignore := range ignoreTforms {
-				if ignore == tforms[0].Version {
-					skip = true
-					ignoreTforms = append(ignoreTforms[:i], ignoreTforms[i+1:]...)
-					break
-				}
-			}
-			if !skip {
-				h.log("info", fmt.Sprintf("Sending %v transforms to client", len(tforms)))
-				websocket.JSON.Send(socket, LeapServerMessage{
-					Type:       "transforms",
-					Transforms: tforms,
-				})
-			} else {
-				h.log("info", "Skipping clients own submitted transforms")
-			}
-		case <-h.closeChan:
-			return
-		}
-	}
 }
 
 /*--------------------------------------------------------------------------------------------------
