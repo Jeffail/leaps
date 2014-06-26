@@ -31,11 +31,16 @@ import (
 )
 
 func TestTextModelSimpleTransforms(t *testing.T) {
-	doc := CreateNewDocument("Test", "Doc test", "hello world")
+	doc, err := CreateNewDocument("Test", "Doc test", "text", "hello world")
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+
 	model := CreateTextModel(doc.ID)
 	for j := 0; j < 3; j++ {
 		for i := 0; i < 3; i++ {
-			if _, _, err := model.PushTransform(OTransform{
+			if _, _, err = model.PushTransform(OTransform{
 				Version:  model.GetVersion() + 1,
 				Position: i + (j * 3) + 5,
 				Insert:   fmt.Sprintf("%v", i+(j*3)),
@@ -44,12 +49,12 @@ func TestTextModelSimpleTransforms(t *testing.T) {
 				t.Errorf("Error: %v", err)
 			}
 		}
-		if err := model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
+		if err = model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
 			t.Errorf("Error flushing: %v", err)
 		}
 	}
 
-	if _, _, err := model.PushTransform(OTransform{
+	if _, _, err = model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 3,
 		Insert:   "*",
@@ -58,20 +63,25 @@ func TestTextModelSimpleTransforms(t *testing.T) {
 		t.Errorf("Error: %v", err)
 	}
 
-	if err := model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
+	if err = model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
 		t.Errorf("Error flushing: %v", err)
 	}
 
 	expected := "hel*012345678 world"
-	if expected != string(doc.Content) {
-		t.Errorf("Expected %v, received %v", expected, string(doc.Content))
+	received := doc.Content.(string)
+	if expected != received {
+		t.Errorf("Expected %v, received %v", expected, received)
 	}
 }
 
 func TestPushPullTransforms(t *testing.T) {
 	numTransforms := 100
 	arrTransforms := make([]OTransform, numTransforms)
-	doc := CreateNewDocument("Test", "Doc test", "hello world")
+	doc, err := CreateNewDocument("Test", "Doc test", "text", "hello world")
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
 	model := CreateTextModel(doc.ID)
 
 	for j := 0; j < 2; j++ {
@@ -125,11 +135,15 @@ func TestTransformStories(t *testing.T) {
 	for _, story := range scont.Stories {
 		stages := []byte("Stages of story:\n")
 
-		doc := CreateNewDocument("Test", "Test doc", story.Content)
+		doc, err := CreateNewDocument("Test", "Test doc", "text", story.Content)
+		if err != nil {
+			t.Errorf("Error: %v", err)
+			return
+		}
 		model := CreateTextModel(doc.ID)
 
 		stages = append(stages,
-			[]byte(fmt.Sprintf("\tInitial : %v\n", string(doc.Content)))...)
+			[]byte(fmt.Sprintf("\tInitial : %v\n", doc.Content.(string)))...)
 
 		for j, change := range story.Transforms {
 			if tsWrap, _, err := model.PushTransform(change); err != nil {
@@ -152,20 +166,21 @@ func TestTransformStories(t *testing.T) {
 			}
 			for _, at := range story.Flushes {
 				if at == j {
-					if err := model.FlushTransforms(&doc.Content, 60*time.Second); err != nil {
+					if err = model.FlushTransforms(&doc.Content, 60*time.Second); err != nil {
 						t.Errorf("Failed to flush: %v", err)
 					}
 					stages = append(stages,
-						[]byte(fmt.Sprintf("\tStage %-2v: %v\n", j, string(doc.Content)))...)
+						[]byte(fmt.Sprintf("\tStage %-2v: %v\n", j, doc.Content.(string)))...)
 				}
 			}
 		}
-		if err := model.FlushTransforms(&doc.Content, 60*time.Second); err != nil {
+		if err = model.FlushTransforms(&doc.Content, 60*time.Second); err != nil {
 			t.Errorf("Failed to flush: %v", err)
 		}
-		if string(doc.Content) != story.Result {
+		result := doc.Content.(string)
+		if result != story.Result {
 			t.Errorf("Failed transform story: %v\nexpected:\n\t%v\nresult:\n\t%v\n%v",
-				story.Name, story.Result, string(doc.Content), string(stages))
+				story.Name, story.Result, result, string(stages))
 		}
 	}
 }

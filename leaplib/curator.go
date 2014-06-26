@@ -166,14 +166,18 @@ new document.
 */
 func (c *Curator) NewDocument(doc *Document) (*BinderPortal, error) {
 	// Always generate a fresh ID
-	newdoc := CreateNewDocument(doc.Title, doc.Description, string(doc.Content))
+	doc.ID = GenerateID(doc.Title, doc.Description)
 
-	binder, err := BindNew(newdoc, c.store, c.config.BinderConfig, c.errorChan)
+	if err := ValidateDocument(doc); err != nil {
+		return nil, err
+	}
+
+	binder, err := BindNew(doc, c.store, c.config.BinderConfig, c.errorChan)
 	if err != nil {
 		return nil, err
 	}
 
-	c.openBinders[newdoc.ID] = binder
+	c.openBinders[doc.ID] = binder
 
 	return binder.Subscribe(), nil
 }

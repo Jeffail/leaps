@@ -138,6 +138,7 @@ func GetMockStore(config DocumentStoreConfig) DocumentStore {
 		ID:          config.Name,
 		Title:       config.Name,
 		Description: config.Name,
+		Type:        "text",
 		Content:     "hello world",
 	}
 	return memStore

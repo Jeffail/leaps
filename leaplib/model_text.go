@@ -25,6 +25,7 @@ package leaplib
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 )
 
@@ -129,16 +130,16 @@ FlushTransforms - apply all unapplied transforms and append them to the applied 
 old entries from the applied stack. Accepts retention as an indicator for how long applied
 transforms should be retained.
 */
-func (m *OModel) FlushTransforms(contentBoxed interface{}, retention time.Duration) error {
-	content, ok := contentBoxed.(*string)
+func (m *OModel) FlushTransforms(contentBoxed *interface{}, retention time.Duration) error {
+	content, ok := (*contentBoxed).(string)
 	if !ok {
-		return errors.New("received unexpected content, expected *string")
+		return fmt.Errorf("received unexpected content, expected string, received %v", reflect.TypeOf(*contentBoxed))
 	}
 
 	transforms := m.Unapplied[:]
 	m.Unapplied = []*OTransform{}
 
-	byteContent := []byte(*content)
+	byteContent := []byte(content)
 
 	var i int
 	for i = 0; i < len(transforms); i++ {
@@ -157,7 +158,7 @@ func (m *OModel) FlushTransforms(contentBoxed interface{}, retention time.Durati
 	}
 
 	m.Applied = append(m.Applied[i:], transforms...)
-	(*content) = string(byteContent)
+	*contentBoxed = string(byteContent)
 
 	return nil
 }

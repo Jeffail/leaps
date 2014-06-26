@@ -46,9 +46,15 @@ func TestCuratorClients(t *testing.T) {
 	curator, err := CreateNewCurator(DefaultCuratorConfig())
 	if err != nil {
 		t.Errorf("error: %v", err)
+		return
 	}
 
-	doc := CreateNewDocument("test", "test1", "hello world")
+	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
 	portal, err := curator.NewDocument(doc)
 	doc = portal.Document
 	if err != nil {

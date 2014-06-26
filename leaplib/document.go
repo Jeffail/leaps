@@ -25,6 +25,7 @@ package leaplib
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -37,37 +38,65 @@ import (
 Document - A representation of a leap document.
 */
 type Document struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Content     string `json:"content"`
+	ID          string      `json:"id"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	Type        string      `json:"type"`
+	Content     interface{} `json:"content"`
 }
 
 /*--------------------------------------------------------------------------------------------------
  */
 
 /*
-CreateNewDocument - Create a fresh leap document with a title, description and the initial content.
+CreateNewDocument - Create a fresh leap document with a title, description, type and the initial
+content. We also validate here that the content type provided matches the type.
 */
-func CreateNewDocument(title, description, content string) *Document {
-
-	/* We create a unique ID for each document. We do this using a hash of the title, description,
-	 * a timestamp and a pseudo random integer as a base64 encoded string with the timestamp on the
-	 * end in the format: "hash-timestamp"
-	 */
-	tstamp := time.Now().Unix()
-	hasher := sha256.New()
-	hasher.Write([]byte(fmt.Sprintf("%v%v%v%v", title, description, rand.Int(), tstamp)))
-	id := fmt.Sprintf("%v-%v", base64.URLEncoding.EncodeToString(hasher.Sum(nil)), tstamp)
+func CreateNewDocument(title, description, doctype string, content interface{}) (*Document, error) {
 
 	doc := &Document{
-		ID:          id,
+		ID:          GenerateID(title, description),
 		Title:       title,
 		Description: description,
+		Type:        doctype,
 		Content:     content,
 	}
 
-	return doc
+	if err := ValidateDocument(doc); err != nil {
+		return nil, err
+	}
+
+	return doc, nil
+}
+
+/*
+ValidateDocument - validates that a given document has content that matches its type. If this
+isn't the case it will attempt to convert the content into the expected type, and failing that
+will return an error message.
+*/
+func ValidateDocument(doc *Document) error {
+	switch doc.Type {
+	case "text":
+		if _, ok := doc.Content.(string); !ok {
+			return errors.New("document content was not expected type (string)")
+		}
+	default:
+		return errors.New("document type was not recognized")
+	}
+	return nil
+}
+
+/*
+GenerateID - Create a unique ID for a document using a hash of the title, description, a timestamp
+and a pseudo random integer as a base64 encoded string with the timestamp on the end in the format:
+"hash-timestamp"
+*/
+func GenerateID(title, description string) string {
+	tstamp := time.Now().Unix()
+	hasher := sha256.New()
+	hasher.Write([]byte(fmt.Sprintf("%v%v%v%v", title, description, rand.Int(), tstamp)))
+
+	return fmt.Sprintf("%v-%v", base64.URLEncoding.EncodeToString(hasher.Sum(nil)), tstamp)
 }
 
 /*--------------------------------------------------------------------------------------------------

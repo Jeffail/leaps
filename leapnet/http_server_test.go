@@ -255,6 +255,7 @@ func TestHttpServer(t *testing.T) {
 			Document: &leaplib.Document{
 				Title:       fmt.Sprintf("Story%v", i),
 				Description: fmt.Sprintf("Story #%v", i),
+				Type:        "text",
 				Content:     story.Content,
 			},
 		})

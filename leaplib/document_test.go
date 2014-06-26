@@ -31,11 +31,15 @@ func TestIDGenerator(t *testing.T) {
 	ids := make(map[string]bool, num)
 	collisions := 0
 	for i := 0; i < num; i++ {
-		newdoc := CreateNewDocument("test", "test", "no content")
-		if ids[newdoc.ID] {
-			collisions++
+		newdoc, err := CreateNewDocument("test", "test", "text", "hello world")
+		if err != nil {
+			t.Errorf("Error: %v", err)
+		} else {
+			if ids[newdoc.ID] {
+				collisions++
+			}
+			ids[newdoc.ID] = true
 		}
-		ids[newdoc.ID] = true
 	}
 	if collisions > 0 {
 		t.Errorf("There were %v ID collisions out of %v documents generated.", collisions, num)

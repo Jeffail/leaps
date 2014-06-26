@@ -362,6 +362,7 @@ leap_client.prototype._process_message = function(message) {
 		  || "string" !== typeof(message.leap_document.id)
 		  || "string" !== typeof(message.leap_document.title)
 		  || "string" !== typeof(message.leap_document.description)
+		  || "string" !== typeof(message.leap_document.type)
 		  || "string" !== typeof(message.leap_document.content) ) {
 			return "message document type contained invalid document object";
 		}
@@ -503,9 +504,10 @@ leap_client.prototype.create_document = function(title, description, content) {
 	this._socket.send(JSON.stringify({
 		command : "create",
 		leap_document : {
-			title : title,
+			title       : title,
 			description : description,
-			content : content
+			type        : "text",
+			content     : content
 		}
 	}));
 };

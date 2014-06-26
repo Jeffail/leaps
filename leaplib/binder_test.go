@@ -33,11 +33,16 @@ import (
 
 func TestNewBinder(t *testing.T) {
 	errChan := make(chan BinderError)
-	doc := CreateNewDocument("test", "test1", "hello world")
-	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan)
-
+	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
 	if err != nil {
 		t.Errorf("error: %v", err)
+		return
+	}
+
+	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
 	}
 
 	go func() {
@@ -67,7 +72,7 @@ func TestNewBinder(t *testing.T) {
 	}
 
 	portal3 := binder.Subscribe()
-	if exp, rec := "hello universe", string(portal3.Document.Content); exp != rec {
+	if exp, rec := "hello universe", portal3.Document.Content.(string); exp != rec {
 		t.Errorf("Wrong content, expected %v, received %v", exp, rec)
 	}
 }
@@ -114,10 +119,16 @@ func TestClients(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 
-	doc := CreateNewDocument("test", "test1", "hello world")
+	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
 	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan)
 	if err != nil {
 		t.Errorf("error: %v", err)
+		return
 	}
 
 	go func() {
@@ -220,7 +231,12 @@ func TestBinderStories(t *testing.T) {
 	}
 
 	for i, story := range scont.Stories {
-		doc := CreateNewDocument(fmt.Sprintf("story%v", i), "testing", story.Content)
+		doc, err := CreateNewDocument(fmt.Sprintf("story%v", i), "testing", "text", story.Content)
+		if err != nil {
+			t.Errorf("error: %v", err)
+			continue
+		}
+
 		config := DefaultBinderConfig()
 		//config.LogVerbose = true
 
@@ -261,7 +277,7 @@ func TestBinderStories(t *testing.T) {
 		wg.Wait()
 
 		newClient := binder.Subscribe()
-		if got, exp := string(newClient.Document.Content), story.Result; got != exp {
+		if got, exp := newClient.Document.Content.(string), story.Result; got != exp {
 			t.Errorf("Wrong result, expected: %v, received: %v", exp, got)
 		}
 

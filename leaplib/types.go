@@ -44,7 +44,7 @@ type Model interface {
 	/* FlushTransforms - apply all unapplied transforms to content, and delete old applied
 	 * in accordance with our retention period.
 	 */
-	FlushTransforms(content interface{}, retention time.Duration) error
+	FlushTransforms(content *interface{}, retention time.Duration) error
 
 	/* GetVersion - returns the current version of the document.
 	 */
