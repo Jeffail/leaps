@@ -39,7 +39,12 @@ func TestNewBinder(t *testing.T) {
 		return
 	}
 
-	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan)
+	logConf := DefaultLoggerConfig()
+	logConf.LogLevel = LeapError
+
+	logger := CreateLogger(logConf)
+
+	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan, logger)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -117,6 +122,11 @@ func TestClients(t *testing.T) {
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000
 
+	logConf := DefaultLoggerConfig()
+	logConf.LogLevel = LeapError
+
+	logger := CreateLogger(logConf)
+
 	wg := sync.WaitGroup{}
 
 	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
@@ -125,7 +135,7 @@ func TestClients(t *testing.T) {
 		return
 	}
 
-	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan)
+	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan, logger)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -218,6 +228,11 @@ func goodStoryClient(b *BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t
 func TestBinderStories(t *testing.T) {
 	nClients := 10
 
+	logConf := DefaultLoggerConfig()
+	logConf.LogLevel = LeapError
+
+	logger := CreateLogger(logConf)
+
 	bytes, err := ioutil.ReadFile("../data/binder_stories.js")
 	if err != nil {
 		t.Errorf("Read file error: %v", err)
@@ -247,7 +262,7 @@ func TestBinderStories(t *testing.T) {
 			}
 		}()
 
-		binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan)
+		binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan, logger)
 		if err != nil {
 			t.Errorf("error: %v", err)
 			continue

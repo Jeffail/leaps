@@ -26,7 +26,6 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
 	"github.com/jeffail/leaps/leaplib"
-	"log"
 	"time"
 )
 
@@ -62,17 +61,15 @@ HTTPTextModel - an HTTP model that connects a binder of a text document to a cli
 */
 type HTTPTextModel struct {
 	config    HTTPBinderConfig
-	logger    *log.Logger
+	logger    *leaplib.LeapsLogger
 	closeChan <-chan bool
 }
 
 /*
 log - Helper function for logging events, only actually logs when verbose logging is configured.
 */
-func (h *HTTPTextModel) log(level, message string) {
-	if h.config.LogVerbose {
-		h.logger.Printf("| %v -> %v\n", level, message)
-	}
+func (h *HTTPTextModel) log(level int, message string) {
+	h.logger.Log(level, "http_text", message)
 }
 
 /*
@@ -82,7 +79,7 @@ BinderPortal representing a text document.
 func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *leaplib.BinderPortal) {
 	defer func() {
 		if err := socket.Close(); err != nil {
-			h.log("error", fmt.Sprintf("Failed to close socket: %v", err))
+			h.log(leaplib.LeapError, fmt.Sprintf("Failed to close socket: %v", err))
 		}
 	}()
 
@@ -99,7 +96,7 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 		for {
 			select {
 			case <-h.closeChan:
-				h.log("info", "Closing websocket model")
+				h.log(leaplib.LeapInfo, "Closing websocket model")
 				close(readChan)
 				return
 			default:
@@ -120,18 +117,18 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			if !open {
 				return
 			}
-			h.log("info", fmt.Sprintf("Received %v command from client", msg.Command))
+			h.log(leaplib.LeapDebug, fmt.Sprintf("Received %v command from client", msg.Command))
 			switch msg.Command {
 			case "submit":
 				if ver, err := binder.SendTransform(msg.Transform, bindTOut); err == nil {
 					ignoreTforms = append(ignoreTforms, ver)
-					h.log("info", "Sending correction to client")
+					h.log(leaplib.LeapDebug, "Sending correction to client")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:    "correction",
 						Version: &ver,
 					})
 				} else {
-					h.log("info", fmt.Sprintf("Transform request failed %v", err))
+					h.log(leaplib.LeapError, fmt.Sprintf("Transform request failed %v", err))
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:  "error",
 						Error: fmt.Sprintf("submit error: %v", err),
@@ -158,7 +155,7 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 					tforms[i] = tform
 				} else {
 					fatal = true
-					h.log("error", fmt.Sprintf("Received unexpected type from RcvChan: %v", tformWrap))
+					h.log(leaplib.LeapError, fmt.Sprintf("Received unexpected type from RcvChan: %v", tformWrap))
 					break
 				}
 			}
@@ -174,13 +171,13 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 				}
 
 				if !skip {
-					h.log("info", fmt.Sprintf("Sending %v transforms to client", len(tforms)))
+					h.log(leaplib.LeapDebug, fmt.Sprintf("Sending %v transforms to client", len(tforms)))
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:       "transforms",
 						Transforms: tforms,
 					})
 				} else {
-					h.log("info", "Skipping clients own submitted transforms")
+					h.log(leaplib.LeapDebug, "Skipping clients own submitted transforms")
 				}
 			}
 		case <-h.closeChan:

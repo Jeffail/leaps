@@ -25,8 +25,6 @@ package leaplib
 import (
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"time"
 )
 
@@ -48,7 +46,6 @@ type BinderConfig struct {
 	Transform        TransformConfig `json:"transform"`
 	FlushPeriod      int64           `json:"flush_period_ms"`
 	ClientKickPeriod int64           `json:"kick_period_ms"`
-	LogVerbose       bool            `json:"verbose_logging"`
 }
 
 /*
@@ -62,7 +59,6 @@ func DefaultBinderConfig() BinderConfig {
 		},
 		FlushPeriod:      50,
 		ClientKickPeriod: 10,
-		LogVerbose:       false,
 	}
 }
 
@@ -77,7 +73,7 @@ type Binder struct {
 	ID            string
 	SubscribeChan chan (chan<- *BinderPortal)
 
-	logger     *log.Logger
+	logger     *LeapsLogger
 	model      Model
 	block      DocumentStore
 	config     BinderConfig
@@ -96,12 +92,13 @@ func BindExisting(
 	block DocumentStore,
 	config BinderConfig,
 	errorChan chan<- BinderError,
+	logger *LeapsLogger,
 ) (*Binder, error) {
 
 	binder := Binder{
 		ID:            id,
 		SubscribeChan: make(chan (chan<- *BinderPortal)),
-		logger:        log.New(os.Stdout, "[leaps.binder] ", log.LstdFlags),
+		logger:        logger,
 		model:         CreateTextModel(id), //TODO: Generic
 		block:         block,
 		config:        config,
@@ -111,7 +108,7 @@ func BindExisting(
 		closedChan:    make(chan bool),
 	}
 
-	binder.log("info", "bound to existing document, attempting flush")
+	binder.log(LeapInfo, "bound to existing document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
 		return nil, err
@@ -131,6 +128,7 @@ func BindNew(
 	block DocumentStore,
 	config BinderConfig,
 	errorChan chan<- BinderError,
+	logger *LeapsLogger,
 ) (*Binder, error) {
 
 	if err := block.Store(document.ID, document); err != nil {
@@ -140,7 +138,7 @@ func BindNew(
 	binder := Binder{
 		ID:            document.ID,
 		SubscribeChan: make(chan (chan<- *BinderPortal)),
-		logger:        log.New(os.Stdout, "[leaps.binder] ", log.LstdFlags),
+		logger:        logger,
 		model:         CreateTextModel(document.ID), // TODO: Make generic
 		block:         block,
 		config:        config,
@@ -150,7 +148,7 @@ func BindNew(
 		closedChan:    make(chan bool),
 	}
 
-	binder.log("info", "bound to new document, attempting flush")
+	binder.log(LeapInfo, "bound to new document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
 		return nil, err
@@ -191,10 +189,8 @@ func (b *Binder) Close() {
 /*
 log - Helper function for logging events, only actually logs when verbose logging is configured.
 */
-func (b *Binder) log(level, message string) {
-	if b.config.LogVerbose {
-		b.logger.Printf("| %v -> (%v) %v\n", level, b.ID, message)
-	}
+func (b *Binder) log(level int, message string) {
+	b.logger.Log(level, "binder", fmt.Sprintf("(%v) %v", b.ID, message))
 }
 
 /*
@@ -255,7 +251,7 @@ func (b *Binder) processJob(request BinderRequest) {
 	}
 
 	if deadClients > 0 {
-		b.log("info", fmt.Sprintf("Kicked %v inactive clients", deadClients))
+		b.log(LeapInfo, fmt.Sprintf("Kicked %v inactive clients", deadClients))
 	}
 
 	b.clients = newClients
@@ -298,7 +294,7 @@ func (b *Binder) loop() {
 				doc, err := b.flush()
 				if err != nil {
 					b.errorChan <- BinderError{ID: b.ID, Err: err}
-					b.log("error", fmt.Sprintf("flush error: %v, shutting down", err))
+					b.log(LeapError, fmt.Sprintf("flush error: %v, shutting down", err))
 					running = false
 				}
 				/* Channel is buffered by one element to be non-blocking, any blocked send will
@@ -306,7 +302,7 @@ func (b *Binder) loop() {
 				 */
 				sndChan := make(chan []interface{}, 1)
 				b.clients = append(b.clients, sndChan)
-				b.log("info", "subscribing new client")
+				b.log(LeapInfo, "subscribing new client")
 
 				client <- &BinderPortal{
 					Version:          b.model.GetVersion(),
@@ -317,32 +313,32 @@ func (b *Binder) loop() {
 				}
 				flushTime = time.After(flushPeriod)
 			} else {
-				b.log("info", "subscribe channel closed, shutting down")
+				b.log(LeapInfo, "subscribe channel closed, shutting down")
 				running = false
 			}
 		case job, open := <-b.jobs:
 			if running && open {
 				b.processJob(job)
 			} else {
-				b.log("info", "jobs channel closed, shutting down")
+				b.log(LeapInfo, "jobs channel closed, shutting down")
 				running = false
 			}
 		case <-flushTime:
 			if _, err := b.flush(); err != nil {
-				b.log("error", fmt.Sprintf("flush error: %v, shutting down", err))
+				b.log(LeapError, fmt.Sprintf("flush error: %v, shutting down", err))
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 				running = false
 			}
 			flushTime = time.After(flushPeriod)
 		}
 		if !running {
-			b.log("info", "closing, shutting down client channels")
+			b.log(LeapInfo, "closing, shutting down client channels")
 			oldClients := b.clients[:]
 			b.clients = [](chan<- []interface{}){}
 			for _, client := range oldClients {
 				close(client)
 			}
-			b.log("info", fmt.Sprintf("attempting final flush of %v", b.ID))
+			b.log(LeapInfo, fmt.Sprintf("attempting final flush of %v", b.ID))
 			if _, err := b.flush(); err != nil {
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 			}

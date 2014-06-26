@@ -27,9 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffail/leaps/leaplib"
-	"log"
 	"net/http"
-	"os"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -47,17 +45,15 @@ type URLConfig struct {
 HTTPBinderConfig - Options for individual binders (one for each socket connection)
 */
 type HTTPBinderConfig struct {
-	LogVerbose      bool `json:"verbose_logging"`
-	BindSendTimeout int  `json:"bind_send_timeout_ms"`
+	BindSendTimeout int `json:"bind_send_timeout_ms"`
 }
 
 /*
 HTTPServerConfig - Holds configuration options for the HTTPServer.
 */
 type HTTPServerConfig struct {
-	LogVerbose bool             `json:"verbose_logging"`
-	URL        URLConfig        `json:"url"`
-	Binder     HTTPBinderConfig `json:"binder"`
+	URL    URLConfig        `json:"url"`
+	Binder HTTPBinderConfig `json:"binder"`
 }
 
 /*
@@ -66,14 +62,12 @@ for each field.
 */
 func DefaultHTTPServerConfig() HTTPServerConfig {
 	return HTTPServerConfig{
-		LogVerbose: false,
 		URL: URLConfig{
 			Path:    "/leapsocket",
 			Address: ":8080",
 		},
 		Binder: HTTPBinderConfig{
 			BindSendTimeout: 10,
-			LogVerbose:      false,
 		},
 	}
 }
@@ -111,7 +105,7 @@ leap documents) and bind it to http clients.
 */
 type HTTPServer struct {
 	config    HTTPServerConfig
-	logger    *log.Logger
+	logger    *leaplib.LeapsLogger
 	locator   LeapLocator
 	closeChan chan bool
 }
@@ -122,8 +116,8 @@ CreateHTTPServer - Create a new leaps HTTPServer.
 func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig) (*HTTPServer, error) {
 	httpServer := HTTPServer{
 		config:    config,
-		logger:    log.New(os.Stdout, "[leaps.http] ", log.LstdFlags),
 		locator:   locator,
+		logger:    locator.GetLogger(),
 		closeChan: make(chan bool),
 	}
 	if len(httpServer.config.URL.Path) == 0 {
@@ -139,10 +133,8 @@ func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig) (*HTTPServer
 /*
 log - Helper function for logging events, only actually logs when verbose logging is configured.
 */
-func (h *HTTPServer) log(level, message string) {
-	if h.config.LogVerbose {
-		h.logger.Printf("| %v -> %v\n", level, message)
-	}
+func (h *HTTPServer) log(level int, message string) {
+	h.logger.Log(level, "http", message)
 }
 
 /*
@@ -158,7 +150,7 @@ func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (*leaplib.
 		return nil, errors.New("create request must contain a valid document structure")
 	case "find":
 		if len(clientMsg.ID) > 0 {
-			h.log("info", fmt.Sprintf("Attempting to bind to document: %v", clientMsg.ID))
+			h.log(leaplib.LeapInfo, fmt.Sprintf("Attempting to bind to document: %v", clientMsg.ID))
 			return h.locator.FindDocument(clientMsg.ID)
 		}
 		return nil, errors.New("find request must contain a valid document ID")
@@ -180,13 +172,13 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 	default:
 	}
 
-	h.log("info", "Fresh client connected via websocket")
+	h.log(leaplib.LeapInfo, "Fresh client connected via websocket")
 
 	var launchCmd LeapClientMessage
 	websocket.JSON.Receive(ws, &launchCmd)
 
 	if binder, err := h.processInitMessage(&launchCmd); err == nil {
-		h.log("info", fmt.Sprintf("Client bound to document %v", binder.Document.ID))
+		h.log(leaplib.LeapInfo, fmt.Sprintf("Client bound to document %v", binder.Document.ID))
 
 		websocket.JSON.Send(ws, LeapServerMessage{
 			Type:     "document",
@@ -197,12 +189,12 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 		// TODO: Generic
 		hbind := HTTPTextModel{
 			config:    h.config.Binder,
-			logger:    log.New(os.Stdout, "[leaps.http.text] ", log.LstdFlags),
+			logger:    h.logger,
 			closeChan: h.closeChan,
 		}
 		LaunchWebsocketTextModel(&hbind, ws, binder)
 	} else {
-		h.log("info", fmt.Sprintf("Client failed to init: %v", err))
+		h.log(leaplib.LeapInfo, fmt.Sprintf("Client failed to init: %v", err))
 		websocket.JSON.Send(ws, LeapServerMessage{
 			Type:  "error",
 			Error: fmt.Sprintf("socket initialization failed: %v", err),
@@ -217,7 +209,7 @@ func (h *HTTPServer) Listen() error {
 	if len(h.config.URL.Address) == 0 {
 		return errors.New("invalid config value for URL.Address")
 	}
-	h.log("info", fmt.Sprintf("Listening at address: %v", h.config.URL.Address))
+	h.log(leaplib.LeapInfo, fmt.Sprintf("Listening at address: %v", h.config.URL.Address))
 	err := http.ListenAndServe(h.config.URL.Address, nil)
 	return err
 }

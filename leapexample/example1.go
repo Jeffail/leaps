@@ -33,14 +33,11 @@ import (
 
 func main() {
 	curatorConfig := leaplib.DefaultCuratorConfig()
-	curatorConfig.LogVerbose = true
 
-	curatorConfig.BinderConfig.LogVerbose = true
 	curatorConfig.StoreConfig.Type = "mock"
 	curatorConfig.StoreConfig.Name = "test_document"
 
 	httpServerConfig := leapnet.DefaultHTTPServerConfig()
-	httpServerConfig.LogVerbose = true
 
 	fmt.Printf("Launching a leaps example server, use CTRL+C to close.\n\n")
 

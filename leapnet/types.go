@@ -42,6 +42,10 @@ type LeapLocator interface {
 	/* NewDocument - Create and return a binder portal to a new document
 	 */
 	NewDocument(*leaplib.Document) (*leaplib.BinderPortal, error)
+
+	/* GetLogger - Obtain a reference to the LeapsLogger held by our curator
+	 */
+	GetLogger() *leaplib.LeapsLogger
 }
 
 /*--------------------------------------------------------------------------------------------------

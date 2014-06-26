@@ -29,8 +29,14 @@ import (
 	"time"
 )
 
+func curatorTestConfig() CuratorConfig {
+	conf := DefaultCuratorConfig()
+	conf.LoggerConfig.LogLevel = LeapError
+	return conf
+}
+
 func TestNewCurator(t *testing.T) {
-	cur, err := CreateNewCurator(DefaultCuratorConfig())
+	cur, err := CreateNewCurator(curatorTestConfig())
 	if err != nil {
 		t.Errorf("Create curator error: %v", err)
 		return
@@ -43,7 +49,7 @@ func TestCuratorClients(t *testing.T) {
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000
 
-	curator, err := CreateNewCurator(DefaultCuratorConfig())
+	curator, err := CreateNewCurator(curatorTestConfig())
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
