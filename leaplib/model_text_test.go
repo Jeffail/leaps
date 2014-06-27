@@ -49,7 +49,7 @@ func TestTextModelSimpleTransforms(t *testing.T) {
 				t.Errorf("Error: %v", err)
 			}
 		}
-		if err = model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
+		if _, err = model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
 			t.Errorf("Error flushing: %v", err)
 		}
 	}
@@ -63,7 +63,7 @@ func TestTextModelSimpleTransforms(t *testing.T) {
 		t.Errorf("Error: %v", err)
 	}
 
-	if err = model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
+	if _, err = model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
 		t.Errorf("Error flushing: %v", err)
 	}
 
@@ -166,7 +166,7 @@ func TestTransformStories(t *testing.T) {
 			}
 			for _, at := range story.Flushes {
 				if at == j {
-					if err = model.FlushTransforms(&doc.Content, 60*time.Second); err != nil {
+					if _, err = model.FlushTransforms(&doc.Content, 60*time.Second); err != nil {
 						t.Errorf("Failed to flush: %v", err)
 					}
 					stages = append(stages,
@@ -174,7 +174,7 @@ func TestTransformStories(t *testing.T) {
 				}
 			}
 		}
-		if err = model.FlushTransforms(&doc.Content, 60*time.Second); err != nil {
+		if _, err = model.FlushTransforms(&doc.Content, 60*time.Second); err != nil {
 			t.Errorf("Failed to flush: %v", err)
 		}
 		result := doc.Content.(string)

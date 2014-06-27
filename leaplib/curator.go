@@ -24,6 +24,7 @@ package leaplib
 
 import (
 	"fmt"
+	"sync"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -62,6 +63,7 @@ type Curator struct {
 	store       DocumentStore
 	logger      *LeapsLogger
 	openBinders map[string]*Binder
+	binderMutex sync.RWMutex
 	errorChan   chan BinderError
 	closeChan   chan bool
 	closedChan  chan bool
@@ -114,14 +116,21 @@ func (c *Curator) loop() {
 	for {
 		select {
 		case <-c.closeChan:
-			c.log(LeapInfo, "received call to close, forwarding message to binders")
+			c.log(LeapInfo, "Received call to close, forwarding message to binders")
+			c.binderMutex.Lock()
 			for _, b := range c.openBinders {
 				b.Close()
 			}
+			c.binderMutex.Unlock()
 			close(c.closedChan)
 			return
 		case err := <-c.errorChan:
-			c.log(LeapError, fmt.Sprintf("Binder (%v) %v\n", err.ID, err.Err))
+			if err.Err != nil {
+				c.log(LeapError, fmt.Sprintf("Binder (%v) %v\n", err.ID, err.Err))
+			} else {
+				c.log(LeapInfo, fmt.Sprintf("Binder (%v) has requested shutdown\n", err.ID))
+			}
+			c.binderMutex.Lock()
 			if b, ok := c.openBinders[err.ID]; ok {
 				b.Close()
 				delete(c.openBinders, err.ID)
@@ -129,6 +138,7 @@ func (c *Curator) loop() {
 			} else {
 				c.log(LeapError, fmt.Sprintf("Binder (%v) was not located in map\n", err.ID))
 			}
+			c.binderMutex.Unlock()
 		}
 	}
 }
@@ -141,6 +151,9 @@ FindDocument - Locates an existing, or creates a fresh Binder for an existing do
 that Binder for subscribing to. Returns an error if there was a problem locating the document.
 */
 func (c *Curator) FindDocument(id string) (*BinderPortal, error) {
+	c.binderMutex.Lock()
+	defer c.binderMutex.Unlock()
+
 	if binder, ok := c.openBinders[id]; ok {
 		return binder.Subscribe(), nil
 	}
@@ -173,7 +186,9 @@ func (c *Curator) NewDocument(doc *Document) (*BinderPortal, error) {
 		return nil, err
 	}
 
+	c.binderMutex.Lock()
 	c.openBinders[doc.ID] = binder
+	c.binderMutex.Unlock()
 
 	return binder.Subscribe(), nil
 }

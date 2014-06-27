@@ -128,12 +128,13 @@ func (m *OModel) GetVersion() int {
 /*
 FlushTransforms - apply all unapplied transforms and append them to the applied stack, then remove
 old entries from the applied stack. Accepts retention as an indicator for how long applied
-transforms should be retained.
+transforms should be retained. Returns a bool indicating whether any changes were applied.
 */
-func (m *OModel) FlushTransforms(contentBoxed *interface{}, retention time.Duration) error {
+func (m *OModel) FlushTransforms(contentBoxed *interface{}, retention time.Duration) (bool, error) {
 	content, ok := (*contentBoxed).(string)
 	if !ok {
-		return fmt.Errorf("received unexpected content, expected string, received %v", reflect.TypeOf(*contentBoxed))
+		return false, fmt.Errorf("received unexpected content, expected string, received %v",
+			reflect.TypeOf(*contentBoxed))
 	}
 
 	transforms := m.Unapplied[:]
@@ -141,26 +142,27 @@ func (m *OModel) FlushTransforms(contentBoxed *interface{}, retention time.Durat
 
 	byteContent := []byte(content)
 
-	var i int
+	var i, j int
+	var err error
 	for i = 0; i < len(transforms); i++ {
-		if err := m.applyTransform(&byteContent, transforms[i]); err != nil {
-			return err
+		if err = m.applyTransform(&byteContent, transforms[i]); err != nil {
+			break
 		}
 	}
 
 	upto := time.Now().Unix() - int64(retention)
-	for i = 0; i < len(m.Applied); i++ {
-		if m.Applied[i].TReceived > upto {
+	for j = 0; j < len(m.Applied); j++ {
+		if m.Applied[j].TReceived > upto {
 			break
 		} else {
-			m.Applied[i] = nil
+			m.Applied[j] = nil
 		}
 	}
 
-	m.Applied = append(m.Applied[i:], transforms...)
+	m.Applied = append(m.Applied[j:], transforms...)
 	*contentBoxed = string(byteContent)
 
-	return nil
+	return i > 0, err
 }
 
 func intMin(left, right int) int {

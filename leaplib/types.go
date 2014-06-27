@@ -42,9 +42,10 @@ type Model interface {
 	PushTransform(ot interface{}) (interface{}, int, error)
 
 	/* FlushTransforms - apply all unapplied transforms to content, and delete old applied
-	 * in accordance with our retention period.
+	 * in accordance with our retention period. Returns a bool indicating whether any changes
+	 * were applied, and an error in case a fatal problem was encountered.
 	 */
-	FlushTransforms(content *interface{}, retention time.Duration) error
+	FlushTransforms(content *interface{}, retention time.Duration) (bool, error)
 
 	/* GetVersion - returns the current version of the document.
 	 */
@@ -57,7 +58,8 @@ type Model interface {
 /*
 BinderError - A binder has encountered a problem and needs to close. In order for this to happen it
 needs to inform its owner that it should be shut down. BinderError is a structure used to carry
-our error message and our ID over an error channel.
+our error message and our ID over an error channel. A BinderError with the Err set to nil can be
+used as a graceful shutdown request.
 */
 type BinderError struct {
 	ID  string

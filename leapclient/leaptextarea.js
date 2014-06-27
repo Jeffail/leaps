@@ -62,6 +62,10 @@ var leap_bind_textarea = function(leap_client, text_area) {
 			binder._apply_transform.apply(binder, [ transforms[i] ]);
 		}
 	});
+
+	this._leap_client.subscribe_event("on_disconnect", function() {
+		binder._text_area.disabled = true;
+	});
 };
 
 /* apply_transform, applies a single transform to the textarea. Also attempts to retain the original

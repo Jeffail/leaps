@@ -46,6 +46,7 @@ type BinderConfig struct {
 	Transform        TransformConfig `json:"transform"`
 	FlushPeriod      int64           `json:"flush_period_ms"`
 	ClientKickPeriod int64           `json:"kick_period_ms"`
+	ExpirePeriod     int64           `json:"expire_period_s"`
 }
 
 /*
@@ -57,8 +58,9 @@ func DefaultBinderConfig() BinderConfig {
 		Transform: TransformConfig{
 			RetentionPeriod: 60,
 		},
-		FlushPeriod:      50,
+		FlushPeriod:      500,
 		ClientKickPeriod: 10,
+		ExpirePeriod:     60,
 	}
 }
 
@@ -108,7 +110,7 @@ func BindExisting(
 		closedChan:    make(chan bool),
 	}
 
-	binder.log(LeapInfo, "bound to existing document, attempting flush")
+	binder.log(LeapInfo, "Bound to existing document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
 		return nil, err
@@ -148,7 +150,7 @@ func BindNew(
 		closedChan:    make(chan bool),
 	}
 
-	binder.log(LeapInfo, "bound to new document, attempting flush")
+	binder.log(LeapInfo, "Bound to new document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
 		return nil, err
@@ -262,16 +264,32 @@ flush - Obtain latest document content, flush current changes to document, and s
 version.
 */
 func (b *Binder) flush() (*Document, error) {
-	doc, err := b.block.Fetch(b.ID)
-	if err == nil {
-		retention := time.Duration(b.config.Transform.RetentionPeriod) * time.Second
-		if err = b.model.FlushTransforms(&doc.Content, retention); err != nil {
-			return nil, err
-		}
-		b.block.Store(b.ID, doc)
-		return doc, nil
+	var errStore, errFlush error
+	var changed bool
+	var doc *Document
+
+	doc, errStore = b.block.Fetch(b.ID)
+	if errStore != nil {
+		return nil, errStore
 	}
-	return nil, err
+
+	retention := time.Duration(b.config.Transform.RetentionPeriod) * time.Second
+	changed, errFlush = b.model.FlushTransforms(&doc.Content, retention)
+	if changed {
+		b.log(LeapInfo, "Flushed changes, storing document")
+		errStore = b.block.Store(b.ID, doc)
+	}
+
+	if errStore != nil && errFlush != nil {
+		return nil, fmt.Errorf("%v, %v", errFlush, errStore)
+	}
+	if errStore != nil {
+		return nil, errStore
+	}
+	if errFlush != nil {
+		return nil, errFlush
+	}
+	return doc, nil
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -294,51 +312,52 @@ func (b *Binder) loop() {
 				doc, err := b.flush()
 				if err != nil {
 					b.errorChan <- BinderError{ID: b.ID, Err: err}
-					b.log(LeapError, fmt.Sprintf("flush error: %v, shutting down", err))
+					b.log(LeapError, fmt.Sprintf("Flush error: %v, shutting down", err))
 					running = false
-				}
-				/* Channel is buffered by one element to be non-blocking, any blocked send will
-				 * lead to a rejected client, bad client!
-				 */
-				sndChan := make(chan []interface{}, 1)
-				b.clients = append(b.clients, sndChan)
-				b.log(LeapInfo, "subscribing new client")
+				} else {
+					/* Channel is buffered by one element to be non-blocking, any blocked send will
+					 * lead to a rejected client, bad client!
+					 */
+					sndChan := make(chan []interface{}, 1)
+					b.clients = append(b.clients, sndChan)
+					b.log(LeapInfo, "Subscribing new client")
 
-				client <- &BinderPortal{
-					Version:          b.model.GetVersion(),
-					Document:         doc,
-					Error:            nil,
-					TransformRcvChan: sndChan,
-					RequestSndChan:   b.jobs,
+					client <- &BinderPortal{
+						Version:          b.model.GetVersion(),
+						Document:         doc,
+						Error:            nil,
+						TransformRcvChan: sndChan,
+						RequestSndChan:   b.jobs,
+					}
+					flushTime = time.After(flushPeriod)
 				}
-				flushTime = time.After(flushPeriod)
 			} else {
-				b.log(LeapInfo, "subscribe channel closed, shutting down")
+				b.log(LeapInfo, "Subscribe channel closed, shutting down")
 				running = false
 			}
 		case job, open := <-b.jobs:
 			if running && open {
 				b.processJob(job)
 			} else {
-				b.log(LeapInfo, "jobs channel closed, shutting down")
+				b.log(LeapInfo, "Jobs channel closed, shutting down")
 				running = false
 			}
 		case <-flushTime:
 			if _, err := b.flush(); err != nil {
-				b.log(LeapError, fmt.Sprintf("flush error: %v, shutting down", err))
+				b.log(LeapError, fmt.Sprintf("Flush error: %v, shutting down", err))
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 				running = false
 			}
 			flushTime = time.After(flushPeriod)
 		}
 		if !running {
-			b.log(LeapInfo, "closing, shutting down client channels")
+			b.log(LeapInfo, "Closing, shutting down client channels")
 			oldClients := b.clients[:]
 			b.clients = [](chan<- []interface{}){}
 			for _, client := range oldClients {
 				close(client)
 			}
-			b.log(LeapInfo, fmt.Sprintf("attempting final flush of %v", b.ID))
+			b.log(LeapInfo, fmt.Sprintf("Attempting final flush of %v", b.ID))
 			if _, err := b.flush(); err != nil {
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 			}

@@ -30,6 +30,8 @@ import (
 /*--------------------------------------------------------------------------------------------------
  */
 
+/* Constants that define various log levels
+ */
 const (
 	LeapError = 0
 	LeapWarn  = 1
@@ -60,6 +62,14 @@ func DefaultLoggerConfig() LoggerConfig {
  */
 
 /*
+LeapsLogger - A logger object configured along with leaps, which all leaps components log to.
+*/
+type LeapsLogger struct {
+	config LoggerConfig
+	logger *log.Logger
+}
+
+/*
 CreateLogger - Create a new logger.
 */
 func CreateLogger(config LoggerConfig) *LeapsLogger {
@@ -67,14 +77,6 @@ func CreateLogger(config LoggerConfig) *LeapsLogger {
 		config: config,
 		logger: log.New(os.Stdout, "[Leaps] ", log.LstdFlags),
 	}
-}
-
-/*
-LeapsLogger - A logger object configured along with leaps, which all leaps components log to.
-*/
-type LeapsLogger struct {
-	config LoggerConfig
-	logger *log.Logger
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -90,9 +92,9 @@ func (l *LeapsLogger) Log(level int, prefix, message string) {
 		case LeapError:
 			logLevel = "error"
 		case LeapWarn:
-			logLevel = "warn "
+			logLevel = "warn"
 		case LeapInfo:
-			logLevel = "info "
+			logLevel = "info"
 		case LeapDebug:
 			logLevel = "debug"
 		}
