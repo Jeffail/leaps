@@ -84,7 +84,7 @@ func TestNewBinder(t *testing.T) {
 
 func badClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
 	// Do nothing, LOLOLOLOLOL AHAHAHAHAHAHAHAHAHA! TIME WASTTTTIIINNNGGGG!!!!
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// The first transform is free (buffered chan)
 	<-b.TransformRcvChan
@@ -275,7 +275,7 @@ func TestBinderStories(t *testing.T) {
 			goodStoryClient(binder.Subscribe(), &story, &wg, t)
 		}
 
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 
 		bp := binder.Subscribe()
 		go func() {

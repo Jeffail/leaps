@@ -47,7 +47,7 @@ func main() {
 		return
 	}
 
-	leapHTTP, err := leapnet.CreateHTTPServer(curator, httpServerConfig)
+	leapHTTP, err := leapnet.CreateHTTPServer(curator, httpServerConfig, nil)
 	if err != nil {
 		fmt.Printf("Http create error: %v\n", err)
 		return
@@ -62,6 +62,18 @@ func main() {
 			fmt.Printf("Http listen error: %v\n", err)
 		}
 		closeChan <- true
+	}()
+
+	statsServer, err := leapnet.CreateStatsServer(curator.GetLogger(), leapnet.DefaultStatsServerConfig())
+	if err != nil {
+		fmt.Printf("Stats server create error: %v\n", err)
+		return
+	}
+
+	go func() {
+		if err := statsServer.Listen(); err != nil {
+			fmt.Printf("Stats server listen error: %v\n", err)
+		}
 	}()
 
 	c := make(chan os.Signal, 1)

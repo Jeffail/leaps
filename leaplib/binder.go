@@ -46,7 +46,6 @@ type BinderConfig struct {
 	Transform        TransformConfig `json:"transform"`
 	FlushPeriod      int64           `json:"flush_period_ms"`
 	ClientKickPeriod int64           `json:"kick_period_ms"`
-	ExpirePeriod     int64           `json:"expire_period_s"`
 }
 
 /*
@@ -59,8 +58,7 @@ func DefaultBinderConfig() BinderConfig {
 			RetentionPeriod: 60,
 		},
 		FlushPeriod:      500,
-		ClientKickPeriod: 10,
-		ExpirePeriod:     60,
+		ClientKickPeriod: 5,
 	}
 }
 

@@ -226,7 +226,7 @@ func TestHttpServer(t *testing.T) {
 	}
 
 	go func() {
-		http, err := CreateHTTPServer(curator, httpServerConfig)
+		http, err := CreateHTTPServer(curator, httpServerConfig, nil)
 		if err != nil {
 			t.Errorf("Create HTTP error: %v", err)
 			return

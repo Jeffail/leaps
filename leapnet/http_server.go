@@ -111,9 +111,10 @@ type HTTPServer struct {
 }
 
 /*
-CreateHTTPServer - Create a new leaps HTTPServer.
+CreateHTTPServer - Create a new leaps HTTPServer, optionally registers to a custom http.ServeMux, or
+set this to nil to use the default http mux (recommended).
 */
-func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig) (*HTTPServer, error) {
+func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig, mux *http.ServeMux) (*HTTPServer, error) {
 	httpServer := HTTPServer{
 		config:    config,
 		locator:   locator,
@@ -123,7 +124,11 @@ func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig) (*HTTPServer
 	if len(httpServer.config.URL.Path) == 0 {
 		return nil, errors.New("invalid config value for URL.Path")
 	}
-	http.Handle(httpServer.config.URL.Path, websocket.Handler(httpServer.websocketHandler))
+	if mux != nil {
+		mux.Handle(httpServer.config.URL.Path, websocket.Handler(httpServer.websocketHandler))
+	} else {
+		http.Handle(httpServer.config.URL.Path, websocket.Handler(httpServer.websocketHandler))
+	}
 	return &httpServer, nil
 }
 
@@ -203,7 +208,8 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 }
 
 /*
-Listen - Bind to the http endpoint and begin serving requests.
+Listen - Bind to the http endpoint as per configured address, and begin serving requests. This is
+simply a helper function that calls http.ListenAndServe
 */
 func (h *HTTPServer) Listen() error {
 	if len(h.config.URL.Address) == 0 {
