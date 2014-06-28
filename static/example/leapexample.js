@@ -18,7 +18,7 @@ window.onload = function() {
 		}
 	});
 
-	var err = client.connect("ws://localhost:8080/socket");
+	var err = client.connect("ws://" + window.location.host + "/socket");
 	if ( err !== undefined ) {
 		console.error(err);
 		return;

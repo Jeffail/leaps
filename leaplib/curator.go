@@ -158,6 +158,7 @@ func (c *Curator) FindDocument(id string) (*BinderPortal, error) {
 	defer c.binderMutex.Unlock()
 
 	if binder, ok := c.openBinders[id]; ok {
+		c.logger.IncrementStat("curator.subscribed_client")
 		return binder.Subscribe(), nil
 	}
 

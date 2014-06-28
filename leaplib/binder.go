@@ -274,7 +274,6 @@ func (b *Binder) flush() (*Document, error) {
 	retention := time.Duration(b.config.RetentionPeriod) * time.Second
 	changed, errFlush = b.model.FlushTransforms(&doc.Content, retention)
 	if changed {
-		b.log(LeapInfo, "Flushed changes, storing document")
 		errStore = b.block.Store(b.ID, doc)
 	}
 

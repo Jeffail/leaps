@@ -1,0 +1,61 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides: Leaps
+# Required-Start: $local_fs $network $named $time $syslog
+# Required-Stop: $local_fs $network $named $time $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Description: Leaps is a service that hosts collaborative and shared documents for important people.
+### END INIT INFO
+
+. /etc/init.d/functions
+
+DAEMON=/usr/sbin/leaps
+NAME=leaps
+
+PID=/var/run/leaps.pid
+LOG=/var/log/leaps.log
+
+test -x $DAEMON || exit 0
+
+# Start the service
+start() {
+		if [ -f "$PID" ] && kill -0 $(cat "$PID"); then
+			echo 'Service already running' >&2
+			return 1
+		fi
+		echo 'Starting service...' >&2
+		local CMD="$DAEMON -c /etc/leaps/config.js &> \"$LOG\" & echo \$!"
+		su -c "$CMD" $RUNAS > "$PIDFILE"
+        echo 'Service started' >&2
+}
+# Stop the service
+stop() {
+		if [ ! -f "$PID" ] && ! kill -0 $(cat "$PID"); then
+			echo 'Service not running' >&2
+			return 1
+		fi
+		echo 'Stopping service...' >&2
+		kill -15 $(cat "$PID") && rm -f "$PID"
+		echo 'Service stopped' >&2
+}
+### main logic ###
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status $NAME
+        ;;
+  restart|reload|condrestart)
+        stop
+        start
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|reload|status}"
+        exit 1
+esac
+exit 0

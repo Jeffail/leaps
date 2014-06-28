@@ -31,6 +31,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 )
 
@@ -61,6 +62,8 @@ func main() {
 	)
 
 	flag.Parse()
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	leapsConfig := LeapsConfig{
 		CuratorConfig:     leaplib.DefaultCuratorConfig(),
