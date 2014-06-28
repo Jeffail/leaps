@@ -31,6 +31,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -126,7 +127,7 @@ func main() {
 	}()
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
 	case <-sigChan:

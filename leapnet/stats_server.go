@@ -24,6 +24,7 @@ package leapnet
 
 import (
 	"errors"
+	"fmt"
 	"github.com/jeffail/leaps/leaplib"
 	"net/http"
 	"time"
@@ -87,7 +88,7 @@ func CreateStatsServer(logger *leaplib.LeapsLogger, config StatsServerConfig) (*
 	if len(statsServer.config.Address) == 0 || len(statsServer.config.Path) == 0 {
 		return nil, errors.New("invalid config value for Address/Path")
 	}
-	if len(statsServer.config.StaticFilePath) > 0 {
+	if len(statsServer.config.StaticPath) > 0 && len(statsServer.config.StaticFilePath) > 0 {
 		statsServer.serveMux.Handle(statsServer.config.StaticPath,
 			http.StripPrefix(statsServer.config.StaticPath,
 				http.FileServer(http.Dir(statsServer.config.StaticFilePath))))
@@ -104,6 +105,13 @@ func CreateStatsServer(logger *leaplib.LeapsLogger, config StatsServerConfig) (*
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+/*
+log - Helper function for logging events, only actually logs when verbose logging is configured.
+*/
+func (s *StatsServer) log(level int, message string) {
+	s.logger.Log(level, "stats", message)
+}
 
 /*
 StatsHandler - The StatsServer request handler.
@@ -125,6 +133,12 @@ Listen - Bind to the configured http endpoint and begin serving requests.
 func (s *StatsServer) Listen() error {
 	if len(s.config.Address) == 0 {
 		return errors.New("invalid config value for Address")
+	}
+	s.log(leaplib.LeapInfo, fmt.Sprintf("Listening for stats requests at address: %v",
+		fmt.Sprintf("%v%v", s.config.Address, s.config.Path)))
+	if len(s.config.StaticPath) > 0 && len(s.config.StaticFilePath) > 0 {
+		s.log(leaplib.LeapInfo, fmt.Sprintf("Serving static stats file requests at address: %v",
+			fmt.Sprintf("%v%v", s.config.Address, s.config.StaticPath)))
 	}
 	err := s.server.ListenAndServe()
 	return err

@@ -233,7 +233,12 @@ func (h *HTTPServer) Listen() error {
 	if len(h.config.URL.Address) == 0 {
 		return errors.New("invalid config value for URL.Address")
 	}
-	h.log(leaplib.LeapInfo, fmt.Sprintf("Listening at address: %v", h.config.URL.Address))
+	h.log(leaplib.LeapInfo, fmt.Sprintf("Listening for websockets at address: %v",
+		fmt.Sprintf("%v%v", h.config.URL.Address, h.config.URL.Path)))
+	if len(h.config.URL.StaticPath) > 0 {
+		h.log(leaplib.LeapInfo, fmt.Sprintf("Serving static file requests at address: %v",
+			fmt.Sprintf("%v%v", h.config.URL.Address, h.config.URL.StaticPath)))
+	}
 	err := http.ListenAndServe(h.config.URL.Address, nil)
 	return err
 }
