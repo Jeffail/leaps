@@ -18,7 +18,7 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 #THE SOFTWARE.
 
-.PHONY: all fmt build vet lint check clean install
+.PHONY: all fmt build vet lint check clean install example
 
 #build: export GOOS=linux
 #build: export GOARCH=amd64
@@ -47,3 +47,6 @@ clean:
 
 install: clean
 	@go install
+
+example: install
+	@leaps -c ./config/leaps_example.js

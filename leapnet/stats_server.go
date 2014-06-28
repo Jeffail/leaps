@@ -36,9 +36,10 @@ import (
 StatsServerConfig - Holds configuration options for the StatsServer
 */
 type StatsServerConfig struct {
-	Path           string `json:"path"`
+	StaticPath     string `json:"static_path"`
+	Path           string `json:"stats_path"`
 	Address        string `json:"address"`
-	StaticFilePath string `json:"www_path"`
+	StaticFilePath string `json:"www_dir"`
 	StatsTimeout   int    `json:"stat_timeout_ms"`
 	RequestTimeout int    `json:"request_timeout_s"`
 }
@@ -49,6 +50,7 @@ for each field.
 */
 func DefaultStatsServerConfig() StatsServerConfig {
 	return StatsServerConfig{
+		StaticPath:     "/",
 		Path:           "/leapstats",
 		Address:        ":4040",
 		StaticFilePath: "",
@@ -86,8 +88,9 @@ func CreateStatsServer(logger *leaplib.LeapsLogger, config StatsServerConfig) (*
 		return nil, errors.New("invalid config value for Address/Path")
 	}
 	if len(statsServer.config.StaticFilePath) > 0 {
-		statsServer.serveMux.Handle("/",
-			http.StripPrefix("/", http.FileServer(http.Dir(statsServer.config.StaticFilePath))))
+		statsServer.serveMux.Handle(statsServer.config.StaticPath,
+			http.StripPrefix(statsServer.config.StaticPath,
+				http.FileServer(http.Dir(statsServer.config.StaticFilePath))))
 	}
 	statsServer.server = &http.Server{
 		Addr:           statsServer.config.Address,

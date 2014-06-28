@@ -168,6 +168,7 @@ func (c *Curator) FindDocument(id string) (*BinderPortal, error) {
 
 	c.openBinders[id] = binder
 
+	c.logger.IncrementStat("curator.subscribed_client")
 	return binder.Subscribe(), nil
 }
 
@@ -195,6 +196,7 @@ func (c *Curator) NewDocument(doc *Document) (*BinderPortal, error) {
 	c.openBinders[doc.ID] = binder
 	c.binderMutex.Unlock()
 
+	c.logger.IncrementStat("curator.subscribed_client")
 	return binder.Subscribe(), nil
 }
 

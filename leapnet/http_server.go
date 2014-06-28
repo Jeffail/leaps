@@ -37,8 +37,9 @@ import (
 URLConfig - Holds configuration options for the HTTPServer URL.
 */
 type URLConfig struct {
-	Path    string `json:"path"`
-	Address string `json:"address"`
+	StaticPath string `json:"static_path"`
+	Path       string `json:"socket_path"`
+	Address    string `json:"address"`
 }
 
 /*
@@ -52,8 +53,9 @@ type HTTPBinderConfig struct {
 HTTPServerConfig - Holds configuration options for the HTTPServer.
 */
 type HTTPServerConfig struct {
-	URL    URLConfig        `json:"url"`
-	Binder HTTPBinderConfig `json:"binder"`
+	URL            URLConfig        `json:"url"`
+	StaticFilePath string           `json:"www_dir"`
+	Binder         HTTPBinderConfig `json:"binder"`
 }
 
 /*
@@ -63,9 +65,11 @@ for each field.
 func DefaultHTTPServerConfig() HTTPServerConfig {
 	return HTTPServerConfig{
 		URL: URLConfig{
-			Path:    "/leapsocket",
-			Address: ":8080",
+			StaticPath: "/leaps",
+			Path:       "/leaps/socket",
+			Address:    ":8080",
 		},
+		StaticFilePath: "",
 		Binder: HTTPBinderConfig{
 			BindSendTimeout: 10,
 		},
@@ -122,12 +126,26 @@ func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig, mux *http.Se
 		closeChan: make(chan bool),
 	}
 	if len(httpServer.config.URL.Path) == 0 {
-		return nil, errors.New("invalid config value for URL.Path")
+		return nil, errors.New("invalid config value for url.socket_path")
 	}
 	if mux != nil {
 		mux.Handle(httpServer.config.URL.Path, websocket.Handler(httpServer.websocketHandler))
 	} else {
 		http.Handle(httpServer.config.URL.Path, websocket.Handler(httpServer.websocketHandler))
+	}
+	if len(httpServer.config.StaticFilePath) > 0 {
+		if len(httpServer.config.URL.StaticPath) == 0 {
+			return nil, errors.New("invalid config value for url.static_path")
+		}
+		if mux != nil {
+			mux.Handle(httpServer.config.URL.StaticPath,
+				http.StripPrefix(httpServer.config.URL.StaticPath,
+					http.FileServer(http.Dir(httpServer.config.StaticFilePath))))
+		} else {
+			http.Handle(httpServer.config.URL.StaticPath,
+				http.StripPrefix(httpServer.config.URL.StaticPath,
+					http.FileServer(http.Dir(httpServer.config.StaticFilePath))))
+		}
 	}
 	return &httpServer, nil
 }

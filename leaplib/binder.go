@@ -32,20 +32,12 @@ import (
  */
 
 /*
-TransformConfig - Holds configuration options for managing individual transforms stored under a
-binder.
-*/
-type TransformConfig struct {
-	RetentionPeriod int64 `json:"retention_period"`
-}
-
-/*
 BinderConfig - Holds configuration options for a binder.
 */
 type BinderConfig struct {
-	Transform        TransformConfig `json:"transform"`
-	FlushPeriod      int64           `json:"flush_period_ms"`
-	ClientKickPeriod int64           `json:"kick_period_ms"`
+	FlushPeriod      int64 `json:"flush_period_ms"`
+	RetentionPeriod  int64 `json:"retention_period_s"`
+	ClientKickPeriod int64 `json:"kick_period_ms"`
 }
 
 /*
@@ -54,10 +46,8 @@ field.
 */
 func DefaultBinderConfig() BinderConfig {
 	return BinderConfig{
-		Transform: TransformConfig{
-			RetentionPeriod: 60,
-		},
 		FlushPeriod:      500,
+		RetentionPeriod:  60,
 		ClientKickPeriod: 5,
 	}
 }
@@ -281,7 +271,7 @@ func (b *Binder) flush() (*Document, error) {
 		return nil, errStore
 	}
 
-	retention := time.Duration(b.config.Transform.RetentionPeriod) * time.Second
+	retention := time.Duration(b.config.RetentionPeriod) * time.Second
 	changed, errFlush = b.model.FlushTransforms(&doc.Content, retention)
 	if changed {
 		b.log(LeapInfo, "Flushed changes, storing document")

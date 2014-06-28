@@ -35,17 +35,17 @@ curator, which deals with documents on the local service, or a TBD, which load b
 servers of curators.
 */
 type LeapLocator interface {
-	/* FindDocument - Find and return a binder portal to an existing document
-	 */
+	// FindDocument - Find and return a binder portal to an existing document
 	FindDocument(string) (*leaplib.BinderPortal, error)
 
-	/* NewDocument - Create and return a binder portal to a new document
-	 */
+	// NewDocument - Create and return a binder portal to a new document
 	NewDocument(*leaplib.Document) (*leaplib.BinderPortal, error)
 
-	/* GetLogger - Obtain a reference to the LeapsLogger held by our curator
-	 */
+	// GetLogger - Obtain a reference to the LeapsLogger held by our curator
 	GetLogger() *leaplib.LeapsLogger
+
+	// Close - Close the LeapLocator
+	Close()
 }
 
 /*--------------------------------------------------------------------------------------------------

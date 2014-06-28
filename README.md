@@ -12,12 +12,12 @@ https://godoc.org/github.com/Jeffail/leaps/leaplib
 
 ##How to run:
 
-Currently there are no releases, so to run an example service you need to check out and build it:
+To start up an example server do the following:
 
 ```bash
 go get github.com/jeffail/leaps
-cd $GOPATH/src/github.com/jeffail/leaps/leapexample
-go run example1.go
+cd $GOPATH/src/github.com/jeffail/leaps
+make example
 ```
 
-and then visit: http://localhost:8080 to open an example document.
+and then visit: http://localhost:8080 to play with an example server

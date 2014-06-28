@@ -68,7 +68,7 @@ func findDocument(id string, ws *websocket.Conn) error {
 
 func senderClient(id string, feeds <-chan leaplib.OTransform, t *testing.T) {
 	origin := "http://localhost/"
-	url := "ws://localhost:8787/leapsocket"
+	url := "ws://localhost:8787/leaps/socket"
 
 	ws, err := websocket.Dial(url, "", origin)
 	if err != nil {
@@ -133,7 +133,7 @@ func senderClient(id string, feeds <-chan leaplib.OTransform, t *testing.T) {
 }
 func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *testing.T) {
 	origin := "http://localhost/"
-	url := "ws://localhost:8787/leapsocket"
+	url := "ws://localhost:8787/leaps/socket"
 
 	ws, err := websocket.Dial(url, "", origin)
 	if err != nil {
@@ -239,7 +239,7 @@ func TestHttpServer(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	origin := "http://localhost/"
-	url := "ws://localhost:8787/leapsocket"
+	url := "ws://localhost:8787/leaps/socket"
 
 	for i, story := range scont.Stories {
 
