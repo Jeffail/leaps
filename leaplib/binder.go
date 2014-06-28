@@ -111,11 +111,13 @@ func BindExisting(
 	binder.log(LeapInfo, "Bound to existing document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
+		binder.logger.IncrementStat("binder.bind_existing.error")
 		return nil, err
 	}
 
 	go binder.loop()
 
+	binder.logger.IncrementStat("binder.bind_existing.success")
 	return &binder, nil
 }
 
@@ -151,11 +153,13 @@ func BindNew(
 	binder.log(LeapInfo, "Bound to new document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
+		binder.logger.IncrementStat("binder.bind_new.error")
 		return nil, err
 	}
 
 	go binder.loop()
 
+	binder.logger.IncrementStat("binder.bind_new.success")
 	return &binder, nil
 }
 
@@ -201,6 +205,7 @@ func (b *Binder) processJob(request BinderRequest) {
 	if request.Transform == nil {
 		select {
 		case request.ErrorChan <- errors.New("received job without a transform"):
+			b.logger.IncrementStat("binder.process_job.skipped")
 		default:
 		}
 		return
@@ -213,6 +218,7 @@ func (b *Binder) processJob(request BinderRequest) {
 	newOTs[0], version, err = b.model.PushTransform(request.Transform)
 
 	if err != nil {
+		b.logger.IncrementStat("binder.process_job.error")
 		select {
 		case request.ErrorChan <- err:
 		default:
@@ -224,6 +230,8 @@ func (b *Binder) processJob(request BinderRequest) {
 	case request.VersionChan <- version:
 	default:
 	}
+
+	b.logger.IncrementStat("binder.process_job.success")
 
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
@@ -251,6 +259,7 @@ func (b *Binder) processJob(request BinderRequest) {
 	}
 
 	if deadClients > 0 {
+		b.logger.IncrementStat("binder.clients_kicked")
 		b.log(LeapInfo, fmt.Sprintf("Kicked %v inactive clients", deadClients))
 	}
 
@@ -268,6 +277,7 @@ func (b *Binder) flush() (*Document, error) {
 
 	doc, errStore = b.block.Fetch(b.ID)
 	if errStore != nil {
+		b.logger.IncrementStat("binder.block_fetch.error")
 		return nil, errStore
 	}
 
@@ -278,14 +288,12 @@ func (b *Binder) flush() (*Document, error) {
 		errStore = b.block.Store(b.ID, doc)
 	}
 
-	if errStore != nil && errFlush != nil {
+	if errStore != nil || errFlush != nil {
+		b.logger.IncrementStat("binder.flush.error")
 		return nil, fmt.Errorf("%v, %v", errFlush, errStore)
 	}
-	if errStore != nil {
-		return nil, errStore
-	}
-	if errFlush != nil {
-		return nil, errFlush
+	if changed {
+		b.logger.IncrementStat("binder.flush.success")
 	}
 	return doc, nil
 }
@@ -318,6 +326,7 @@ func (b *Binder) loop() {
 					 */
 					sndChan := make(chan []interface{}, 1)
 					b.clients = append(b.clients, sndChan)
+					b.logger.IncrementStat("binder.subscribed_client")
 					b.log(LeapInfo, "Subscribing new client")
 
 					client <- &BinderPortal{
@@ -349,6 +358,7 @@ func (b *Binder) loop() {
 			flushTime = time.After(flushPeriod)
 		}
 		if !running {
+			b.logger.IncrementStat("binder.closing")
 			b.log(LeapInfo, "Closing, shutting down client channels")
 			oldClients := b.clients[:]
 			b.clients = [](chan<- []interface{}){}

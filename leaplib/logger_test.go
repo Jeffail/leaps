@@ -23,6 +23,7 @@ THE SOFTWARE.
 package leaplib
 
 import (
+	"encoding/json"
 	"sync"
 	"testing"
 	"time"
@@ -48,15 +49,30 @@ func TestLoggerStats(t *testing.T) {
 	wg.Wait()
 	time.Sleep(10 * time.Millisecond)
 
-	expected := `"test":{"other":{"thing":true},"stats":{"generic":"hello world","increment":10}}}}`
+	expectedJSON := struct {
+		Leaps struct {
+			Test struct {
+				Stats struct {
+					Generic   string `json:"generic"`
+					Increment int    `json:"increment"`
+				} `json:"stats"`
+				Other struct {
+					Thing bool `json:"thing"`
+				} `json:"other"`
+			} `json:"test"`
+		} `json:"leaps"`
+	}{}
 
 	fullResult, err := logger.GetStats(time.Second)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 	}
 
-	byteResult := []byte(*fullResult)
-	result := string(byteResult[36:])
+	json.Unmarshal([]byte(*fullResult), &expectedJSON)
+	byteResult, _ := json.Marshal(expectedJSON.Leaps)
+
+	result := string(byteResult)
+	expected := `{"test":{"stats":{"generic":"hello world","increment":10},"other":{"thing":true}}}`
 
 	if result != expected {
 		t.Errorf("Result != expected: %v != %v", result, expected)

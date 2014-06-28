@@ -23,8 +23,8 @@ THE SOFTWARE.
 package leaplib
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
+	"crypto/sha1"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -88,15 +88,14 @@ func ValidateDocument(doc *Document) error {
 
 /*
 GenerateID - Create a unique ID for a document using a hash of the title, description, a timestamp
-and a pseudo random integer as a base64 encoded string with the timestamp on the end in the format:
-"hash-timestamp"
+and a pseudo random integer as a hex encoded string with the timestamp on the end.
 */
 func GenerateID(title, description string) string {
 	tstamp := time.Now().Unix()
-	hasher := sha256.New()
+	hasher := sha1.New()
 	hasher.Write([]byte(fmt.Sprintf("%v%v%v%v", title, description, rand.Int(), tstamp)))
 
-	return fmt.Sprintf("%v-%v", base64.URLEncoding.EncodeToString(hasher.Sum(nil)), tstamp)
+	return fmt.Sprintf("%v%v", hex.EncodeToString(hasher.Sum(nil)), tstamp)
 }
 
 /*--------------------------------------------------------------------------------------------------

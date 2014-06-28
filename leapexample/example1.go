@@ -31,23 +31,36 @@ import (
 	"os/signal"
 )
 
+/*
+ExampleConfig - Example of a full server configuration, containing configurations for each component.
+*/
+type ExampleConfig struct {
+	CuratorConfig     leaplib.CuratorConfig
+	HTTPServerConfig  leapnet.HTTPServerConfig
+	StatsServerConfig leapnet.StatsServerConfig
+}
+
 func main() {
-	curatorConfig := leaplib.DefaultCuratorConfig()
+	exampleConfig := ExampleConfig{
+		CuratorConfig:     leaplib.DefaultCuratorConfig(),
+		HTTPServerConfig:  leapnet.DefaultHTTPServerConfig(),
+		StatsServerConfig: leapnet.DefaultStatsServerConfig(),
+	}
 
-	curatorConfig.StoreConfig.Type = "mock"
-	curatorConfig.StoreConfig.Name = "test_document"
+	exampleConfig.CuratorConfig.StoreConfig.Type = "mock"
+	exampleConfig.CuratorConfig.StoreConfig.Name = "test_document"
 
-	httpServerConfig := leapnet.DefaultHTTPServerConfig()
+	exampleConfig.StatsServerConfig.StaticFilePath = "./stats_files"
 
 	fmt.Printf("Launching a leaps example server, use CTRL+C to close.\n\n")
 
-	curator, err := leaplib.CreateNewCurator(curatorConfig)
+	curator, err := leaplib.CreateNewCurator(exampleConfig.CuratorConfig)
 	if err != nil {
 		fmt.Printf("Curator error: %v\n", err)
 		return
 	}
 
-	leapHTTP, err := leapnet.CreateHTTPServer(curator, httpServerConfig, nil)
+	leapHTTP, err := leapnet.CreateHTTPServer(curator, exampleConfig.HTTPServerConfig, nil)
 	if err != nil {
 		fmt.Printf("Http create error: %v\n", err)
 		return
@@ -64,7 +77,7 @@ func main() {
 		closeChan <- true
 	}()
 
-	statsServer, err := leapnet.CreateStatsServer(curator.GetLogger(), leapnet.DefaultStatsServerConfig())
+	statsServer, err := leapnet.CreateStatsServer(curator.GetLogger(), exampleConfig.StatsServerConfig)
 	if err != nil {
 		fmt.Printf("Stats server create error: %v\n", err)
 		return

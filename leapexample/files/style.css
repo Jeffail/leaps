@@ -2,14 +2,8 @@ body {
 	background-color: #f0f0f0;
 	color: #3c3c3c;
 	text-align: center;
-	vertical-align: middle;
 	padding: 20px;
-}
-
-h1 {
-	color: #3c3c3c;
 	font-family: sans-serif;
-	font-weight: normal;
 }
 
 textarea {
@@ -18,7 +12,12 @@ textarea {
 	color: #3c3c3c;
 
 	padding: 20px;
+	margin: 20px;
 
 	border: 0px;
 	border-radius: 1em 4em 1em 4em;
+}
+
+textarea:disabled {
+	color: #9c9c9c;
 }

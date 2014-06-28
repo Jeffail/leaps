@@ -46,8 +46,8 @@ const (
 LoggerConfig - Holds configuration options for the global leaps logger.
 */
 type LoggerConfig struct {
-	LogLevel   int     `json:"level"`
-	TargetPath *string `json:"output_path,omitempty"`
+	LogLevel   int    `json:"level"`
+	TargetPath string `json:"output_path"`
 }
 
 /*
@@ -57,7 +57,7 @@ each field.
 func DefaultLoggerConfig() LoggerConfig {
 	return LoggerConfig{
 		LogLevel:   LeapInfo,
-		TargetPath: nil,
+		TargetPath: "",
 	}
 }
 
@@ -71,6 +71,7 @@ type LeapsLogger struct {
 	config      LoggerConfig
 	logger      *log.Logger
 	stats       *gabs.Container
+	timestamp   time.Time
 	jobChan     chan func()
 	requestChan chan chan<- string
 }
@@ -80,12 +81,21 @@ CreateLogger - Create a new logger.
 */
 func CreateLogger(config LoggerConfig) *LeapsLogger {
 	stats, _ := gabs.Consume(map[string]interface{}{})
-	stats.SetP(time.Now().Unix(), "curator.started_ts")
+	stats.SetP(time.Now().Unix(), "leaps.launch_ts")
+
+	var internalLog *log.Logger
+
+	if len(config.TargetPath) > 0 {
+		// TODO
+	} else {
+		internalLog = log.New(os.Stdout, "[Leaps] ", log.LstdFlags)
+	}
 
 	logger := LeapsLogger{
 		config:      config,
-		logger:      log.New(os.Stdout, "[Leaps] ", log.LstdFlags),
+		logger:      internalLog,
 		stats:       stats,
+		timestamp:   time.Now(),
 		jobChan:     make(chan func(), 100),
 		requestChan: make(chan chan<- string, 5),
 	}
@@ -153,18 +163,22 @@ func (l *LeapsLogger) GetStats(timeout time.Duration) (*string, error) {
 	return nil, errors.New("request timed out")
 }
 
+func (l *LeapsLogger) addStat(value int, path string) {
+	root := l.stats.S("leaps")
+	if target, ok := root.Path(path).Data().(int); ok {
+		root.SetP(target+value, path)
+	} else {
+		root.SetP(value, path)
+	}
+}
+
 /*
 IncrementStat - Increment the integer value of a particular stat. If the stat doesn't yet exist it
 is created. Stats that are incremented are integer only, and this is enforced.
 */
 func (l *LeapsLogger) IncrementStat(path string) {
 	l.jobChan <- func() {
-		root := l.stats.S("curator")
-		if target, ok := root.Path(path).Data().(int); ok {
-			root.SetP(target+1, path)
-		} else {
-			root.SetP(1, path)
-		}
+		l.addStat(1, path)
 	}
 }
 
@@ -174,12 +188,7 @@ is created. Stats that are decremented are integer only, and this is enforced.
 */
 func (l *LeapsLogger) DecrementStat(path string) {
 	l.jobChan <- func() {
-		root := l.stats.S("curator")
-		if target, ok := root.Path(path).Data().(int); ok {
-			root.SetP(target-1, path)
-		} else {
-			root.SetP(-1, path)
-		}
+		l.addStat(-1, path)
 	}
 }
 
@@ -190,7 +199,7 @@ indications of success.
 */
 func (l *LeapsLogger) SetStat(path string, value interface{}) {
 	l.jobChan <- func() {
-		l.stats.S("curator").SetP(value, path)
+		l.stats.S("leaps").SetP(value, path)
 	}
 }
 
@@ -215,6 +224,8 @@ func (l *LeapsLogger) loop() {
 				running = false
 				break
 			}
+			l.addStat(1, "stats.requests")
+			l.stats.SetP(time.Since(l.timestamp).String(), "leaps.uptime")
 			select {
 			case req <- l.stats.String():
 			default:

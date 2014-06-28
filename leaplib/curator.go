@@ -126,6 +126,7 @@ func (c *Curator) loop() {
 			return
 		case err := <-c.errorChan:
 			if err.Err != nil {
+				c.logger.IncrementStat("curator.binder_chan.error")
 				c.log(LeapError, fmt.Sprintf("Binder (%v) %v\n", err.ID, err.Err))
 			} else {
 				c.log(LeapInfo, fmt.Sprintf("Binder (%v) has requested shutdown\n", err.ID))
@@ -135,8 +136,10 @@ func (c *Curator) loop() {
 				b.Close()
 				delete(c.openBinders, err.ID)
 				c.log(LeapInfo, fmt.Sprintf("Binder (%v) was closed\n", err.ID))
+				c.logger.IncrementStat("curator.binder_shutdown.success")
 			} else {
 				c.log(LeapError, fmt.Sprintf("Binder (%v) was not located in map\n", err.ID))
+				c.logger.IncrementStat("curator.binder_shutdown.error")
 			}
 			c.binderMutex.Unlock()
 		}
@@ -178,8 +181,10 @@ func (c *Curator) NewDocument(doc *Document) (*BinderPortal, error) {
 	doc.ID = GenerateID(doc.Title, doc.Description)
 
 	if err := ValidateDocument(doc); err != nil {
+		c.logger.IncrementStat("curator.validate_new_document.error")
 		return nil, err
 	}
+	c.logger.IncrementStat("curator.validate_new_document.success")
 
 	binder, err := BindNew(doc, c.store, c.config.BinderConfig, c.errorChan, c.logger)
 	if err != nil {

@@ -1,6 +1,6 @@
 ##package leapnet
 
-leapnet implements various strategies for assembling a leaps service, the classic example is a single node solution where a simple http server directly uses the library package for storing documents. However, server also implements components for clustering leaps services for both redundancy and load balancing.
+leapnet implements various strategies for assembling a leaps service, the classic example is a single node solution where leaps acts as a single http endpoint. However, leaps is made up of modular components with an aim to make them easily distributed for both redundancy and load balancing, the plan is to have multiple leapnet configurations catered towards linking these components together.
 
 STATUS: INCOMPLETE
 
