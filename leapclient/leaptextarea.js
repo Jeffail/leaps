@@ -102,10 +102,8 @@ leap_bind_textarea.prototype._trigger_diff = function() {
 	while (new_content[i] === this._content[i]) {
 		i++;
 	}
-	while ((new_content[(new_content.length - 1 - j)]
-		=== this._content[(this._content.length - 1 - j)])
-		&& ((i + j) < new_content[i].length)
-		&& ((i + j) < this._content[i].length)) {
+	while ((new_content[(new_content.length - 1 - j)] === this._content[(this._content.length - 1 - j)]) &&
+			((i + j) < new_content[i].length) && ((i + j) < this._content[i].length)) {
 		j++;
 	}
 
@@ -121,7 +119,7 @@ leap_bind_textarea.prototype._trigger_diff = function() {
 	this._content = new_content;
 	if ( tform.insert !== undefined || tform.num_delete !== undefined ) {
 		var err = this._leap_client.send_transform(tform);
-		if ( err != undefined ) {
+		if ( err !== undefined ) {
 			console.error(err);
 			// TODO: handle errors gracefully
 		}

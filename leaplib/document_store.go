@@ -139,7 +139,7 @@ func GetMockStore(config DocumentStoreConfig) DocumentStore {
 		Title:       config.Name,
 		Description: config.Name,
 		Type:        "text",
-		Content:     "example document, open this page on more browser tabs and see the edits appear in all of them!",
+		Content:     "Open this page multiple times to see the edits appear in all of them.",
 	}
 	return memStore
 }

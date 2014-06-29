@@ -23,8 +23,6 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
-"use strict";
-
 var la = require('../leapclient').apply;
 
 var content = "hello world";
@@ -36,6 +34,8 @@ var tests = [
 ];
 
 module.exports = function(test) {
+	"use strict";
+
 	for ( var i = 0, l = tests.length; i < l; i++ ) {
 		var result = la(tests[i].transform, content);
 		test.ok(tests[i].result === result, tests[i].result + " != " + result);

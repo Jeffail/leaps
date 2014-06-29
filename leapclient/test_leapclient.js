@@ -23,16 +23,18 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
+(function() {
 "use strict";
 
-var fs   = require('fs')
-  , path = require('path');
+var fs   = require('fs'),
+    path = require('path');
 
 var unit_tests = fs.readdirSync(path.resolve(__dirname, "./unit_tests"));
 
 for ( var i = 0, l = unit_tests.length; i < l; i++ ) {
 	module.exports[unit_tests[i]] = require(path.resolve("./unit_tests", unit_tests[i]));
 }
+})();
 
 /*--------------------------------------------------------------------------------------------------
  */

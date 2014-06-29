@@ -5,7 +5,8 @@ This is the JavaScript implementation of a leaps client. It holds an internal mo
 To test:
 
 ```bash
-sudo npm install nodeunit -g
+sudo npm install -g nodeunit jshint
+jshint ./*.js
 nodeunit test_leapclient.js
 ```
 

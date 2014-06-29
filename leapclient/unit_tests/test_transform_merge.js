@@ -23,8 +23,6 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
-"use strict";
-
 var model = new (require('../leapclient')._model)(0);
 
 var tests = [
@@ -56,6 +54,8 @@ var tests = [
 ];
 
 module.exports = function(test) {
+	"use strict";
+
 	for ( var i = 0, l = tests.length; i < l; i++ ) {
 		test.ok(model._merge_transforms(tests[i].first, tests[i].second), "merge " + (i+1) + " failed");
 		var result = JSON.stringify(tests[i].first);

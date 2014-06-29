@@ -18,7 +18,7 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 #THE SOFTWARE.
 
-.PHONY: all fmt build vet lint check clean install example
+.PHONY: all fmt build vet lint jshint check clean install example
 
 #build: export GOOS=linux
 #build: export GOARCH=amd64
@@ -37,7 +37,10 @@ vet:
 lint:
 	@LINT=`golint ./**/*.go`; if [ ! -z "$$LINT" ]; then echo "$$LINT"; fi; test -z "$$LINT";
 
-check: fmt vet lint
+jshint:
+	@JSHINT=`jshint ./leapclient/*.js`; if [ ! -z "$$JSHINT" ]; then echo "$$JSHINT"; fi; test -z "$$JSHINT";
+
+check: fmt vet lint jshint
 	@go test -v ./...
 	@cd leapclient; \
 		find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;

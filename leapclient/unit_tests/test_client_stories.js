@@ -23,17 +23,17 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
-"use strict";
-
-var fs   = require('fs')
-  , path = require('path')
-  , lc   = require('../leapclient').client
-  , la   = require('../leapclient').apply;
+var fs   = require('fs'),
+    path = require('path'),
+    lc   = require('../leapclient').client,
+    la   = require('../leapclient').apply;
 
 var client_stories_text = fs.readFileSync(path.resolve(__dirname, "./../../data/", "./client_stories.js"), "utf8");
 var stories = JSON.parse(client_stories_text).client_stories;
 
 var run_story = function(story, test) {
+	"use strict";
+
 	var content = story.content;
 	var socket = { readyState : 1 };
 
@@ -102,9 +102,11 @@ var run_story = function(story, test) {
 
 	test.ok(content === story.result,
 			"story " + story.name + ": " + content + " != " + story.result);
-}
+};
 
 module.exports = function(test) {
+	"use strict";
+
 	test.ok(stories.length > 0, "no stories found");
 
 	// All stories are actually synchronous

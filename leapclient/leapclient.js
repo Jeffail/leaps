@@ -84,7 +84,7 @@ _leap_model.prototype._validate_transforms = function(transforms) {
 		} else {
 			tform.insert = "";
 		}
-	};
+	}
 };
 
 /* merge_transforms takes two transforms (the next to be sent, and the one that follows) and
@@ -92,23 +92,26 @@ _leap_model.prototype._validate_transforms = function(transforms) {
  * the function returns a boolean to indicate whether the merge was successful.
  */
 _leap_model.prototype._merge_transforms = function(first, second) {
+	"use strict";
+
+	var overlap, remainder;
+
 	if ( first.position + first.insert.length === second.position ) {
 		first.insert = first.insert + second.insert;
 		first.num_delete += second.num_delete;
 		return true;
 	}
 	if ( second.position === first.position ) {
-		var remainder = Math.max(0, second.num_delete - first.insert.length);
+		remainder = Math.max(0, second.num_delete - first.insert.length);
 		first.num_delete += remainder;
 		first.insert = second.insert + first.insert.slice(second.num_delete);
 		return true;
 	}
 	if ( second.position > first.position && second.position < ( first.position + first.insert.length ) ) {
-		var overlap = second.position - first.position;
-		var remainder = Math.max(0, second.num_delete - (first.insert.length - overlap));
+		overlap = second.position - first.position;
+		remainder = Math.max(0, second.num_delete - (first.insert.length - overlap));
 		first.num_delete += remainder;
-		first.insert = first.insert.slice(0, overlap) + second.insert
-			+ first.insert.slice(overlap + second.num_delete);
+		first.insert = first.insert.slice(0, overlap) + second.insert + first.insert.slice(overlap + second.num_delete);
 		return true;
 	}
 	return false;
@@ -200,7 +203,7 @@ _leap_model.prototype._resolve_state = function() {
 			}
 		}
 	}
-	return {}
+	return {};
 };
 
 /* correct is the function to call following a "correction" from the server, this correction value
@@ -286,6 +289,8 @@ var leap_client = function() {
  * transforms, document responses and errors etc. Returns a string if an error occurrs.
  */
 leap_client.prototype.subscribe_event = function(name, subscriber) {
+	"use strict";
+
 	if ( typeof(subscriber) !== "function" ) {
 		return "subscriber was not a function";
 	}
@@ -300,12 +305,16 @@ leap_client.prototype.subscribe_event = function(name, subscriber) {
 /* clear_subscribers, removes all functions subscribed to an event.
  */
 leap_client.prototype.clear_subscribers = function(name) {
+	"use strict";
+
 	this._events[name] = [];
 };
 
 /* dispatch_event, sends args to all subscribers of an event.
  */
 leap_client.prototype._dispatch_event = function(name, args) {
+	"use strict";
+
 	var targets = this._events[name];
 	if ( targets !== undefined && targets instanceof Array ) {
 		for ( var i = 0, l = targets.length; i < l; i++ ) {
@@ -342,28 +351,29 @@ leap_client.prototype._do_action = function(action_obj) {
 leap_client.prototype._process_message = function(message) {
 	"use strict";
 
-	if ( message.response_type === undefined
-	  || typeof(message.response_type) !== "string" ) {
+	var validate_error, action_obj, action_err;
+
+	if ( message.response_type === undefined || typeof(message.response_type) !== "string" ) {
 		return "message received did not contain a valid type";
 	}
 
 	switch (message.response_type) {
 	case "document":
-		if ( null === message.leap_document
-		  || "object" !== typeof(message.leap_document)
-		  || "string" !== typeof(message.leap_document.id)
-		  || "string" !== typeof(message.leap_document.title)
-		  || "string" !== typeof(message.leap_document.description)
-		  || "string" !== typeof(message.leap_document.type)
-		  || "string" !== typeof(message.leap_document.content) ) {
+		if ( null === message.leap_document ||
+		   "object" !== typeof(message.leap_document) ||
+		   "string" !== typeof(message.leap_document.id) ||
+		   "string" !== typeof(message.leap_document.title) ||
+		   "string" !== typeof(message.leap_document.description) ||
+		   "string" !== typeof(message.leap_document.type) ||
+		   "string" !== typeof(message.leap_document.content) ) {
 			return "message document type contained invalid document object";
 		}
-		if ( !(message.version > 0) ) {
+		if ( message.version <= 0 ) {
 			return "message document received but without valid version";
 		}
 		if ( this._document_id !== null && this._document_id !== message.leap_document.id ) {
-			return "received unexpected document, id was mismatched: "
-				+ this._document_id + " != " + message.leap_document.id;
+			return "received unexpected document, id was mismatched: " +
+				this._document_id + " != " + message.leap_document.id;
 		}
 		this.document_id = message.leap_document.id;
 		this._model = new _leap_model(message.version);
@@ -376,12 +386,12 @@ leap_client.prototype._process_message = function(message) {
 		if ( !(message.transforms instanceof Array) ) {
 			return "received non array transforms";
 		}
-		var validate_error = this._model._validate_transforms(message.transforms);
+		validate_error = this._model._validate_transforms(message.transforms);
 		if ( validate_error !== undefined ) {
 			return "received transforms with error: " + validate_error;
 		}
-		var action_obj = this._model.receive(message.transforms);
-		var action_err = this._do_action(action_obj);
+		action_obj = this._model.receive(message.transforms);
+		action_err = this._do_action(action_obj);
 		if ( action_err !== undefined ) {
 			return "failed to receive transforms: " + action_err;
 		}
@@ -396,8 +406,8 @@ leap_client.prototype._process_message = function(message) {
 				return "correction received was NaN";
 			}
 		}
-		var action_obj = this._model.correct(message.version);
-		var action_err = this._do_action(action_obj);
+		action_obj = this._model.correct(message.version);
+		action_err = this._do_action(action_obj);
 		if ( action_err !== undefined ) {
 			return "model failed to correct: " + action_err;
 		}
@@ -410,9 +420,8 @@ leap_client.prototype._process_message = function(message) {
 			return message.error;
 		}
 		return "server sent undeterminable error";
-		break;
 	default:
-		return "message received was not a recognised type"
+		return "message received was not a recognised type";
 	}
 };
 
@@ -426,7 +435,7 @@ leap_client.prototype.send_transform = function(transform) {
 	"use strict";
 
 	if ( this._model === null ) {
-		return "leap_client must be initialized and joined to a document before submitting transforms"
+		return "leap_client must be initialized and joined to a document before submitting transforms";
 	}
 
 	var validate_error = this._model._validate_transforms([ transform ]);
@@ -527,8 +536,8 @@ leap_client.prototype.connect = function(address, _websocket) {
 
 	var leap_obj = this;
 
-	this._socket.onmessage = function(e) {
-		var message_text = e.data;
+	this._socket.onmessage = function(message) {
+		var message_text = message.data;
 		var message_obj;
 
 		try {
@@ -564,6 +573,8 @@ leap_client.prototype.connect = function(address, _websocket) {
 /* leap_apply is a function that applies a single transform to content and returns the result.
  */
 var leap_apply = function(transform, content) {
+	"use strict";
+
 	var first = content.slice(0, transform.position);
 	var second = content.slice(transform.position + transform.num_delete, content.length);
 	return first + transform.insert + second;
