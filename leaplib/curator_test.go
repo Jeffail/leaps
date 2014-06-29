@@ -61,7 +61,7 @@ func TestCuratorClients(t *testing.T) {
 		return
 	}
 
-	portal, err := curator.NewDocument(doc)
+	portal, err := curator.NewDocument("", doc)
 	doc = portal.Document
 	if err != nil {
 		t.Errorf("error: %v", err)
@@ -86,12 +86,12 @@ func TestCuratorClients(t *testing.T) {
 	tformSending := 50
 
 	for i := 0; i < 10; i++ {
-		if b, e := curator.FindDocument(doc.ID); e != nil {
+		if b, e := curator.FindDocument("", doc.ID); e != nil {
 			t.Errorf("error: %v", e)
 		} else {
 			go goodClient(b, tformSending, t, &wg)
 		}
-		if b, e := curator.FindDocument(doc.ID); e != nil {
+		if b, e := curator.FindDocument("", doc.ID); e != nil {
 			t.Errorf("error: %v", e)
 		} else {
 			go badClient(b, t, &wg)
@@ -102,12 +102,12 @@ func TestCuratorClients(t *testing.T) {
 
 	for i := 0; i < 50; i++ {
 		if i%2 == 0 {
-			if b, e := curator.FindDocument(doc.ID); e != nil {
+			if b, e := curator.FindDocument("", doc.ID); e != nil {
 				t.Errorf("error: %v", e)
 			} else {
 				go goodClient(b, tformSending-i, t, &wg)
 			}
-			if b, e := curator.FindDocument(doc.ID); e != nil {
+			if b, e := curator.FindDocument("", doc.ID); e != nil {
 				t.Errorf("error: %v", e)
 			} else {
 				go badClient(b, t, &wg)

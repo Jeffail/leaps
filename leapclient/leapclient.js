@@ -133,7 +133,6 @@ _leap_model.prototype._collide_transforms = function(unapplied, unsent) {
 		earlier = unsent;
 		later = unapplied;
 	}
-
 	if ( earlier.num_delete === 0 ) {
 		later.position += earlier.insert.length;
 	} else if ( ( earlier.num_delete + earlier.position ) <= later.position ) {
@@ -150,7 +149,6 @@ _leap_model.prototype._collide_transforms = function(unapplied, unsent) {
 		} else {
 			earlier.num_delete = pos_gap;
 		}
-
 		// later changes
 		later.num_delete = Math.min(0, later.num_delete - excess);
 		later.position = earlier.position + earlier.insert.length;
@@ -175,7 +173,6 @@ _leap_model.prototype._resolve_state = function() {
 		if ( ( this._version + this._unapplied.length ) >= (this._corrected_version - 1) ) {
 
 			this._version += this._unapplied.length + 1;
-
 			var to_collide = [ this._sending ].concat(this._unsent);
 			var unapplied = this._unapplied;
 
@@ -194,9 +191,7 @@ _leap_model.prototype._resolve_state = function() {
 				while ( this._unsent.length > 0 && this._merge_transforms(this._sending, this._unsent[0]) ) {
 					this._unsent.shift();
 				}
-
 				this._sending.version = this._version + 1;
-
 				this._leap_state = this.SENDING;
 				return { send : this._sending, apply : unapplied };
 			} else {
@@ -222,10 +217,8 @@ _leap_model.prototype.correct = function(version) {
 	case this.SENDING:
 		this._leap_state = this.BUFFERING;
 		this._corrected_version = version;
-
 		return this._resolve_state();
 	}
-
 	return {};
 };
 
@@ -240,14 +233,12 @@ _leap_model.prototype.submit = function(transform) {
 	case this.READY:
 		this._leap_state = this.SENDING;
 		transform.version = this._version + 1;
-
 		this._sending = transform;
 		return { send : transform };
 	case this.BUFFERING:
 	case this.SENDING:
 		this._unsent = this._unsent.concat(transform);
 	}
-
 	return {};
 };
 
@@ -259,6 +250,8 @@ _leap_model.prototype.submit = function(transform) {
 _leap_model.prototype.receive = function(transforms) {
 	"use strict";
 
+	// TODO: Validate that the transforms match the version expected.
+
 	switch (this._leap_state) {
 	case this.READY:
 		this._version += transforms.length;
@@ -269,7 +262,6 @@ _leap_model.prototype.receive = function(transforms) {
 	case this.SENDING:
 		this._unapplied = this._unapplied.concat(transforms);
 	}
-
 	return {};
 };
 
@@ -452,7 +444,7 @@ leap_client.prototype.send_transform = function(transform) {
 /* join_document prompts the client to request to join a document from the server. It will return an
  * error message if there is a problem with the request.
  */
-leap_client.prototype.join_document = function(id) {
+leap_client.prototype.join_document = function(id, token) {
 	"use strict";
 
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
@@ -471,6 +463,7 @@ leap_client.prototype.join_document = function(id) {
 
 	this._socket.send(JSON.stringify({
 		command : "find",
+		token : token,
 		document_id : this._document_id
 	}));
 };
@@ -480,7 +473,7 @@ leap_client.prototype.join_document = function(id) {
  * fields, but it is up to the leaps server to determine whether those values match its own
  * requirements.
  */
-leap_client.prototype.create_document = function(title, description, content) {
+leap_client.prototype.create_document = function(title, description, content, token) {
 	"use strict";
 
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
@@ -503,10 +496,11 @@ leap_client.prototype.create_document = function(title, description, content) {
 
 	this._socket.send(JSON.stringify({
 		command : "create",
+		token : token,
 		leap_document : {
 			title       : title,
 			description : description,
-			type        : "text",
+			type        : "text", // TODO: Generic
 			content     : content
 		}
 	}));
@@ -572,7 +566,6 @@ leap_client.prototype.connect = function(address, _websocket) {
 var leap_apply = function(transform, content) {
 	var first = content.slice(0, transform.position);
 	var second = content.slice(transform.position + transform.num_delete, content.length);
-
 	return first + transform.insert + second;
 };
 

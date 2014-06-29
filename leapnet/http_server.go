@@ -85,6 +85,7 @@ be 'create' (init with new document) or 'find' (init with existing document).
 */
 type LeapClientMessage struct {
 	Command  string            `json:"command"`
+	Token    string            `json:"token"`
 	ID       string            `json:"document_id,omitempty"`
 	Document *leaplib.Document `json:"leap_document,omitempty"`
 }
@@ -168,13 +169,13 @@ func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (*leaplib.
 	switch clientMsg.Command {
 	case "create":
 		if clientMsg.Document != nil {
-			return h.locator.NewDocument(clientMsg.Document)
+			return h.locator.NewDocument(clientMsg.Token, clientMsg.Document)
 		}
 		return nil, errors.New("create request must contain a valid document structure")
 	case "find":
 		if len(clientMsg.ID) > 0 {
 			h.log(leaplib.LeapInfo, fmt.Sprintf("Attempting to bind to document: %v", clientMsg.ID))
-			return h.locator.FindDocument(clientMsg.ID)
+			return h.locator.FindDocument(clientMsg.Token, clientMsg.ID)
 		}
 		return nil, errors.New("find request must contain a valid document ID")
 	}

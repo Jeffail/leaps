@@ -26,10 +26,16 @@ A leaps service by default will run and host a statistics page to view event cou
 
 ##Your own service
 
+Running a customized leaps service is as simple as:
+
+```bash
+leaps -c ./leaps_config.js
+```
+
 To build up your own service look up the configuration files in ./config. The simple configuration file shows you a minimal config, to see all configuration options check out the default configuration file, and the example file shows you how the leaps example is configured.
 
 ##Leaps clients
 
 The files you need for the client side can be found in ./leapclient. This folder includes the core leapclient.js file for connecting to a service, and also some helper files for various things such as binding to a textarea element.
 
-For more guidance on how to use the client look up the example client in ./static/example, good documentation is soon to come, probably.
+For more guidance on how to use the client look up the example in ./static/example, good documentation is soon to come, probably.

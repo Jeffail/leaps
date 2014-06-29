@@ -153,7 +153,7 @@ func (c *Curator) loop() {
 FindDocument - Locates an existing, or creates a fresh Binder for an existing document and returns
 that Binder for subscribing to. Returns an error if there was a problem locating the document.
 */
-func (c *Curator) FindDocument(id string) (*BinderPortal, error) {
+func (c *Curator) FindDocument(_ string, id string) (*BinderPortal, error) {
 	c.binderMutex.Lock()
 	defer c.binderMutex.Unlock()
 
@@ -178,7 +178,7 @@ NewDocument - Creates a fresh Binder for a new document, which is subsequently s
 error if either the document ID is already currently in use, or if there is a problem storing the
 new document.
 */
-func (c *Curator) NewDocument(doc *Document) (*BinderPortal, error) {
+func (c *Curator) NewDocument(_ string, doc *Document) (*BinderPortal, error) {
 	// Always generate a fresh ID
 	doc.ID = GenerateID(doc.Title, doc.Description)
 

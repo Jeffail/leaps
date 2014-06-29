@@ -36,10 +36,10 @@ servers of curators.
 */
 type LeapLocator interface {
 	// FindDocument - Find and return a binder portal to an existing document
-	FindDocument(string) (*leaplib.BinderPortal, error)
+	FindDocument(string, string) (*leaplib.BinderPortal, error)
 
 	// NewDocument - Create and return a binder portal to a new document
-	NewDocument(*leaplib.Document) (*leaplib.BinderPortal, error)
+	NewDocument(string, *leaplib.Document) (*leaplib.BinderPortal, error)
 
 	// GetLogger - Obtain a reference to the LeapsLogger held by our curator
 	GetLogger() *leaplib.LeapsLogger

@@ -18,6 +18,8 @@ window.onload = function() {
 		}
 	});
 
+	var protocol = (window.location.protocol == 'https:') ? "wss://" : "ws://";
+
 	var err = client.connect("ws://" + window.location.host + "/socket");
 	if ( err !== undefined ) {
 		console.error(err);
