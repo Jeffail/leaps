@@ -18,38 +18,44 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 #THE SOFTWARE.
 
-.PHONY: all fmt build vet lint jshint check clean install example
+.PHONY: all fmt build vet lint jshint check clean install example multiplat
 
-#build: export GOOS=linux
-#build: export GOARCH=amd64
+PROJECT := leaps
 
-all: clean check install
+all: build
 
-build: clean
-	@go build
-
-fmt:
-	@gofmt -w ./$*
-
-vet:
-	@VET=`go tool vet ./**/*.go`; if [ ! -z "$$VET" ]; then echo "$$VET"; fi; test -z "$$VET";
+build: check
+	@mkdir -p ./bin
+	@echo "building ./bin/$(PROJECT)"
+	@go build -o ./bin/$(PROJECT)
 
 lint:
+	@VET=`go tool vet ./**/*.go`; if [ ! -z "$$VET" ]; then echo "$$VET"; fi; test -z "$$VET";
 	@LINT=`golint ./**/*.go`; if [ ! -z "$$LINT" ]; then echo "$$LINT"; fi; test -z "$$LINT";
-
-jshint:
 	@JSHINT=`jshint ./leapclient/*.js`; if [ ! -z "$$JSHINT" ]; then echo "$$JSHINT"; fi; test -z "$$JSHINT";
 
-check: fmt vet lint jshint
-	@go test -v ./...
-	@cd leapclient; \
-		find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;
+check: lint
+	@go test ./...
+	@cd leapclient; find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;
+	@echo ""; echo " -- Testing complete -- "; echo "";
 
 clean:
-	@find $(GOPATH)/pkg/*/github.com/jeffail -name leaps.a -delete
+	@find $(GOPATH)/pkg/*/github.com/jeffail -name $(PROJECT).a -delete
+	@rm -rf ./bin
 
-install: clean
+install: check
 	@go install
 
+PLATFORMS = "darwin/amd64" "freebsd/amd64" "freebsd/arm" "linux/amd64" "linux/arm" "windows/amd64"
+multiplatform_builds = $(foreach platform, $(PLATFORMS), \
+		plat="$(platform)" GOOS="$${plat%/*}" GOARCH="$${plat\#*/}" GOARM=7; \
+		bindir="./bin/$${GOOS}_$${GOARCH}" exepath="$${bindir}/$(PROJECT)"; \
+		echo "building $${exepath}"; \
+		mkdir -p "$$bindir"; go build -o "$$exepath"; \
+	)
+
+multiplat: check
+	@$(multiplatform_builds)
+
 example: install
-	@leaps -c ./config/leaps_example.js
+	@$(PROJECT) -c ./config/leaps_example.js
