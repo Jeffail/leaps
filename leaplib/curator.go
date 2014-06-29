@@ -34,9 +34,10 @@ import (
 CuratorConfig - Holds configuration options for a curator.
 */
 type CuratorConfig struct {
-	StoreConfig  DocumentStoreConfig `json:"storage"`
-	BinderConfig BinderConfig        `json:"binder"`
-	LoggerConfig LoggerConfig        `json:"logger"`
+	StoreConfig         DocumentStoreConfig      `json:"storage"`
+	BinderConfig        BinderConfig             `json:"binder"`
+	LoggerConfig        LoggerConfig             `json:"logger"`
+	AuthenticatorConfig TokenAuthenticatorConfig `json:"authenticator"`
 }
 
 /*
@@ -45,9 +46,10 @@ each field.
 */
 func DefaultCuratorConfig() CuratorConfig {
 	return CuratorConfig{
-		StoreConfig:  DefaultDocumentStoreConfig(),
-		BinderConfig: DefaultBinderConfig(),
-		LoggerConfig: DefaultLoggerConfig(),
+		StoreConfig:         DefaultDocumentStoreConfig(),
+		BinderConfig:        DefaultBinderConfig(),
+		LoggerConfig:        DefaultLoggerConfig(),
+		AuthenticatorConfig: DefaultTokenAuthenticatorConfig(),
 	}
 }
 
@@ -59,14 +61,15 @@ Curator - A structure designed to keep track of a live collection of Binders. As
 clients in locating their target Binders, and when necessary creates new Binders.
 */
 type Curator struct {
-	config      CuratorConfig
-	store       DocumentStore
-	logger      *LeapsLogger
-	openBinders map[string]*Binder
-	binderMutex sync.RWMutex
-	errorChan   chan BinderError
-	closeChan   chan bool
-	closedChan  chan bool
+	config        CuratorConfig
+	store         DocumentStore
+	logger        *LeapsLogger
+	authenticator TokenAuthenticator
+	openBinders   map[string]*Binder
+	binderMutex   sync.RWMutex
+	errorChan     chan BinderError
+	closeChan     chan bool
+	closedChan    chan bool
 }
 
 /*
@@ -78,15 +81,20 @@ func CreateNewCurator(config CuratorConfig) (*Curator, error) {
 	if err != nil {
 		return nil, err
 	}
+	auth, err := TokenAuthenticatorFactory(config.AuthenticatorConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	curator := Curator{
-		config:      config,
-		store:       store,
-		logger:      CreateLogger(config.LoggerConfig),
-		openBinders: make(map[string]*Binder),
-		errorChan:   make(chan BinderError),
-		closeChan:   make(chan bool),
-		closedChan:  make(chan bool),
+		config:        config,
+		store:         store,
+		logger:        CreateLogger(config.LoggerConfig),
+		authenticator: auth,
+		openBinders:   make(map[string]*Binder),
+		errorChan:     make(chan BinderError),
+		closeChan:     make(chan bool),
+		closedChan:    make(chan bool),
 	}
 
 	go curator.loop()
@@ -153,7 +161,11 @@ func (c *Curator) loop() {
 FindDocument - Locates an existing, or creates a fresh Binder for an existing document and returns
 that Binder for subscribing to. Returns an error if there was a problem locating the document.
 */
-func (c *Curator) FindDocument(_ string, id string) (*BinderPortal, error) {
+func (c *Curator) FindDocument(token string, id string) (*BinderPortal, error) {
+	if !c.authenticator.AuthoriseJoin(token, id) {
+		return nil, fmt.Errorf("failed to authorise join of document id: %v with token: %v", id, token)
+	}
+
 	c.binderMutex.Lock()
 	defer c.binderMutex.Unlock()
 
@@ -178,7 +190,11 @@ NewDocument - Creates a fresh Binder for a new document, which is subsequently s
 error if either the document ID is already currently in use, or if there is a problem storing the
 new document.
 */
-func (c *Curator) NewDocument(_ string, doc *Document) (*BinderPortal, error) {
+func (c *Curator) NewDocument(token string, doc *Document) (*BinderPortal, error) {
+	if !c.authenticator.AuthoriseCreate(token) {
+		return nil, fmt.Errorf("failed to gain permission to create with token: %v", token)
+	}
+
 	// Always generate a fresh ID
 	doc.ID = GenerateID(doc.Title, doc.Description)
 

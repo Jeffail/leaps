@@ -12,6 +12,9 @@
                 "logger": {
                         "level": 2,
                         "output_path": ""
+                },
+                "authenticator": {
+                        "type": "none"
                 }
         },
         "http_server": {
