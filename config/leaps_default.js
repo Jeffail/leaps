@@ -2,7 +2,8 @@
         "curator": {
                 "storage": {
                         "type": "memory",
-                        "name": ""
+                        "name": "",
+						"store_directory": ""
                 },
                 "binder": {
                         "flush_period_ms": 500,

@@ -184,3 +184,47 @@ func TestTransformStories(t *testing.T) {
 		}
 	}
 }
+
+func TestTextModelUnicodeTransforms(t *testing.T) {
+	doc, err := CreateNewDocument("Test", "Doc test", "text", "hello world 我今天要学习")
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+
+	model := CreateTextModel(doc.ID)
+	if _, _, err = model.PushTransform(OTransform{
+		Version:  model.GetVersion() + 1,
+		Position: 12,
+		Insert:   "你听说那条新闻了吗? ",
+		Delete:   0,
+	}); err != nil {
+		t.Errorf("Error: %v", err)
+	}
+	if _, _, err = model.PushTransform(OTransform{
+		Version:  model.GetVersion() + 1,
+		Position: 23,
+		Insert:   "我饿了",
+		Delete:   6,
+	}); err != nil {
+		t.Errorf("Error: %v", err)
+	}
+	if _, _, err = model.PushTransform(OTransform{
+		Version:  model.GetVersion() + 1,
+		Position: 23,
+		Insert:   "交通堵塞了",
+		Delete:   3,
+	}); err != nil {
+		t.Errorf("Error: %v", err)
+	}
+
+	if _, err = model.FlushTransforms(&doc.Content, time.Second*60); err != nil {
+		t.Errorf("Error flushing: %v", err)
+	}
+
+	expected := "hello world 你听说那条新闻了吗? 交通堵塞了"
+	received := doc.Content.(string)
+	if expected != received {
+		t.Errorf("Expected %v, received %v", expected, received)
+	}
+}

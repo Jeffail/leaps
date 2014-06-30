@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 /*--------------------------------------------------------------------------------------------------
  */
-
 /* _leap_model is an object designed to keep track of the inbound and outgoing transforms
  * for a local document, and updates the caller with the appropriate actions at each stage.
  *

@@ -87,6 +87,33 @@ func ValidateDocument(doc *Document) error {
 }
 
 /*
+SerializeDocumentContent - Serialize the content of a document into a string, based on its type.
+*/
+func SerializeDocumentContent(doctype string, content interface{}) (string, error) {
+	switch doctype {
+	case "text":
+		if str, ok := content.(string); ok {
+			return str, nil
+		}
+	default:
+		return "", errors.New("document type was not recognized")
+	}
+	return "", errors.New("document content was not expected type")
+}
+
+/*
+ParseDocumentContent - Parse a string into a document content based on its type.
+*/
+func ParseDocumentContent(doctype string, content string) (interface{}, error) {
+	switch doctype {
+	case "text":
+		return content, nil
+	default:
+		return nil, errors.New("document type was not recognized")
+	}
+}
+
+/*
 GenerateID - Create a unique ID for a document using a hash of the title, description, a timestamp
 and a pseudo random integer as a hex encoded string with the timestamp on the end.
 */

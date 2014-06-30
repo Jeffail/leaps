@@ -18,9 +18,10 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 #THE SOFTWARE.
 
-.PHONY: all fmt build vet lint jshint check clean install example multiplat
+.PHONY: all build lint check clean install example multiplat package
 
 PROJECT := leaps
+VERSION := $(shell git describe --tags || echo "v0.0.0")
 
 all: build
 
@@ -29,10 +30,9 @@ build: check
 	@echo "building ./bin/$(PROJECT)"
 	@go build -o ./bin/$(PROJECT)
 
+GOLINT=$(shell golint ./**/*.go)
 lint:
-	@VET=`go tool vet ./**/*.go`; if [ ! -z "$$VET" ]; then echo "$$VET"; fi; test -z "$$VET";
-	@LINT=`golint ./**/*.go`; if [ ! -z "$$LINT" ]; then echo "$$LINT"; fi; test -z "$$LINT";
-	@JSHINT=`jshint ./leapclient/*.js`; if [ ! -z "$$JSHINT" ]; then echo "$$JSHINT"; fi; test -z "$$JSHINT";
+	@go tool vet ./**/*.go && echo "$(GOLINT)" && test -z "$(GOLINT)" && jshint ./leapclient/*.js
 
 check: lint
 	@go test ./...
@@ -41,21 +41,37 @@ check: lint
 
 clean:
 	@find $(GOPATH)/pkg/*/github.com/jeffail -name $(PROJECT).a -delete
-	@rm -rf ./bin
+	@rm -rf ./bin ./releases
 
 install: check
 	@go install
 
-PLATFORMS = "darwin/amd64" "freebsd/amd64" "freebsd/arm" "linux/amd64" "linux/arm" "windows/amd64"
+PLATFORMS = "darwin/amd64" "freebsd/amd64" "freebsd/arm" "linux/amd64" "linux/arm" "windows/amd64" "windows/386"
 multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" GOOS="$${plat%/*}" GOARCH="$${plat\#*/}" GOARM=7; \
 		bindir="./bin/$${GOOS}_$${GOARCH}" exepath="$${bindir}/$(PROJECT)"; \
-		echo "building $${exepath}"; \
-		mkdir -p "$$bindir"; go build -o "$$exepath"; \
+		echo "building $${exepath} with GOOS=$${GOOS}, GOARCH=$${GOARCH}, GOARM=$${GOARM}"; \
+		mkdir -p "$$bindir"; GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath"; \
+	)
+
+package_builds = $(foreach platform, $(PLATFORMS), \
+		plat="$(platform)" p_stamp="$${plat%/*}_$${plat\#*/}" a_name="$(PROJECT)-$${p_stamp}-$(VERSION)"; \
+		echo "archiving $${a_name}"; \
+		mkdir -p "./releases/$(VERSION)"; \
+		cp -LR "./bin/$${p_stamp}" "./releases/$(VERSION)/$(PROJECT)"; \
+		cp -LR "./config" "./releases/$(VERSION)/$(PROJECT)"; \
+		cp -LR "./static" "./releases/$(VERSION)/$(PROJECT)"; \
+		cd "./releases/$(VERSION)"; \
+		tar -czf "$${a_name}.tar.gz" "./$(PROJECT)"; \
+		rm -r "./$(PROJECT)"; \
+		cd ../..; \
 	)
 
 multiplat: check
 	@$(multiplatform_builds)
+
+package: multiplat
+	@$(package_builds)
 
 example: install
 	@$(PROJECT) -c ./config/leaps_example.js

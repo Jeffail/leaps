@@ -23,6 +23,7 @@ THE SOFTWARE.
 package leaplib
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -140,12 +141,12 @@ func (m *OModel) FlushTransforms(contentBoxed *interface{}, retention time.Durat
 	transforms := m.Unapplied[:]
 	m.Unapplied = []*OTransform{}
 
-	byteContent := []byte(content)
+	runeContent := bytes.Runes([]byte(content))
 
 	var i, j int
 	var err error
 	for i = 0; i < len(transforms); i++ {
-		if err = m.applyTransform(&byteContent, transforms[i]); err != nil {
+		if err = m.applyTransform(&runeContent, transforms[i]); err != nil {
 			break
 		}
 	}
@@ -160,7 +161,7 @@ func (m *OModel) FlushTransforms(contentBoxed *interface{}, retention time.Durat
 	}
 
 	m.Applied = append(m.Applied[j:], transforms...)
-	*contentBoxed = string(byteContent)
+	*contentBoxed = string(runeContent)
 
 	return i > 0, err
 }
@@ -191,7 +192,9 @@ The transform 'pre' is the preceeding transform that should be used to alter 'su
 its originally intended change.
 */
 func updateTransform(sub *OTransform, pre *OTransform) {
-	subLength, preLength := len(sub.Insert), len(pre.Insert)
+	subInsert, preInsert := bytes.Runes([]byte(sub.Insert)), bytes.Runes([]byte(pre.Insert))
+	subLength, preLength := len(subInsert), len(preInsert)
+
 	if pre.Position <= sub.Position {
 		if preLength > 0 && pre.Delete == 0 {
 			sub.Position += preLength
@@ -209,9 +212,9 @@ func updateTransform(sub *OTransform, pre *OTransform) {
 		if excess > pre.Delete {
 			sub.Delete += (preLength - pre.Delete)
 
-			newInsert := make([]byte, subLength+preLength)
-			copy(newInsert[:], []byte(sub.Insert))
-			copy(newInsert[subLength:], []byte(pre.Insert))
+			newInsert := make([]rune, subLength+preLength)
+			copy(newInsert[:], subInsert)
+			copy(newInsert[subLength:], preInsert)
 
 			sub.Insert = string(newInsert)
 		} else {
@@ -223,7 +226,7 @@ func updateTransform(sub *OTransform, pre *OTransform) {
 /*
 applyTransform - Apply a specific transform to some content.
 */
-func (m *OModel) applyTransform(content *[]byte, ot *OTransform) error {
+func (m *OModel) applyTransform(content *[]rune, ot *OTransform) error {
 	if ot.Delete < 0 {
 		return errors.New("transform contained negative deletion")
 	}
@@ -234,12 +237,12 @@ func (m *OModel) applyTransform(content *[]byte, ot *OTransform) error {
 	}
 
 	start := (*content)[:ot.Position]
-	middle := []byte(ot.Insert)
+	middle := bytes.Runes([]byte(ot.Insert))
 	end := (*content)[ot.Position+ot.Delete:]
 
 	startLen, middleLen, endLen := len(start), len(middle), len(end)
 
-	(*content) = make([]byte, startLen+middleLen+endLen)
+	(*content) = make([]rune, startLen+middleLen+endLen)
 	copy(*content, start)
 	copy((*content)[startLen:], middle)
 	copy((*content)[startLen+middleLen:], end)

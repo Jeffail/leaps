@@ -205,6 +205,7 @@ func (b *Binder) processJob(request BinderRequest) {
 	var err error
 	var version int
 
+	b.log(LeapDebug, fmt.Sprintf("Received transform: %v", request.Transform))
 	newOTs[0], version, err = b.model.PushTransform(request.Transform)
 
 	if err != nil {

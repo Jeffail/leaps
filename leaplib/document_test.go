@@ -45,3 +45,24 @@ func TestIDGenerator(t *testing.T) {
 		t.Errorf("There were %v ID collisions out of %v documents generated.", collisions, num)
 	}
 }
+
+func TestDocumentConversions(t *testing.T) {
+	test, testtype := "hello world", "text"
+	result, err := SerializeDocumentContent(testtype, test)
+	if err != nil {
+		t.Errorf("Serialize error: %v", err)
+	}
+	if test != result {
+		t.Errorf("Serialize error: %v != %v", test, result)
+	}
+
+	resultParse, err := ParseDocumentContent(testtype, test)
+	if err != nil {
+		t.Errorf("Serialize error: %v", err)
+	}
+	if resultString, ok := resultParse.(string); !ok {
+		t.Errorf("Parse returned unexpected type")
+	} else if test != resultString {
+		t.Errorf("Serialize error: %v != %v", test, resultString)
+	}
+}
