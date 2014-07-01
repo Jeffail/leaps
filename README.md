@@ -38,4 +38,19 @@ To build up your own service look up the configuration files in ./config. The si
 
 The files you need for the client side can be found in ./leapclient. This folder includes the core leapclient.js file for connecting to a service, and also some helper files for various things such as binding to a textarea element.
 
-For more guidance on how to use the client look up the example in ./static/example, good documentation is soon to come, probably.
+For more guidance on how to use the client look up the example in ./static/example, good documentation is soon to come, probably, but for now here's the example:
+
+```javascript
+window.onload = function() {
+	"use strict";
+
+	var client = new leap_client();
+	client.bind_textarea(document.getElementById("document"));
+
+	client.on("connect", function() {
+		client.join_document("test_document");
+	});
+
+	client.connect("ws://" + window.location.host + "/socket");
+};
+```
