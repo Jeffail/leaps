@@ -37,15 +37,15 @@ window.onload = function() {
 		}
 	};
 
-	client.subscribe_event("on_document", function(doc) {
+	client.on("document", function(doc) {
 		idinput.value = doc.id;
 	});
 
-	client.subscribe_event("on_error", function(err) {
+	client.on("error", function(err) {
 		console.log(JSON.stringify(err));
 	});
 
-	client.subscribe_event("on_connect", function() {
+	client.on("connect", function() {
 		connected = true;
 	});
 

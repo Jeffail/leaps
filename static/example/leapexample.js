@@ -2,27 +2,15 @@ window.onload = function() {
 	"use strict";
 
 	var client = new leap_client();
-	var textarea = document.getElementById("test");
+	client.bind_textarea(document.getElementById("test"));
 
-	var boundarea = new leap_bind_textarea(client, textarea);
-
-	client.subscribe_event("on_error", function(err) {
+	client.on("error", function(err) {
 		console.log(JSON.stringify(err));
 	});
 
-	client.subscribe_event("on_connect", function() {
-		var err = client.join_document("test_document");
-		if ( err !== undefined ) {
-			console.error(err);
-			return;
-		}
+	client.on("connect", function() {
+		client.join_document("test_document");
 	});
 
-	var protocol = (window.location.protocol == 'https:') ? "wss://" : "ws://";
-
-	var err = client.connect("ws://" + window.location.host + "/socket");
-	if ( err !== undefined ) {
-		console.error(err);
-		return;
-	}
+	client.connect("ws://" + window.location.host + "/socket");
 };

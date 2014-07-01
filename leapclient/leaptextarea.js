@@ -51,19 +51,19 @@ var leap_bind_textarea = function(leap_client, text_area) {
 		this.error = "event listeners not implemented on this browser, are you from the past?";
 	}
 
-	this._leap_client.subscribe_event("on_document", function(doc) {
+	this._leap_client.subscribe_event("document", function(doc) {
 		binder._content = binder._text_area.value = doc.content;
 		binder._ready = true;
 		binder._text_area.disabled = false;
 	});
 
-	this._leap_client.subscribe_event("on_transforms", function(transforms) {
+	this._leap_client.subscribe_event("transforms", function(transforms) {
 		for ( var i = 0, l = transforms.length; i < l; i++ ) {
 			binder._apply_transform.apply(binder, [ transforms[i] ]);
 		}
 	});
 
-	this._leap_client.subscribe_event("on_disconnect", function() {
+	this._leap_client.subscribe_event("disconnect", function() {
 		binder._text_area.disabled = true;
 	});
 };
@@ -103,7 +103,7 @@ leap_bind_textarea.prototype._trigger_diff = function() {
 		i++;
 	}
 	while ((new_content[(new_content.length - 1 - j)] === this._content[(this._content.length - 1 - j)]) &&
-			((i + j) < new_content[i].length) && ((i + j) < this._content[i].length)) {
+			((i + j) < new_content.length) && ((i + j) < this._content.length)) {
 		j++;
 	}
 
@@ -125,6 +125,18 @@ leap_bind_textarea.prototype._trigger_diff = function() {
 		}
 	}
 };
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
+try {
+	if ( leap_client !== undefined && typeof(leap_client) === "function" ) {
+		leap_client.prototype.bind_textarea = function(text_area) {
+			this._textarea = new leap_bind_textarea(this, text_area);
+		};
+	}
+} catch (e) {
+}
 
 /*--------------------------------------------------------------------------------------------------
  */

@@ -41,12 +41,12 @@ check: lint
 
 clean:
 	@find $(GOPATH)/pkg/*/github.com/jeffail -name $(PROJECT).a -delete
-	@rm -rf ./bin ./releases
+	@rm -rf ./bin
 
 install: check
 	@go install
 
-PLATFORMS = "darwin/amd64" "freebsd/amd64" "freebsd/arm" "linux/amd64" "linux/arm" "windows/amd64" "windows/386"
+PLATFORMS = "darwin/amd64" "freebsd/amd64" "freebsd/arm" "linux/amd64" "linux/arm" "windows/amd64"
 multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" GOOS="$${plat%/*}" GOARCH="$${plat\#*/}" GOARM=7; \
 		bindir="./bin/$${GOOS}_$${GOARCH}" exepath="$${bindir}/$(PROJECT)"; \

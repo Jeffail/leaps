@@ -23,12 +23,7 @@ THE SOFTWARE.
 package leaplib
 
 import (
-	"bufio"
 	"errors"
-	"fmt"
-	"os"
-	"path"
-	"strconv"
 	"sync"
 )
 
@@ -151,113 +146,6 @@ func GetMockStore(config DocumentStoreConfig) (DocumentStore, error) {
 		Content:     "Open this page multiple times to see the edits appear in all of them.",
 	}
 	return memStore, nil
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-/*
-FileStore - Most basic persistent implementation of DocumentStore. Simple stores each document into
-a file within a configured directory.
-*/
-type FileStore struct {
-	config DocumentStoreConfig
-}
-
-/*
-Store - Store document in its file location.
-*/
-func (s *FileStore) Store(id string, doc *Document) error {
-	file, err := os.Create(path.Join(s.config.StoreDirectory, id))
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(doc.Title)); err != nil {
-		return err
-	}
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(doc.Description)); err != nil {
-		return err
-	}
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(doc.Type)); err != nil {
-		return err
-	}
-	serialized, err := SerializeDocumentContent(doc.Type, doc.Content)
-	if err != nil {
-		return err
-	}
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(serialized)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-/*
-Fetch - Fetch document from its file location.
-*/
-func (s *FileStore) Fetch(id string) (*Document, error) {
-	file, err := os.Open(path.Join(s.config.StoreDirectory, id))
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	doc := Document{ID: id}
-
-	scanner := bufio.NewScanner(file)
-	if !scanner.Scan() {
-		return nil, errors.New("failed to read title from document file")
-	}
-	doc.Title, err = strconv.Unquote(scanner.Text())
-	if err != nil {
-		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-
-	if !scanner.Scan() {
-		return nil, errors.New("failed to read description from document file")
-	}
-	doc.Description, err = strconv.Unquote(scanner.Text())
-	if err != nil {
-		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-
-	if !scanner.Scan() {
-		return nil, errors.New("failed to read type from document file")
-	}
-	doc.Type, err = strconv.Unquote(scanner.Text())
-	if err != nil {
-		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-
-	if !scanner.Scan() {
-		return nil, errors.New("failed to read content from document file")
-	}
-	unquotedContent, err := strconv.Unquote(scanner.Text())
-	if err != nil {
-		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-	if doc.Content, err = ParseDocumentContent(doc.Type, unquotedContent); err != nil {
-		return nil, err
-	}
-
-	return &doc, nil
-}
-
-/*
-GetFileStore - Just a func that returns a FileStore
-*/
-func GetFileStore(config DocumentStoreConfig) (DocumentStore, error) {
-	if len(config.StoreDirectory) == 0 {
-		return nil, errors.New("A file store document configuration requires a valid directory")
-	}
-	if _, err := os.Stat(config.StoreDirectory); os.IsNotExist(err) {
-		if err = os.MkdirAll(config.StoreDirectory, os.ModePerm); err != nil {
-			return nil, fmt.Errorf("Cannot create file store for documents: %v", err)
-		}
-	}
-	return &FileStore{config: config}, nil
 }
 
 /*--------------------------------------------------------------------------------------------------

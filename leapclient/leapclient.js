@@ -281,6 +281,14 @@ var leap_client = function() {
 
 	this._model = null;
 
+	this.EVENT_TYPE = {
+		CONNECT: "connect",
+		DISCONNECT: "disconnect",
+		DOCUMENT: "document",
+		TRANSFORMS: "transforms",
+		ERROR: "error"
+	};
+
 	this._events = {};
 };
 
@@ -300,6 +308,10 @@ leap_client.prototype.subscribe_event = function(name, subscriber) {
 		this._events[name] = [ subscriber ];
 	}
 };
+
+/* on - an alias for subscribe_event.
+ */
+leap_client.prototype.on = leap_client.prototype.subscribe_event;
 
 /* clear_subscribers, removes all functions subscribed to an event.
  */
@@ -333,7 +345,7 @@ leap_client.prototype._do_action = function(action_obj) {
 		return action_obj.error;
 	}
 	if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
-		this._dispatch_event("on_transforms", [ action_obj.apply ]);
+		this._dispatch_event(this.EVENT_TYPE.TRANSFORMS, [ action_obj.apply ]);
 	}
 	if ( action_obj.send !== undefined && action_obj.send instanceof Object ) {
 		this._socket.send(JSON.stringify({
@@ -376,7 +388,7 @@ leap_client.prototype._process_message = function(message) {
 		}
 		this.document_id = message.leap_document.id;
 		this._model = new _leap_model(message.version);
-		this._dispatch_event("on_document", [ message.leap_document ]);
+		this._dispatch_event(this.EVENT_TYPE.DOCUMENT, [ message.leap_document ]);
 		break;
 	case "transforms":
 		if ( this._model === null ) {
@@ -543,26 +555,27 @@ leap_client.prototype.connect = function(address, _websocket) {
 			message_obj = JSON.parse(message_text);
 		} catch (e) {
 			leap_obj._dispatch_event.apply(leap_obj,
-				[ "on_error", [ JSON.stringify(e.message) + " (" + e.lineNumber + "): " + message_text ] ]);
+				[ leap_obj.EVENT_TYPE.ERROR,
+					[ JSON.stringify(e.message) + " (" + e.lineNumber + "): " + message_text ] ]);
 			return;
 		}
 
 		var err = leap_obj._process_message.apply(leap_obj, [ message_obj ]);
 		if ( typeof(err) === "string" ) {
-			leap_obj._dispatch_event.apply(leap_obj, [ "on_error", [ err ] ]);
+			leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, [ err ] ]);
 		}
 	};
 
 	this._socket.onclose = function() {
-		leap_obj._dispatch_event.apply(leap_obj, [ "on_disconnect", [] ]);
+		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.DISCONNECT, [] ]);
 	};
 
 	this._socket.onopen = function() {
-		leap_obj._dispatch_event.apply(leap_obj, [ "on_connect", arguments ]);
+		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.CONNECT, arguments ]);
 	};
 
 	this._socket.onerror = function() {
-		leap_obj._dispatch_event.apply(leap_obj, [ "on_error", arguments ]);
+		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, arguments ]);
 	};
 };
 
