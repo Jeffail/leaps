@@ -85,6 +85,8 @@ func (s *FileStore) Fetch(id string) (*Document, error) {
 	doc := Document{ID: id}
 
 	scanner := bufio.NewScanner(file)
+
+	// Get title
 	if !scanner.Scan() {
 		return nil, errors.New("failed to read title from document file")
 	}
@@ -93,6 +95,7 @@ func (s *FileStore) Fetch(id string) (*Document, error) {
 		return nil, fmt.Errorf("unquote error: %v", err)
 	}
 
+	// Get description
 	if !scanner.Scan() {
 		return nil, errors.New("failed to read description from document file")
 	}
@@ -101,6 +104,7 @@ func (s *FileStore) Fetch(id string) (*Document, error) {
 		return nil, fmt.Errorf("unquote error: %v", err)
 	}
 
+	// Get type
 	if !scanner.Scan() {
 		return nil, errors.New("failed to read type from document file")
 	}
@@ -109,6 +113,7 @@ func (s *FileStore) Fetch(id string) (*Document, error) {
 		return nil, fmt.Errorf("unquote error: %v", err)
 	}
 
+	// Get content
 	if !scanner.Scan() {
 		return nil, errors.New("failed to read content from document file")
 	}
