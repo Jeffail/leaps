@@ -42,8 +42,6 @@ For more guidance on how to use the client look up the example in ./static/examp
 
 ```javascript
 window.onload = function() {
-	"use strict";
-
 	var client = new leap_client();
 	client.bind_textarea(document.getElementById("document"));
 

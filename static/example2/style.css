@@ -35,6 +35,7 @@ input:disabled {
 }
 
 textarea {
+	box-shadow: inset 0px 0px 4px #7c7c7c;
 	font-family: sans-serif;
 	background-color: #fcfcfc;
 	color: #3c3c3c;
