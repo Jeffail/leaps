@@ -1,0 +1,25 @@
+body {
+	background-color: #f0f0f0;
+	color: #3c3c3c;
+	text-align: center;
+	padding: 20px;
+	font-family: sans-serif;
+}
+
+.container {
+	position: relative;
+	text-align: left;
+
+	margin: 20px;
+}
+
+#editor {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+
+	height: 600px;
+	width: 800px;
+}

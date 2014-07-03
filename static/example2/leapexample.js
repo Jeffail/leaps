@@ -7,6 +7,8 @@ window.onload = function() {
 	var createbtn = document.getElementById("createbtn");
 	var joinbtn = document.getElementById("joinbtn");
 
+	textarea.value = "Not connected. Either create a new document, or join an existing one.";
+
 	var boundarea = new leap_bind_textarea(client, textarea);
 
 	var connected = false;
