@@ -60,7 +60,7 @@ var run_story = function(story, test) {
 		var epoch_receives = story.epochs[i].receive;
 
 		client.clear_subscribers("transforms");
-		client.subscribe_event("transforms", function(tforms) {
+		client.on("transforms", function(tforms) {
 			for ( var tn = 0, ln = tforms.length; tn < ln; tn++ ) {
 				content = la(tforms[tn], content);
 			}

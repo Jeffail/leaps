@@ -47,10 +47,13 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 	this._leap_client.subscribe_event("document", function(doc) {
 		binder._content = doc.content;
 
+		binder._blind_eye_turned = true;
 		binder._ace.setValue(doc.content);
 		binder._ace.setReadOnly(false);
+		binder._ace.clearSelection();
 
 		binder._ready = true;
+		binder._blind_eye_turned = false;
 	});
 
 	this._leap_client.subscribe_event("transforms", function(transforms) {
@@ -71,13 +74,28 @@ leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 
 	this._blind_eye_turned = true;
 
-	// TODO
+	var edit_session = this._ace.getSession();
+	var live_document = edit_session.getDocument();
+
+	var position = live_document.indexToPosition(transform.position, 0);
+
+	if ( transform.num_delete > 0 ) {
+		edit_session.remove({
+			start: position,
+			end: live_document.indexToPosition(transform.position + transform.num_delete, 0)
+		});
+	}
+	if ( typeof(transform.insert) === "string" && transform.insert.length > 0 ) {
+		edit_session.insert(position, transform.insert);
+	}
 
 	this._blind_eye_turned = false;
 
-	setTimeout(function() {
-		// Validate outputs are similar.
-	}, 0);
+	setTimeout((function() {
+		if ( this._content !== this._ace.getValue() ) {
+			console.error("internal content and editor content do not match");
+		}
+	}).bind(this), 0);
 };
 
 /* convert_to_transform, takes an ace editor event, converts it into a transform and sends it.
@@ -85,19 +103,44 @@ leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 	"use strict";
 
-	var new_content = "";
+	if ( this._blind_eye_turned ) {
+		return;
+	}
+
 	var tform = {};
 
-	// TODO
+	var live_document = this._ace.getSession().getDocument();
 
-	this._content = new_content;
-	if ( tform.insert !== undefined || tform.num_delete !== undefined ) {
-		var err = this._leap_client.send_transform(tform);
-		if ( err !== undefined ) {
-			console.error(err);
-			// TODO: handle errors gracefully
-		}
+	switch (e.data.action) {
+	case "insertText":
+		tform.position = live_document.positionToIndex(e.data.range.start, 0);
+		tform.insert = e.data.text;
+		break;
+	case "removeText":
+		tform.position = live_document.positionToIndex(e.data.range.start, 0);
+		tform.num_delete = e.data.text.length;
+		break;
+	case "removeLines":
+		tform.position = live_document.positionToIndex(e.data.range.start, 0);
+		tform.num_delete = e.data.lines.join(e.data.nl).length + e.data.nl.length;
+		break;
 	}
+
+	if ( tform.insert === undefined && tform.num_delete === undefined ) {
+		console.error("change resulted in invalid transform: " + JSON.stringify(e.data));
+	}
+
+	this._content = this._leap_client.apply(tform, this._content);
+	var err = this._leap_client.send_transform(tform);
+	if ( err !== undefined ) {
+		console.error(err);
+	}
+
+	setTimeout((function() {
+		if ( this._content !== this._ace.getValue() ) {
+			console.error("internal content and editor content do not match");
+		}
+	}).bind(this), 0);
 };
 
 /*--------------------------------------------------------------------------------------------------

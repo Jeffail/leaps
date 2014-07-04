@@ -30,7 +30,7 @@ build: check
 	@echo "building ./bin/$(PROJECT)"
 	@go build -o ./bin/$(PROJECT)
 
-GOLINT=$(shell golint ./**/*.go)
+GOLINT=$(shell golint .)
 lint:
 	@go tool vet ./**/*.go && echo "$(GOLINT)" && test -z "$(GOLINT)" && jshint ./leapclient/*.js
 

@@ -587,9 +587,23 @@ leap_client.prototype.connect = function(address, _websocket) {
 var leap_apply = function(transform, content) {
 	"use strict";
 
+	var num_delete = 0, to_insert = "";
+
+	if ( typeof(transform.position) !== "number" ) {
+		return content;
+	}
+
+	if ( typeof(transform.num_delete) === "number" ) {
+		num_delete = transform.num_delete;
+	}
+
+	if ( typeof(transform.insert) === "string" ) {
+		to_insert = transform.insert;
+	}
+
 	var first = content.slice(0, transform.position);
-	var second = content.slice(transform.position + transform.num_delete, content.length);
-	return first + transform.insert + second;
+	var second = content.slice(transform.position + num_delete, content.length);
+	return first + to_insert + second;
 };
 
 leap_client.prototype.apply = leap_apply;

@@ -1,10 +1,10 @@
 window.onload = function() {
 	"use strict";
 
-	var editor = ace.edit("editor");
+	var ace_editor = ace.edit("editor");
 
 	var client = new leap_client();
-	client.bind_ace_editor(editor);
+	client.bind_ace_editor(ace_editor);
 
 	client.on("error", function(err) {
 		console.log(JSON.stringify(err));

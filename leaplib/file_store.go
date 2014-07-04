@@ -133,11 +133,11 @@ GetFileStore - Just a func that returns a FileStore
 */
 func GetFileStore(config DocumentStoreConfig) (DocumentStore, error) {
 	if len(config.StoreDirectory) == 0 {
-		return nil, errors.New("A file store document configuration requires a valid directory")
+		return nil, errors.New("a file store document configuration requires a valid directory")
 	}
 	if _, err := os.Stat(config.StoreDirectory); os.IsNotExist(err) {
 		if err = os.MkdirAll(config.StoreDirectory, os.ModePerm); err != nil {
-			return nil, fmt.Errorf("Cannot create file store for documents: %v", err)
+			return nil, fmt.Errorf("cannot create file store for documents: %v", err)
 		}
 	}
 	return &FileStore{config: config}, nil

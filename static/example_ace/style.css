@@ -8,12 +8,14 @@ body {
 
 .container {
 	position: relative;
-	text-align: left;
-
 	margin: 20px;
 }
 
 #editor {
+	text-align: left;
+	margin: auto;
+	box-shadow: 0px 0px 4px #7c7c7c;
+
 	position: absolute;
 	top: 0;
 	bottom: 0;

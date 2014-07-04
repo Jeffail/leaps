@@ -73,24 +73,24 @@ func main() {
 
 	if len(*configPath) > 0 {
 		// Read config file
-		if configBytes, err := ioutil.ReadFile(*configPath); err != nil {
+		configBytes, err := ioutil.ReadFile(*configPath)
+		if err != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("Error reading config file: %v", err))
 			return
-		} else {
-			if err = json.Unmarshal(configBytes, &leapsConfig); err != nil {
-				fmt.Fprintln(os.Stderr, fmt.Sprintf("Error parsing config file: %v", err))
-				return
-			}
+		}
+		if err = json.Unmarshal(configBytes, &leapsConfig); err != nil {
+			fmt.Fprintln(os.Stderr, fmt.Sprintf("Error parsing config file: %v", err))
+			return
 		}
 	}
 
 	// We have our configuration, time to get started up
-	if configJSON, err := json.MarshalIndent(leapsConfig, "", "	"); err != nil {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Configuration marshal error: %v", err))
-		return
-	} else {
+	if configJSON, err := json.MarshalIndent(leapsConfig, "", "	"); err == nil {
 		fmt.Printf("Leaps server initializing, configuration:\n%v\n", string(configJSON))
 		fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
+	} else {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Configuration marshal error: %v", err))
+		return
 	}
 
 	// We are running in curator node.
