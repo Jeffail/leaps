@@ -272,8 +272,7 @@ func (b *Binder) flush() (*Document, error) {
 		return nil, errStore
 	}
 
-	retention := time.Duration(b.config.RetentionPeriod) * time.Second
-	changed, errFlush = b.model.FlushTransforms(&doc.Content, retention)
+	changed, errFlush = b.model.FlushTransforms(&doc.Content, b.config.RetentionPeriod)
 	if changed {
 		errStore = b.block.Store(b.ID, doc)
 	}
@@ -350,7 +349,7 @@ func (b *Binder) loop() {
 		if !running {
 			b.logger.IncrementStat("binder.closing")
 			b.log(LeapInfo, "Closing, shutting down client channels")
-			oldClients := b.clients[:]
+			oldClients := b.clients
 			b.clients = [](chan<- []interface{}){}
 			for _, client := range oldClients {
 				close(client)

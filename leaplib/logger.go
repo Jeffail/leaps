@@ -27,6 +27,7 @@ import (
 	"github.com/jeffail/gabs"
 	"log"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -226,6 +227,7 @@ func (l *LeapsLogger) loop() {
 			}
 			l.addStat(1, "stats.requests")
 			l.stats.SetP(time.Since(l.timestamp).String(), "leaps.uptime")
+			l.stats.SetP(runtime.NumGoroutine(), "leaps.goroutines")
 			select {
 			case req <- l.stats.String():
 			default:

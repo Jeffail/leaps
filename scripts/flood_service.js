@@ -1,6 +1,3 @@
-#!/usr/bin/node
-// Requires 'ws'
-
 var client = new (require('../leapclient/leapclient.js').client)();
 var ws     = require('ws');
 
@@ -43,7 +40,7 @@ var socket = new mock_socket();
 
 client.on("connect", function() {
 	console.log("joining document...");
-	var err = client.create_document("test", "test_document", "hello world 123");
+	var err = client.join_document("test_document");
 	if ( err !== undefined ) {
 		console.error(JSON.stringify(err));
 	}

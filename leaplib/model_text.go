@@ -50,10 +50,10 @@ OModel - A representation of the transform model surrounding a document session.
 of changes submitted and recently applied in order to distribute those changes to clients.
 */
 type OModel struct {
-	DocID     string        `json:"docid"`
-	Version   int           `json:"version"`
-	Applied   []*OTransform `json:"applied"`
-	Unapplied []*OTransform `json:"unapplied"`
+	DocID     string       `json:"docid"`
+	Version   int          `json:"version"`
+	Applied   []OTransform `json:"applied"`
+	Unapplied []OTransform `json:"unapplied"`
 }
 
 /*
@@ -63,8 +63,8 @@ func CreateTextModel(id string) Model {
 	return &OModel{
 		Version:   1,
 		DocID:     id,
-		Applied:   []*OTransform{},
-		Unapplied: []*OTransform{},
+		Applied:   []OTransform{},
+		Unapplied: []OTransform{},
 	}
 }
 
@@ -99,11 +99,11 @@ func (m *OModel) PushTransform(otBoxed interface{}) (interface{}, int, error) {
 	}
 
 	for j := lenApplied - (diff - lenUnapplied); j < lenApplied; j++ {
-		updateTransform(&ot, m.Applied[j])
+		updateTransform(&ot, &m.Applied[j])
 		diff--
 	}
 	for j := lenUnapplied - diff; j < lenUnapplied; j++ {
-		updateTransform(&ot, m.Unapplied[j])
+		updateTransform(&ot, &m.Unapplied[j])
 	}
 
 	m.Version++
@@ -111,7 +111,7 @@ func (m *OModel) PushTransform(otBoxed interface{}) (interface{}, int, error) {
 	ot.Version = m.Version
 	ot.TReceived = time.Now().Unix()
 
-	m.Unapplied = append(m.Unapplied, &ot)
+	m.Unapplied = append(m.Unapplied, ot)
 
 	return ot, m.Version, nil
 }
@@ -128,10 +128,10 @@ func (m *OModel) GetVersion() int {
 
 /*
 FlushTransforms - apply all unapplied transforms and append them to the applied stack, then remove
-old entries from the applied stack. Accepts retention as an indicator for how long applied
+old entries from the applied stack. Accepts retention as an indicator for how many seconds applied
 transforms should be retained. Returns a bool indicating whether any changes were applied.
 */
-func (m *OModel) FlushTransforms(contentBoxed *interface{}, retention time.Duration) (bool, error) {
+func (m *OModel) FlushTransforms(contentBoxed *interface{}, secondsRetention int64) (bool, error) {
 	content, ok := (*contentBoxed).(string)
 	if !ok {
 		return false, fmt.Errorf("received unexpected content, expected string, received %v",
@@ -139,28 +139,31 @@ func (m *OModel) FlushTransforms(contentBoxed *interface{}, retention time.Durat
 	}
 
 	transforms := m.Unapplied[:]
-	m.Unapplied = []*OTransform{}
+	m.Unapplied = []OTransform{}
 
 	runeContent := bytes.Runes([]byte(content))
 
 	var i, j int
 	var err error
 	for i = 0; i < len(transforms); i++ {
-		if err = m.applyTransform(&runeContent, transforms[i]); err != nil {
+		if err = m.applyTransform(&runeContent, &transforms[i]); err != nil {
 			break
 		}
 	}
 
-	upto := time.Now().Unix() - int64(retention)
+	upto := time.Now().Unix() - secondsRetention
 	for j = 0; j < len(m.Applied); j++ {
 		if m.Applied[j].TReceived > upto {
 			break
-		} else {
-			m.Applied[j] = nil
 		}
 	}
 
-	m.Applied = append(m.Applied[j:], transforms...)
+	applied := m.Applied[j:]
+	m.Applied = make([]OTransform, len(transforms)+len(applied))
+
+	copy(m.Applied[:], applied)
+	copy(m.Applied[len(applied):], transforms)
+
 	*contentBoxed = string(runeContent)
 
 	return i > 0, err

@@ -45,7 +45,7 @@ type Model interface {
 	 * in accordance with our retention period. Returns a bool indicating whether any changes
 	 * were applied, and an error in case a fatal problem was encountered.
 	 */
-	FlushTransforms(content *interface{}, retention time.Duration) (bool, error)
+	FlushTransforms(content *interface{}, secondsRetention int64) (bool, error)
 
 	/* GetVersion - returns the current version of the document.
 	 */
