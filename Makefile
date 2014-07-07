@@ -21,27 +21,51 @@
 .PHONY: all build lint check clean install example multiplat package
 
 PROJECT := leaps
+JS_PATH := ./leapclient
+JS_CLIENT := $(JS_PATH)/leapclient.js
+
+BIN := ./bin
+JS_BIN := $(BIN)/js
+
+JS_BIN_FILES = $(shell ls $(JS_BIN))
+
 VERSION := $(shell git describe --tags || echo "v0.0.0")
 
 all: build
 
 build: check
-	@mkdir -p ./bin
-	@echo "building ./bin/$(PROJECT)"
-	@go build -o ./bin/$(PROJECT)
+	@mkdir -p $(JS_BIN)
+	@echo "building $(BIN)/$(PROJECT)"
+	@go build -o $(BIN)/$(PROJECT)
+	@echo "copying/compressing js libraries into $(JS_BIN)"
+	@cp $(JS_CLIENT) $(JS_BIN)/leaps.js; \
+		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-min.js"; \
+		uglifyjs "$(JS_BIN)/leaps.js" >> "$(JS_BIN)/leaps-min.js";
+	@cat $(JS_PATH)/leap*.js > $(JS_BIN)/leaps-all.js; \
+		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-all-min.js"; \
+		uglifyjs "$(JS_BIN)/leaps-all.js" >> "$(JS_BIN)/leaps-all-min.js";
+	@cat $(JS_CLIENT) $(JS_PATH)/leapace.js > $(JS_BIN)/leaps-ace.js; \
+		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-ace-min.js"; \
+		uglifyjs "$(JS_BIN)/leaps-ace.js" >> "$(JS_BIN)/leaps-ace-min.js";
+	@cat $(JS_CLIENT) $(JS_PATH)/leapcodemirror.js > $(JS_BIN)/leaps-codemirror.js; \
+		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-codemirror-min.js"; \
+		uglifyjs "$(JS_BIN)/leaps-codemirror.js" >> "$(JS_BIN)/leaps-codemirror-min.js";
+	@cat $(JS_CLIENT) $(JS_PATH)/leaptextarea.js > $(JS_BIN)/leaps-textarea.js; \
+		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-textarea-min.js"; \
+		uglifyjs "$(JS_BIN)/leaps-textarea.js" >> "$(JS_BIN)/leaps-textarea-min.js";
 
 GOLINT=$(shell golint .)
 lint:
-	@go tool vet ./**/*.go && echo "$(GOLINT)" && test -z "$(GOLINT)" && jshint ./leapclient/*.js
+	@go tool vet ./**/*.go && echo "$(GOLINT)" && test -z "$(GOLINT)" && jshint $(JS_PATH)/*.js
 
 check: lint
 	@go test ./...
-	@cd leapclient; find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;
+	@cd $(JS_PATH); find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;
 	@echo ""; echo " -- Testing complete -- "; echo "";
 
 clean:
 	@find $(GOPATH)/pkg/*/github.com/jeffail -name $(PROJECT).a -delete
-	@rm -rf ./bin
+	@rm -rf $(BIN)
 
 install: check
 	@go install
@@ -49,7 +73,7 @@ install: check
 PLATFORMS = "darwin/amd64" "freebsd/amd64" "freebsd/arm" "linux/amd64" "linux/arm" "windows/amd64"
 multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" GOOS="$${plat%/*}" GOARCH="$${plat\#*/}" GOARM=7; \
-		bindir="./bin/$${GOOS}_$${GOARCH}" exepath="$${bindir}/$(PROJECT)"; \
+		bindir="$(BIN)/$${GOOS}_$${GOARCH}" exepath="$${bindir}/$(PROJECT)"; \
 		echo "building $${exepath} with GOOS=$${GOOS}, GOARCH=$${GOARCH}, GOARM=$${GOARM}"; \
 		mkdir -p "$$bindir"; GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath"; \
 	)
@@ -58,7 +82,8 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" p_stamp="$${plat%/*}_$${plat\#*/}" a_name="$(PROJECT)-$${p_stamp}-$(VERSION)"; \
 		echo "archiving $${a_name}"; \
 		mkdir -p "./releases/$(VERSION)"; \
-		cp -LR "./bin/$${p_stamp}" "./releases/$(VERSION)/$(PROJECT)"; \
+		cp -LR "$(BIN)/$${p_stamp}" "./releases/$(VERSION)/$(PROJECT)"; \
+		cp -LR "$(BIN)/js" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "./config" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "./static" "./releases/$(VERSION)/$(PROJECT)"; \
 		cd "./releases/$(VERSION)"; \

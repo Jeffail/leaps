@@ -36,9 +36,9 @@ To build up your own service look up the configuration files in ./config. The si
 
 ##Leaps clients
 
-The files you need for the client side can be found in ./leapclient. This folder includes the core leapclient.js file for connecting to a service, and also some helper files for various things such as binding to a textarea element.
+After building leaps the files you need for the client side can be found in ./bin/js. The files in ./bin/js are simply concatenated and minified versions of the files in ./leapclient, and include the core library as well as some javascript libraries for binding leaps to textareas, Ace editors and CodeMirror editors.
 
-For more guidance on how to use the client look up the example in ./static/example, good documentation is soon to come, probably, but for now here's the example:
+For more guidance on how to use the client look up the examples in ./static, good documentation is soon to come, probably, but for now here's a quick sample:
 
 ```javascript
 window.onload = function() {

@@ -23,22 +23,24 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
-/* leap_bind_codemirror takes an existing leap_client and uses it to convert a codemirro web editor
- * (http://codemirror.net/) into a live leaps shared editor.
+/* leap_bind_ace_editor takes an existing leap_client and uses it to convert an Ace web editor
+ * (http://ace.c9.io) into a live leaps shared editor.
  */
-var leap_bind_codemirror = function(leap_client, codemirror_object) {
+var leap_bind_ace_editor = function(leap_client, ace_editor) {
 	"use strict";
 
-	this._codemirror = codemirror_object;
+	this._ace = ace_editor;
 	this._leap_client = leap_client;
 
 	this._content = "";
 	this._ready = false;
 	this._blind_eye_turned = false;
 
+	this._ace.setReadOnly(true);
+
 	var binder = this;
 
-	this._codemirror.on('beforeChange', function(instance, e) {
+	this._ace.getSession().on('change', function(e) {
 		binder._convert_to_transform.apply(binder, [ e ]);
 	});
 
@@ -46,7 +48,9 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 		binder._content = doc.content;
 
 		binder._blind_eye_turned = true;
-		binder._codemirror.getDoc().setValue(doc.content);
+		binder._ace.setValue(doc.content);
+		binder._ace.setReadOnly(false);
+		binder._ace.clearSelection();
 
 		binder._ready = true;
 		binder._blind_eye_turned = false;
@@ -59,44 +63,46 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 	});
 
 	this._leap_client.subscribe_event("disconnect", function() {
+		binder._ace.setReadOnly(true);
 	});
 };
 
-/* apply_transform, applies a single transform to the codemirror document
+/* apply_transform, applies a single transform to the ace document.
  */
-leap_bind_codemirror.prototype._apply_transform = function(transform) {
+leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 	"use strict";
 
 	this._blind_eye_turned = true;
 
-	var live_document = this._codemirror.getDoc();
-	var start_position = live_document.posFromIndex(transform.position), end_position = start_position;
+	var edit_session = this._ace.getSession();
+	var live_document = edit_session.getDocument();
+
+	var position = live_document.indexToPosition(transform.position, 0);
 
 	if ( transform.num_delete > 0 ) {
-		end_position = live_document.posFromIndex(transform.position + transform.num_delete);
+		edit_session.remove({
+			start: position,
+			end: live_document.indexToPosition(transform.position + transform.num_delete, 0)
+		});
 	}
-
-	var insert = "";
 	if ( typeof(transform.insert) === "string" && transform.insert.length > 0 ) {
-		insert = transform.insert;
+		edit_session.insert(position, transform.insert);
 	}
-
-	live_document.replaceRange(insert, start_position, end_position);
 
 	this._blind_eye_turned = false;
 
 	this._content = this._leap_client.apply(transform, this._content);
 
 	setTimeout((function() {
-		if ( this._content !== this._codemirror.getDoc().getValue() ) {
+		if ( this._content !== this._ace.getValue() ) {
 			console.error("internal content and editor content do not match");
 		}
 	}).bind(this), 0);
 };
 
-/* convert_to_transform, takes a codemirror edit event, converts it into a transform and sends it.
+/* convert_to_transform, takes an ace editor event, converts it into a transform and sends it.
  */
-leap_bind_codemirror.prototype._convert_to_transform = function(e) {
+leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 	"use strict";
 
 	if ( this._blind_eye_turned ) {
@@ -105,16 +111,25 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
 
 	var tform = {};
 
-	var live_document = this._codemirror.getDoc();
-	var start_index = live_document.indexFromPos(e.from), end_index = live_document.indexFromPos(e.to);
+	var live_document = this._ace.getSession().getDocument();
 
-	tform.position = start_index;
-	tform.insert = e.text.join('\n') || "";
+	switch (e.data.action) {
+	case "insertText":
+		tform.position = live_document.positionToIndex(e.data.range.start, 0);
+		tform.insert = e.data.text;
+		break;
+	case "removeText":
+		tform.position = live_document.positionToIndex(e.data.range.start, 0);
+		tform.num_delete = e.data.text.length;
+		break;
+	case "removeLines":
+		tform.position = live_document.positionToIndex(e.data.range.start, 0);
+		tform.num_delete = e.data.lines.join(e.data.nl).length + e.data.nl.length;
+		break;
+	}
 
-	tform.num_delete = end_index - start_index;
-
-	if ( tform.insert.length <= 0 && tform.num_delete <= 0 ) {
-		console.error("change resulted in invalid transform: " + JSON.stringify(e) + "\nresult: " + JSON.stringify(tform));
+	if ( tform.insert === undefined && tform.num_delete === undefined ) {
+		console.error("change resulted in invalid transform: " + JSON.stringify(e.data));
 	}
 
 	this._content = this._leap_client.apply(tform, this._content);
@@ -124,7 +139,7 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
 	}
 
 	setTimeout((function() {
-		if ( this._content !== this._codemirror.getDoc().getValue() ) {
+		if ( this._content !== this._ace.getValue() ) {
 			console.error("internal content and editor content do not match");
 		}
 	}).bind(this), 0);
@@ -135,8 +150,8 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
 
 try {
 	if ( leap_client !== undefined && typeof(leap_client) === "function" ) {
-		leap_client.prototype.bind_codemirror = function(codemirror_object) {
-			this._codemirror = new leap_bind_codemirror(this, codemirror_object);
+		leap_client.prototype.bind_ace_editor = function(ace_editor) {
+			this._ace_editor = new leap_bind_ace_editor(this, ace_editor);
 		};
 	}
 } catch (e) {

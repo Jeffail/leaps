@@ -15,7 +15,7 @@ func main() {
 	}
 
 	logConf := ll.DefaultLoggerConfig()
-	logConf.LogLevel = ll.LeapDebug
+	//logConf.LogLevel = ll.LeapDebug
 
 	logger := ll.CreateLogger(logConf)
 
@@ -43,7 +43,7 @@ func main() {
 		}
 	}()
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 	targetV := 2
 
 	for {
