@@ -43,6 +43,13 @@ type FileStore struct {
 }
 
 /*
+Create - Store document in a file location
+*/
+func (s *FileStore) Create(id string, doc *Document) error {
+	return s.Store(id, doc)
+}
+
+/*
 Store - Store document in its file location.
 */
 func (s *FileStore) Store(id string, doc *Document) error {

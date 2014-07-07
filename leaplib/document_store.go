@@ -34,9 +34,12 @@ import (
 DocumentStoreConfig - Holds generic configuration options for a document storage solution.
 */
 type DocumentStoreConfig struct {
-	Type           string `json:"type"`
-	Name           string `json:"name"`
-	StoreDirectory string `json:"store_directory"`
+	Type           string    `json:"type"`
+	Name           string    `json:"name"`
+	StoreDirectory string    `json:"store_directory"`
+	Username       string    `json:"username"`
+	Password       string    `json:"password"`
+	SQLConfig      SQLConfig `json:"sql"`
 }
 
 /*
@@ -47,6 +50,9 @@ func DefaultDocumentStoreConfig() DocumentStoreConfig {
 		Type:           "memory",
 		Name:           "",
 		StoreDirectory: "",
+		Username:       "",
+		Password:       "",
+		SQLConfig:      DefaultSQLConfig(),
 	}
 }
 
@@ -59,6 +65,7 @@ order to accommodate for multiple storage strategies. These methods should be as
 possible.
 */
 type DocumentStore interface {
+	Create(string, *Document) error
 	Store(string, *Document) error
 	Fetch(string) (*Document, error)
 }
@@ -77,6 +84,8 @@ func DocumentStoreFactory(config DocumentStoreConfig) (DocumentStore, error) {
 		return GetMemoryStore(config)
 	case "mock":
 		return GetMockStore(config)
+	case "mysql", "sqlite", "postgres":
+		return GetSQLStore(config)
 	}
 	return nil, errors.New("configuration provided invalid document store type")
 }
@@ -91,6 +100,13 @@ zero persistence across sessions.
 type MemoryStore struct {
 	documents map[string]*Document
 	mutex     sync.RWMutex
+}
+
+/*
+Create - Store document in memory.
+*/
+func (s *MemoryStore) Create(id string, doc *Document) error {
+	return s.Store(id, doc)
 }
 
 /*

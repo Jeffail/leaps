@@ -123,7 +123,7 @@ func BindNew(
 	logger *LeapsLogger,
 ) (*Binder, error) {
 
-	if err := block.Store(document.ID, document); err != nil {
+	if err := block.Create(document.ID, document); err != nil {
 		return nil, err
 	}
 
