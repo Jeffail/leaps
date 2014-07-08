@@ -11,6 +11,7 @@
                                         "id_column": "ID",
                                         "title_column": "TITLE",
                                         "description_column": "DESCRIPTION",
+                                        "type_column": "TYPE",
                                         "content_column": "CONTENT"
                                 }
                         }
