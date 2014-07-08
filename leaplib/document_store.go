@@ -37,8 +37,6 @@ type DocumentStoreConfig struct {
 	Type           string    `json:"type"`
 	Name           string    `json:"name"`
 	StoreDirectory string    `json:"store_directory"`
-	Username       string    `json:"username"`
-	Password       string    `json:"password"`
 	SQLConfig      SQLConfig `json:"sql"`
 }
 
@@ -50,8 +48,6 @@ func DefaultDocumentStoreConfig() DocumentStoreConfig {
 		Type:           "memory",
 		Name:           "",
 		StoreDirectory: "",
-		Username:       "",
-		Password:       "",
 		SQLConfig:      DefaultSQLConfig(),
 	}
 }

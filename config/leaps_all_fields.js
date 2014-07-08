@@ -3,7 +3,17 @@
                 "storage": {
                         "type": "memory",
                         "name": "",
-						"store_directory": ""
+                        "store_directory": "",
+                        "sql": {
+                                "dsn": "",
+                                "db_table": {
+                                        "table": "leaps_documents",
+                                        "id_column": "ID",
+                                        "title_column": "TITLE",
+                                        "description_column": "DESCRIPTION",
+                                        "content_column": "CONTENT"
+                                }
+                        }
                 },
                 "binder": {
                         "flush_period_ms": 500,

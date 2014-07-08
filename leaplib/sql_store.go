@@ -35,17 +35,47 @@ import (
 /*--------------------------------------------------------------------------------------------------
  */
 
-type SQLConfig struct {
-	DSN        string `json:"dsn"`
-	Address    string `json:"db_target"`
-	Parameters string `json:"db_params"`
+/*
+TableConfig - The configuration fields for specifying the table labels of the SQL database target.
+*/
+type TableConfig struct {
+	Name           string `json:"table"`
+	IDCol          string `json:"id_column"`
+	TitleCol       string `json:"title_column"`
+	DescriptionCol string `json:"description_column"`
+	TypeCol        string `json:"type_column"`
+	ContentCol     string `json:"content_column"`
 }
 
+/*
+DefaultTableConfig - Default table configuration.
+*/
+func DefaultTableConfig() TableConfig {
+	return TableConfig{
+		Name:           "leaps_documents",
+		IDCol:          "ID",
+		TitleCol:       "TITLE",
+		DescriptionCol: "DESCRIPTION",
+		TypeCol:        "TYPE",
+		ContentCol:     "CONTENT",
+	}
+}
+
+/*
+SQLConfig - The configuration fields for an SQL document store solution.
+*/
+type SQLConfig struct {
+	DSN         string      `json:"dsn"`
+	TableConfig TableConfig `json:"db_table"`
+}
+
+/*
+DefaultSQLConfig - A default SQL configuration.
+*/
 func DefaultSQLConfig() SQLConfig {
 	return SQLConfig{
-		DSN:        "",
-		Address:    "",
-		Parameters: "",
+		DSN:         "",
+		TableConfig: DefaultTableConfig(),
 	}
 }
 
@@ -58,7 +88,6 @@ SQLStore - A document store implementation for an SQL database.
 type SQLStore struct {
 	config     DocumentStoreConfig
 	db         *sql.DB
-	getStmt    *sql.Stmt
 	createStmt *sql.Stmt
 	updateStmt *sql.Stmt
 }
@@ -67,21 +96,59 @@ type SQLStore struct {
 Create - Create a new document in a database table.
 */
 func (m *SQLStore) Create(id string, doc *Document) error {
-	return nil
+	contentStr, err := SerializeDocumentContent(doc.Type, doc.Content)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.createStmt.Exec(id, doc.Title, doc.Description, doc.Type, contentStr)
+	return err
 }
 
 /*
 Store - Store document in a database table.
 */
 func (m *SQLStore) Store(id string, doc *Document) error {
-	return nil
+	contentStr, err := SerializeDocumentContent(doc.Type, doc.Content)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.updateStmt.Exec(doc.Title, doc.Description, doc.Type, contentStr, id)
+	return err
 }
 
 /*
 Fetch - Fetch document from a database table.
 */
 func (m *SQLStore) Fetch(id string) (*Document, error) {
-	return nil, nil
+	var document Document
+	var contentStr string
+
+	document.ID = id
+
+	err := m.db.QueryRow(fmt.Sprintf("SELECT %v, %v, %v, %v FROM %v WHERE %v = ?",
+		m.config.SQLConfig.TableConfig.TitleCol,
+		m.config.SQLConfig.TableConfig.DescriptionCol,
+		m.config.SQLConfig.TableConfig.TypeCol,
+		m.config.SQLConfig.TableConfig.ContentCol,
+		m.config.SQLConfig.TableConfig.Name,
+		m.config.SQLConfig.TableConfig.IDCol,
+	), id).Scan(&document.Title, &document.Description, &document.Type, &contentStr)
+
+	switch {
+	case err == sql.ErrNoRows:
+		return nil, errors.New("document ID was not found in table")
+	case err != nil:
+		return nil, err
+	}
+
+	document.Content, err = ParseDocumentContent(document.Type, contentStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse row content: %v", err)
+	}
+
+	return &document, nil
 }
 
 /*
@@ -89,64 +156,47 @@ GetSQLStore - Just a func that returns an SQLStore
 */
 func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 	var db *sql.DB
-	var get, create, update *sql.Stmt
+	var create, update *sql.Stmt
 	var err error
-	var dsn string
 
-	if len(config.SQLConfig.DSN) > 0 {
-		dsn = config.SQLConfig.DSN
-	} else {
-		if len(config.SQLConfig.Address) > 0 {
-			credentials := config.Username
-			if len(config.Password) > 0 {
-				credentials = fmt.Sprintf("%v:%v", config.Username, config.Password)
-			}
-			dsn = config.SQLConfig.Address
-			if len(credentials) > 0 {
-				dsn = fmt.Sprintf("%v@%v", credentials, config.SQLConfig.Address)
-			}
-			if len(config.SQLConfig.Parameters) > 0 {
-				dsn = fmt.Sprintf("%v?%v", dsn, config.SQLConfig.Parameters)
-			}
-		}
+	if len(config.SQLConfig.DSN) == 0 {
+		return nil, fmt.Errorf("attempted to connect to %v database without a valid DSN", config.Type)
 	}
 
-	if len(dsn) == 0 {
-		return nil, fmt.Errorf("attempted to connect to %v database without a valid config target", config.Type)
+	db, err = sql.Open(config.Type, config.SQLConfig.DSN)
+	if err != nil {
+		return nil, err
 	}
 
-	switch config.Type {
-	case "mysql", "sqlite":
-		db, err = sql.Open(config.Type, dsn)
-		if err != nil {
-			return nil, err
-		}
-	case "postgres":
-		db, err = sql.Open("postgres", fmt.Sprintf("postgres://%v", dsn))
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, errors.New("unrecognised sql_store type")
+	create, err = db.Prepare(fmt.Sprintf("INSERT INTO %v (%v, %v, %v, %v, %v) VALUES (?, ?, ?, ?, ?)",
+		config.SQLConfig.TableConfig.Name,
+		config.SQLConfig.TableConfig.IDCol,
+		config.SQLConfig.TableConfig.TitleCol,
+		config.SQLConfig.TableConfig.DescriptionCol,
+		config.SQLConfig.TableConfig.TypeCol,
+		config.SQLConfig.TableConfig.ContentCol,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare create statement: %v", err)
+	}
+	update, err = db.Prepare(fmt.Sprintf("UPDATE %v SET %v = ?, %v = ?, %v = ?, %v = ? WHERE %v = ?",
+		config.SQLConfig.TableConfig.Name,
+		config.SQLConfig.TableConfig.TitleCol,
+		config.SQLConfig.TableConfig.DescriptionCol,
+		config.SQLConfig.TableConfig.TypeCol,
+		config.SQLConfig.TableConfig.ContentCol,
+		config.SQLConfig.TableConfig.IDCol,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare update statement: %v", err)
 	}
 
-	switch config.Type {
-	case "mysql":
-		get, err = db.Prepare(fmt.Sprintf("SELECT %v, %v, %v FROM %v WHERE %v = ?"))
-		if err != nil {
-			return nil, errors.New("failed to prepare get statement")
-		}
-		create, err = db.Prepare(fmt.Sprintf("INSERT TODO"))
-		if err != nil {
-			return nil, errors.New("failed to prepare create statement")
-		}
-		update, err = db.Prepare(fmt.Sprintf("UPDATE %v SET %v = $1 WHERE %v = $2"))
-		if err != nil {
-			return nil, errors.New("failed to prepare update statement")
-		}
-	}
-
-	return &SQLStore{db: db, config: config, getStmt: get, createStmt: create, updateStmt: update}, nil
+	return &SQLStore{
+		db:         db,
+		config:     config,
+		createStmt: create,
+		updateStmt: update,
+	}, nil
 }
 
 /*--------------------------------------------------------------------------------------------------
