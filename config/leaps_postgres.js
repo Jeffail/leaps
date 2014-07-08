@@ -1,18 +1,18 @@
 {
 	"curator": {
 		"storage": {
-			"type": "mysql",
+			"type": "postgres",
 			"name": "",
 			"store_directory": "",
 			"sql": {
-				"dsn": "leaps:leaps123@tcp(localhost:3306)/leaps",
+				"dsn": "postgres://leaps:leaps123@localhost:5432/leaps?sslmode=disable",
 				"db_table": {
 					"table": "leaps_documents",
-					"id_column": "ID",
-					"title_column": "TITLE",
-					"description_column": "DESCRIPTION",
-					"type_column": "TYPE",
-					"content_column": "CONTENT"
+					"id_column": "id",
+					"title_column": "title",
+					"description_column": "description",
+					"type_column": "type",
+					"content_column": "content"
 				}
 			}
 		}

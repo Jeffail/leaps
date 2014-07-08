@@ -156,6 +156,7 @@ GetSQLStore - Just a func that returns an SQLStore
 */
 func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 	var db *sql.DB
+	var createStr, updateStr string
 	var create, update *sql.Stmt
 	var err error
 
@@ -168,7 +169,20 @@ func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 		return nil, err
 	}
 
-	create, err = db.Prepare(fmt.Sprintf("INSERT INTO %v (%v, %v, %v, %v, %v) VALUES (?, ?, ?, ?, ?)",
+	/* Now we set up prepared statements. This ensures at initialization that we can successfully
+	 * connect to the database.
+	 */
+
+	switch config.Type {
+	case "postgres":
+		createStr = "INSERT INTO %v (%v, %v, %v, %v, %v) VALUES ($1, $2, $3, $4, $5)"
+		updateStr = "UPDATE %v SET %v = $1, %v = $2, %v = $3, %v = $4 WHERE %v = $5"
+	default:
+		createStr = "INSERT INTO %v (%v, %v, %v, %v, %v) VALUES (?, ?, ?, ?, ?)"
+		updateStr = "UPDATE %v SET %v = ?, %v = ?, %v = ?, %v = ? WHERE %v = ?"
+	}
+
+	create, err = db.Prepare(fmt.Sprintf(createStr,
 		config.SQLConfig.TableConfig.Name,
 		config.SQLConfig.TableConfig.IDCol,
 		config.SQLConfig.TableConfig.TitleCol,
@@ -179,7 +193,7 @@ func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare create statement: %v", err)
 	}
-	update, err = db.Prepare(fmt.Sprintf("UPDATE %v SET %v = ?, %v = ?, %v = ?, %v = ? WHERE %v = ?",
+	update, err = db.Prepare(fmt.Sprintf(updateStr,
 		config.SQLConfig.TableConfig.Name,
 		config.SQLConfig.TableConfig.TitleCol,
 		config.SQLConfig.TableConfig.DescriptionCol,
