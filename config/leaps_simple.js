@@ -1,8 +1,8 @@
 {
-        "http_server": {
-                "url": {
-                        "socket_path": "/socket",
-                        "address": ":8080"
-                }
-        }
+	"http_server": {
+		"url": {
+			"socket_path": "/socket",
+			"address": ":8080"
+		}
+	}
 }

@@ -218,7 +218,7 @@ func TestHttpServer(t *testing.T) {
 	curatorConfig.LoggerConfig.LogLevel = leaplib.LeapError
 
 	httpServerConfig := DefaultHTTPServerConfig()
-	httpServerConfig.URL.Address = ":8787"
+	httpServerConfig.Address = ":8787"
 
 	curator, err := leaplib.CreateNewCurator(curatorConfig)
 	if err != nil {

@@ -34,15 +34,6 @@ import (
  */
 
 /*
-URLConfig - Holds configuration options for the HTTPServer URL.
-*/
-type URLConfig struct {
-	StaticPath string `json:"static_path"`
-	Path       string `json:"socket_path"`
-	Address    string `json:"address"`
-}
-
-/*
 HTTPBinderConfig - Options for individual binders (one for each socket connection)
 */
 type HTTPBinderConfig struct {
@@ -53,9 +44,12 @@ type HTTPBinderConfig struct {
 HTTPServerConfig - Holds configuration options for the HTTPServer.
 */
 type HTTPServerConfig struct {
-	URL            URLConfig        `json:"url"`
-	StaticFilePath string           `json:"www_dir"`
-	Binder         HTTPBinderConfig `json:"binder"`
+	StaticPath      string           `json:"static_path"`
+	Path            string           `json:"socket_path"`
+	Address         string           `json:"address"`
+	StaticFilePath  string           `json:"www_dir"`
+	Binder          HTTPBinderConfig `json:"binder"`
+	BindSendTimeout int              `json:"bind_send_timeout_ms"`
 }
 
 /*
@@ -64,11 +58,9 @@ for each field.
 */
 func DefaultHTTPServerConfig() HTTPServerConfig {
 	return HTTPServerConfig{
-		URL: URLConfig{
-			StaticPath: "/leaps",
-			Path:       "/leaps/socket",
-			Address:    ":8080",
-		},
+		StaticPath:     "/leaps",
+		Path:           "/leaps/socket",
+		Address:        ":8080",
 		StaticFilePath: "",
 		Binder: HTTPBinderConfig{
 			BindSendTimeout: 10,
@@ -126,25 +118,25 @@ func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig, mux *http.Se
 		logger:    locator.GetLogger(),
 		closeChan: make(chan bool),
 	}
-	if len(httpServer.config.URL.Path) == 0 {
+	if len(httpServer.config.Path) == 0 {
 		return nil, errors.New("invalid config value for url.socket_path")
 	}
 	if mux != nil {
-		mux.Handle(httpServer.config.URL.Path, websocket.Handler(httpServer.websocketHandler))
+		mux.Handle(httpServer.config.Path, websocket.Handler(httpServer.websocketHandler))
 	} else {
-		http.Handle(httpServer.config.URL.Path, websocket.Handler(httpServer.websocketHandler))
+		http.Handle(httpServer.config.Path, websocket.Handler(httpServer.websocketHandler))
 	}
 	if len(httpServer.config.StaticFilePath) > 0 {
-		if len(httpServer.config.URL.StaticPath) == 0 {
+		if len(httpServer.config.StaticPath) == 0 {
 			return nil, errors.New("invalid config value for url.static_path")
 		}
 		if mux != nil {
-			mux.Handle(httpServer.config.URL.StaticPath,
-				http.StripPrefix(httpServer.config.URL.StaticPath,
+			mux.Handle(httpServer.config.StaticPath,
+				http.StripPrefix(httpServer.config.StaticPath,
 					http.FileServer(http.Dir(httpServer.config.StaticFilePath))))
 		} else {
-			http.Handle(httpServer.config.URL.StaticPath,
-				http.StripPrefix(httpServer.config.URL.StaticPath,
+			http.Handle(httpServer.config.StaticPath,
+				http.StripPrefix(httpServer.config.StaticPath,
 					http.FileServer(http.Dir(httpServer.config.StaticFilePath))))
 		}
 	}
@@ -231,16 +223,16 @@ Listen - Bind to the http endpoint as per configured address, and begin serving 
 simply a helper function that calls http.ListenAndServe
 */
 func (h *HTTPServer) Listen() error {
-	if len(h.config.URL.Address) == 0 {
+	if len(h.config.Address) == 0 {
 		return errors.New("invalid config value for URL.Address")
 	}
 	h.log(leaplib.LeapInfo, fmt.Sprintf("Listening for websockets at address: %v",
-		fmt.Sprintf("%v%v", h.config.URL.Address, h.config.URL.Path)))
-	if len(h.config.URL.StaticPath) > 0 {
+		fmt.Sprintf("%v%v", h.config.Address, h.config.Path)))
+	if len(h.config.StaticPath) > 0 {
 		h.log(leaplib.LeapInfo, fmt.Sprintf("Serving static file requests at address: %v",
-			fmt.Sprintf("%v%v", h.config.URL.Address, h.config.URL.StaticPath)))
+			fmt.Sprintf("%v%v", h.config.Address, h.config.StaticPath)))
 	}
-	err := http.ListenAndServe(h.config.URL.Address, nil)
+	err := http.ListenAndServe(h.config.Address, nil)
 	return err
 }
 

@@ -18,11 +18,9 @@
 		}
 	},
 	"http_server": {
-		"url": {
-			"static_path": "/",
-			"socket_path": "/socket",
-			"address": ":8080"
-		},
+		"static_path": "/",
+		"socket_path": "/socket",
+		"address": ":8080",
 		"www_dir": "./static/example2"
 	},
 	"stats_server": {
