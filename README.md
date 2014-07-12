@@ -4,20 +4,11 @@ Leaps is a service for hosting collaborative, live web editors for text document
 
 Leaps is ready to be deployed as a service, or alternatively you can use it as a library and write your own personalised service around it. The client library is designed to be highly customizable, with more basic helper functions that simply wrap around textarea elements or other popular web editors in your website.
 
-[leaps wiki](https://github.com/Jeffail/leaps/wiki/Service).
+[leaps wiki](https://github.com/Jeffail/leaps/wiki)
 
 ##How to run:
 
-To start up an example server do the following:
-
-```bash
-go get github.com/jeffail/leaps
-cd $GOPATH/src/github.com/jeffail/leaps
-make
-./bin/leaps -c ./config/leaps_example.js
-```
-
-Or just download a release package and do the following:
+Just download a release package and do the following:
 
 ```bash
 tar -xvf ./leaps-linux_amd64-v0.0.2.tar.gz
@@ -31,19 +22,15 @@ A leaps service by default will run and host a statistics page to view event cou
 
 ##Your own service
 
-Running a customized leaps service is as simple as:
-
-```bash
-leaps -c ./leaps_config.js
-```
-
-To learn how to set up your leaps service read here: [leaps service wiki](https://github.com/Jeffail/leaps/wiki/Service).
+To learn how to customize your leaps service read here:
+[leaps service wiki](https://github.com/Jeffail/leaps/wiki/Service)
 
 ##Leaps clients
 
-The leaps client is written in JavaScript and is ready to simply drop into your website. You can read about it [here](https://github.com/Jeffail/leaps/wiki/Clients), and the files to include can be found in the release packages at ./js, or in a built repository at ./bin/js.
+The leaps client is written in JavaScript and is ready to simply drop into your website. You can read about it here:
+[leaps client wiki](https://github.com/Jeffail/leaps/wiki/Clients)
 
-Here's a short example of using leaps to turn a textarea into a shared leaps editor:
+The files to include can be found in the release packages at ./js, or in a built repository at ./bin/js. Here's a short example of using leaps to turn a textarea into a shared leaps editor:
 
 ```javascript
 window.onload = function() {
@@ -56,6 +43,17 @@ window.onload = function() {
 
 	client.connect("ws://" + window.location.host + "/socket");
 };
+```
+
+##How to build:
+
+To build and then start up an example server do the following:
+
+```bash
+go get github.com/jeffail/leaps
+cd $GOPATH/src/github.com/jeffail/leaps
+make
+./bin/leaps -c ./config/leaps_example.js
 ```
 
 ##Contributing and customizing
