@@ -4,11 +4,7 @@ Leaps is a service for hosting collaborative, live web editors for text document
 
 Leaps is ready to be deployed as a service, or alternatively you can use it as a library and write your own personalised service around it. The client library is designed to be highly customizable, with more basic helper functions that simply wrap around textarea elements or other popular web editors in your website.
 
-The service library is designed to be heavily modular and configurable, allowing it to be broken down into a scalable solution of individual components, with both redundancy and parallelism at each component level.
-
-Documentation for the service library can be found here, for those interested in writing custom servers look at the Curator structure:
-
-https://godoc.org/github.com/Jeffail/leaps/leaplib
+[leaps wiki](https://github.com/Jeffail/leaps/wiki/Service).
 
 ##How to run:
 
@@ -17,7 +13,16 @@ To start up an example server do the following:
 ```bash
 go get github.com/jeffail/leaps
 cd $GOPATH/src/github.com/jeffail/leaps
-make example
+make
+./bin/leaps -c ./config/leaps_example.js
+```
+
+Or just download a release package and do the following:
+
+```bash
+tar -xvf ./leaps-linux_amd64-v0.0.2.tar.gz
+cd leaps
+./leaps -c ./config/leaps_example.js
 ```
 
 and then visit: http://localhost:8080 to play with an example server.
@@ -32,13 +37,13 @@ Running a customized leaps service is as simple as:
 leaps -c ./leaps_config.js
 ```
 
-To build up your own service look up the configuration files in ./config. The simple configuration file shows you a minimal config, to see all configuration options check out the default configuration file, and the example file shows you how the leaps example is configured.
+To learn how to set up your leaps service read here: [leaps service wiki](https://github.com/Jeffail/leaps/wiki/Service).
 
 ##Leaps clients
 
-After building leaps the files you need for the client side can be found in ./bin/js. The files in ./bin/js are simply concatenated and minified versions of the files in ./leapclient, and include the core library as well as some javascript libraries for binding leaps to textareas, Ace editors and CodeMirror editors.
+The leaps client is written in JavaScript and is ready to simply drop into your website. You can read about it [here](https://github.com/Jeffail/leaps/wiki/Clients), and the files to include can be found in the release packages at ./js, or in a built repository at ./bin/js.
 
-For more guidance on how to use the client look up the examples in ./static, good documentation is soon to come, probably, but for now here's a quick sample:
+Here's a short example of using leaps to turn a textarea into a shared leaps editor:
 
 ```javascript
 window.onload = function() {
@@ -52,3 +57,9 @@ window.onload = function() {
 	client.connect("ws://" + window.location.host + "/socket");
 };
 ```
+
+##Contributing and customizing
+
+Documentation for the main service library can be found here, for those interested in writing custom servers look at the Curator structure:
+
+https://godoc.org/github.com/Jeffail/leaps/leaplib
