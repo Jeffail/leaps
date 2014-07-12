@@ -2,10 +2,6 @@
 
 Leaps is a service for hosting collaborative, live web editors for text documents that can be shared by multiple users. The library uses a method called operational transforms to allow multiple people to contribute and view each others changes simultaneously in real time whilst ensuring that each user also has the same content.
 
-Leaps looks a bit like this:
-
-![Leaps Diagram](http://jeffail.uk/images/leapsdemo.png "Leaps Diagram")
-
 Leaps is ready to be deployed as a service, or alternatively you can use it as a library and write your own personalised service around it. The client is designed to be simple enough to drop into an existing website with ease, but also to be highly customizable when required.
 
 To read more, check out the wiki: [leaps wiki](https://github.com/Jeffail/leaps/wiki)
