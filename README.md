@@ -45,6 +45,14 @@ window.onload = function() {
 };
 ```
 
+Then at some point you might want to close it:
+
+```javascript
+client.close();
+```
+
+If you bound leaps to a textarea or ace document then the document becomes readonly when the connection is lost/closed.
+
 ##How to build:
 
 To build and then start up an example server do the following:
