@@ -51,6 +51,7 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		binder._ace.setValue(doc.content);
 		binder._ace.setReadOnly(false);
 		binder._ace.clearSelection();
+		binder._ace.getSession().getUndoManager().reset();
 
 		binder._ready = true;
 		binder._blind_eye_turned = false;
@@ -112,11 +113,16 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 	var tform = {};
 
 	var live_document = this._ace.getSession().getDocument();
+	var nl = live_document.getNewLineCharacter();
 
 	switch (e.data.action) {
 	case "insertText":
 		tform.position = live_document.positionToIndex(e.data.range.start, 0);
 		tform.insert = e.data.text;
+		break;
+	case "insertLines":
+		tform.position = live_document.positionToIndex(e.data.range.start, 0);
+		tform.insert = e.data.lines.join(nl) + nl;
 		break;
 	case "removeText":
 		tform.position = live_document.positionToIndex(e.data.range.start, 0);
@@ -124,7 +130,7 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 		break;
 	case "removeLines":
 		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.num_delete = e.data.lines.join(e.data.nl).length + e.data.nl.length;
+		tform.num_delete = e.data.lines.join(nl).length + nl.length;
 		break;
 	}
 
