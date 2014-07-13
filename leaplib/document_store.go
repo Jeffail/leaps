@@ -80,7 +80,7 @@ func DocumentStoreFactory(config DocumentStoreConfig) (DocumentStore, error) {
 		return GetMemoryStore(config)
 	case "mock":
 		return GetMockStore(config)
-	case "mysql", "sqlite3", "postgres":
+	case "mysql", "postgres":
 		return GetSQLStore(config)
 	}
 	return nil, errors.New("configuration provided invalid document store type")
