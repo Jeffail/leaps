@@ -78,6 +78,9 @@ multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 		mkdir -p "$$bindir"; GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath"; \
 	)
 
+multiplat: build
+	@$(multiplatform_builds)
+
 package_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" p_stamp="$${plat%/*}_$${plat\#*/}" a_name="$(PROJECT)-$${p_stamp}-$(VERSION)"; \
 		echo "archiving $${a_name}"; \
@@ -91,9 +94,6 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 		rm -r "./$(PROJECT)"; \
 		cd ../..; \
 	)
-
-multiplat: check
-	@$(multiplatform_builds)
 
 package: multiplat
 	@$(package_builds)
