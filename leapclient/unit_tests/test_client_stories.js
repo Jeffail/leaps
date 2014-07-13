@@ -37,6 +37,8 @@ var run_story = function(story, test) {
 	var content = story.content;
 	var socket = { readyState : 1 };
 
+	socket.close = function() {};
+
 	// First send response should be the same doc, emulating creation
 	socket.send = function(data) {
 		var obj = JSON.parse(data);
@@ -100,6 +102,7 @@ var run_story = function(story, test) {
 				"story '" + story.name + "' epoch " + i + ": " + content + " != " + story.epochs[i].result);
 	}
 
+	client.close();
 	test.ok(content === story.result,
 			"story " + story.name + ": " + content + " != " + story.result);
 };

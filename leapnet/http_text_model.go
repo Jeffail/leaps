@@ -135,6 +135,8 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 					})
 					return
 				}
+			case "ping":
+				// Do nothing
 			default:
 				websocket.JSON.Send(socket, LeapTextServerMessage{
 					Type:  "error",

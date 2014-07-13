@@ -3,6 +3,9 @@
 		"storage": {
 			"type": "mock",
 			"name": "test_document"
+		},
+		"logger": {
+			"level": 3
 		}
 	},
 	"http_server": {

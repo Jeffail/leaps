@@ -114,6 +114,9 @@ func senderClient(id string, feeds <-chan leaplib.OTransform, t *testing.T) {
 				Command:   "submit",
 				Transform: feed,
 			})
+			websocket.JSON.Send(ws, LeapTextClientMessage{
+				Command: "ping",
+			})
 			select {
 			case <-crctChan:
 			case <-time.After(1 * time.Second):

@@ -567,16 +567,43 @@ leap_client.prototype.connect = function(address, _websocket) {
 	};
 
 	this._socket.onclose = function() {
+		if ( undefined !== leap_obj._hearthbeat ) {
+			clearTimeout(leap_obj._heartbeat);
+		}
 		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.DISCONNECT, [] ]);
 	};
 
 	this._socket.onopen = function() {
+		leap_obj._heartbeat = setInterval(function() {
+			leap_obj._socket.send(JSON.stringify({
+				command : "ping"
+			}));
+		}, 5000);
 		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.CONNECT, arguments ]);
 	};
 
 	this._socket.onerror = function() {
+		if ( undefined !== leap_obj._hearthbeat ) {
+			clearTimeout(leap_obj._heartbeat);
+		}
 		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, arguments ]);
 	};
+};
+
+/* Close the connection to the document and halt all operations.
+ */
+leap_client.prototype.close = function() {
+	"use strict";
+
+	if ( undefined !== this._hearthbeat ) {
+		clearTimeout(this._heartbeat);
+	}
+	if ( this._socket !== null && this._socket.readyState === 1 ) {
+		this._socket.close();
+		this._socket = null;
+	}
+	this.document_id = undefined;
+	this._model = undefined;
 };
 
 /*--------------------------------------------------------------------------------------------------
