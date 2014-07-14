@@ -35,9 +35,10 @@ import (
 BinderConfig - Holds configuration options for a binder.
 */
 type BinderConfig struct {
-	FlushPeriod      int64 `json:"flush_period_ms"`
-	RetentionPeriod  int64 `json:"retention_period_s"`
-	ClientKickPeriod int64 `json:"kick_period_ms"`
+	FlushPeriod           int64 `json:"flush_period_ms"`
+	RetentionPeriod       int64 `json:"retention_period_s"`
+	ClientKickPeriod      int64 `json:"kick_period_ms"`
+	CloseInactivityPeriod int64 `json:"close_inactivity_period_s"`
 }
 
 /*
@@ -46,9 +47,10 @@ field.
 */
 func DefaultBinderConfig() BinderConfig {
 	return BinderConfig{
-		FlushPeriod:      500,
-		RetentionPeriod:  60,
-		ClientKickPeriod: 5,
+		FlushPeriod:           500,
+		RetentionPeriod:       60,
+		ClientKickPeriod:      5,
+		CloseInactivityPeriod: 300,
 	}
 }
 
@@ -287,6 +289,25 @@ func (b *Binder) flush() (*Document, error) {
 	return doc, nil
 }
 
+/*
+checkActive - Scans any remaining clients to purge the inactive, returns true if there are remaining
+active clients connected.
+*/
+func (b *Binder) checkActive() bool {
+	if len(b.clients) > 0 {
+		clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
+
+		for _, clientChan := range b.clients {
+			select {
+			case clientChan <- []interface{}{}:
+				return true
+			case <-time.After(clientKickPeriod):
+			}
+		}
+	}
+	return false
+}
+
 /*--------------------------------------------------------------------------------------------------
  */
 
@@ -296,8 +317,10 @@ flushes must be specified.
 */
 func (b *Binder) loop() {
 	flushPeriod := (time.Duration(b.config.FlushPeriod) * time.Millisecond)
+	closePeriod := (time.Duration(b.config.CloseInactivityPeriod) * time.Second)
 
-	flushTime := time.After(flushPeriod)
+	flushTimer := time.NewTimer(flushPeriod)
+	closeTimer := time.NewTimer(closePeriod)
 	for {
 		running := true
 		select {
@@ -325,7 +348,8 @@ func (b *Binder) loop() {
 						TransformRcvChan: sndChan,
 						RequestSndChan:   b.jobs,
 					}
-					flushTime = time.After(flushPeriod)
+					flushTimer.Reset(flushPeriod)
+					closeTimer.Reset(closePeriod)
 				}
 			} else {
 				b.log(LeapInfo, "Subscribe channel closed, shutting down")
@@ -334,19 +358,32 @@ func (b *Binder) loop() {
 		case job, open := <-b.jobs:
 			if running && open {
 				b.processJob(job)
+				closeTimer.Reset(closePeriod)
 			} else {
 				b.log(LeapInfo, "Jobs channel closed, shutting down")
 				running = false
 			}
-		case <-flushTime:
+		case <-flushTimer.C:
 			if _, err := b.flush(); err != nil {
 				b.log(LeapError, fmt.Sprintf("Flush error: %v, shutting down", err))
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 				running = false
 			}
-			flushTime = time.After(flushPeriod)
+			flushTimer.Reset(flushPeriod)
+		case <-closeTimer.C:
+			active := b.checkActive()
+
+			if !active {
+				b.log(LeapInfo, "Binder inactive, requesting shutdown")
+				// Send graceful close request
+				b.errorChan <- BinderError{ID: b.ID, Err: nil}
+			}
+			closeTimer.Reset(closePeriod)
 		}
 		if !running {
+			flushTimer.Stop()
+			closeTimer.Stop()
+
 			b.logger.IncrementStat("binder.closing")
 			b.log(LeapInfo, "Closing, shutting down client channels")
 			oldClients := b.clients

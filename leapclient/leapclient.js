@@ -64,11 +64,15 @@ _leap_model.prototype._validate_transforms = function(transforms) {
 				return "transform contained NaN value for position: " + JSON.stringify(tform);
 			}
 		}
-		if ( tform.num_delete !== undefined && typeof(tform.num_delete) !== "number" ) {
-			tform.num_delete = parseInt(tform.num_delete);
-			if ( isNaN(tform.num_delete) ) {
-				return "transform contained NaN value for num_delete: " + JSON.stringify(tform);
+		if ( tform.num_delete !== undefined ) {
+			if ( typeof(tform.num_delete) !== "number" ) {
+				tform.num_delete = parseInt(tform.num_delete);
+				if ( isNaN(tform.num_delete) ) {
+					return "transform contained NaN value for num_delete: " + JSON.stringify(tform);
+				}
 			}
+		} else {
+			tform.num_delete = 0;
 		}
 		if ( tform.version !== undefined && typeof(tform.version) !== "number" ) {
 			tform.version = parseInt(tform.version);

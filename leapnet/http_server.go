@@ -44,12 +44,11 @@ type HTTPBinderConfig struct {
 HTTPServerConfig - Holds configuration options for the HTTPServer.
 */
 type HTTPServerConfig struct {
-	StaticPath      string           `json:"static_path"`
-	Path            string           `json:"socket_path"`
-	Address         string           `json:"address"`
-	StaticFilePath  string           `json:"www_dir"`
-	Binder          HTTPBinderConfig `json:"binder"`
-	BindSendTimeout int              `json:"bind_send_timeout_ms"`
+	StaticPath     string           `json:"static_path"`
+	Path           string           `json:"socket_path"`
+	Address        string           `json:"address"`
+	StaticFilePath string           `json:"www_dir"`
+	Binder         HTTPBinderConfig `json:"binder"`
 }
 
 /*

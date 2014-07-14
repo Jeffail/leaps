@@ -147,9 +147,11 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			if !open {
 				return
 			}
+			if len(tformsWrap) == 0 {
+				break
+			}
 
-			var fatal bool
-			fatal = false
+			fatal := false
 
 			tforms := make([]leaplib.OTransform, len(tformsWrap))
 			for i, tformWrap := range tformsWrap {

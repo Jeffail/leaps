@@ -299,3 +299,35 @@ func TestBinderStories(t *testing.T) {
 		binder.Close()
 	}
 }
+
+/*func TestShutdown(t *testing.T) {
+	config := DefaultBinderConfig()
+	config.CloseInactivityPeriod = 1
+
+	logConf := DefaultLoggerConfig()
+	logConf.LogLevel = LeapError
+
+	logger := CreateLogger(logConf)
+
+	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	errChan := make(chan BinderError)
+	_, err = BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan, logger)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+
+	select {
+	case e := <-errChan:
+		if e.Err != nil {
+			t.Errorf("Error: %v", err)
+		}
+	case <-time.After(1500 * time.Millisecond):
+		t.Errorf("No request for close")
+	}
+}*/

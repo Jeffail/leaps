@@ -19,7 +19,8 @@
 		"binder": {
 			"flush_period_ms": 500,
 			"retention_period_s": 60,
-			"kick_period_ms": 5
+			"kick_period_ms": 5,
+			"close_inactivity_period_s": 300
 		},
 		"logger": {
 			"level": 2,
