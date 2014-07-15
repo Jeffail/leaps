@@ -6,6 +6,12 @@
 		},
 		"logger": {
 			"level": 3
+		},
+		"binder": {
+			"transform_model": {
+				"max_document_size": 5000,
+				"max_transform_length": 500
+			}
 		}
 	},
 	"http_server": {

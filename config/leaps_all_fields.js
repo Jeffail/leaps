@@ -20,7 +20,11 @@
 			"flush_period_ms": 500,
 			"retention_period_s": 60,
 			"kick_period_ms": 5,
-			"close_inactivity_period_s": 300
+			"close_inactivity_period_s": 300,
+			"transform_model": {
+				"max_document_size": 50000000,
+				"max_transform_length": 50000
+			}
 		},
 		"logger": {
 			"level": 2,

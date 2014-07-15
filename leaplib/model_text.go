@@ -50,7 +50,7 @@ OModel - A representation of the transform model surrounding a document session.
 of changes submitted and recently applied in order to distribute those changes to clients.
 */
 type OModel struct {
-	DocID     string       `json:"docid"`
+	config    ModelConfig  `json:"config"`
 	Version   int          `json:"version"`
 	Applied   []OTransform `json:"applied"`
 	Unapplied []OTransform `json:"unapplied"`
@@ -59,10 +59,10 @@ type OModel struct {
 /*
 CreateTextModel - Returns a fresh transform model, with the version set to 1.
 */
-func CreateTextModel(id string) Model {
+func CreateTextModel(config ModelConfig) Model {
 	return &OModel{
+		config:    config,
 		Version:   1,
-		DocID:     id,
 		Applied:   []OTransform{},
 		Unapplied: []OTransform{},
 	}
@@ -83,6 +83,9 @@ func (m *OModel) PushTransform(otBoxed interface{}) (interface{}, int, error) {
 	}
 	if ot.Delete < 0 {
 		return nil, 0, errors.New("transform contained negative delete")
+	}
+	if int64(len(ot.Insert)) > m.config.MaxTransformLength {
+		return nil, 0, errors.New("transform insert length exceeded the limit")
 	}
 
 	lenApplied, lenUnapplied := len(m.Applied), len(m.Unapplied)
@@ -141,11 +144,17 @@ func (m *OModel) FlushTransforms(contentBoxed *interface{}, secondsRetention int
 	transforms := m.Unapplied[:]
 	m.Unapplied = []OTransform{}
 
+	lenContent := len(content)
+
 	runeContent := bytes.Runes([]byte(content))
 
 	var i, j int
 	var err error
 	for i = 0; i < len(transforms); i++ {
+		lenContent += (len(transforms[i].Insert) - transforms[i].Delete)
+		if int64(lenContent) > m.config.MaxDocumentSize {
+			return i > 0, errors.New("cannot apply transform, document length would exceed limit")
+		}
 		if err = m.applyTransform(&runeContent, &transforms[i]); err != nil {
 			break
 		}

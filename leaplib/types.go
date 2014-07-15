@@ -31,6 +31,24 @@ import (
  */
 
 /*
+ModelConfig - Holds configuration options for a transform model.
+*/
+type ModelConfig struct {
+	MaxDocumentSize    int64 `json:"max_document_size"`
+	MaxTransformLength int64 `json:"max_transform_length"`
+}
+
+/*
+DefaultModelConfig - Returns a default ModelConfig.
+*/
+func DefaultModelConfig() ModelConfig {
+	return ModelConfig{
+		MaxDocumentSize:    50000000, // ~50MB
+		MaxTransformLength: 50000,    // ~50KB
+	}
+}
+
+/*
 Model - an interface that represents an internal operation transform model of a particular type.
 Initially text is the only supported transform model, however, the plan will eventually be to have
 different models for various types of document that should all be supported by our binder.

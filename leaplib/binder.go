@@ -35,10 +35,11 @@ import (
 BinderConfig - Holds configuration options for a binder.
 */
 type BinderConfig struct {
-	FlushPeriod           int64 `json:"flush_period_ms"`
-	RetentionPeriod       int64 `json:"retention_period_s"`
-	ClientKickPeriod      int64 `json:"kick_period_ms"`
-	CloseInactivityPeriod int64 `json:"close_inactivity_period_s"`
+	FlushPeriod           int64       `json:"flush_period_ms"`
+	RetentionPeriod       int64       `json:"retention_period_s"`
+	ClientKickPeriod      int64       `json:"kick_period_ms"`
+	CloseInactivityPeriod int64       `json:"close_inactivity_period_s"`
+	ModelConfig           ModelConfig `json:"transform_model"`
 }
 
 /*
@@ -51,6 +52,7 @@ func DefaultBinderConfig() BinderConfig {
 		RetentionPeriod:       60,
 		ClientKickPeriod:      5,
 		CloseInactivityPeriod: 300,
+		ModelConfig:           DefaultModelConfig(),
 	}
 }
 
@@ -91,7 +93,7 @@ func BindExisting(
 		ID:            id,
 		SubscribeChan: make(chan (chan<- *BinderPortal)),
 		logger:        logger,
-		model:         CreateTextModel(id), //TODO: Generic
+		model:         CreateTextModel(config.ModelConfig), //TODO: Generic
 		block:         block,
 		config:        config,
 		clients:       [](chan<- []interface{}){},
@@ -133,7 +135,7 @@ func BindNew(
 		ID:            document.ID,
 		SubscribeChan: make(chan (chan<- *BinderPortal)),
 		logger:        logger,
-		model:         CreateTextModel(document.ID), // TODO: Make generic
+		model:         CreateTextModel(config.ModelConfig), // TODO: Make generic
 		block:         block,
 		config:        config,
 		clients:       [](chan<- []interface{}){},

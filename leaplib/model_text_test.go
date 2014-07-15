@@ -36,7 +36,7 @@ func TestTextModelSimpleTransforms(t *testing.T) {
 		return
 	}
 
-	model := CreateTextModel(doc.ID)
+	model := CreateTextModel(DefaultModelConfig())
 	for j := 0; j < 3; j++ {
 		for i := 0; i < 3; i++ {
 			if _, _, err = model.PushTransform(OTransform{
@@ -81,7 +81,7 @@ func TestPushPullTransforms(t *testing.T) {
 		t.Errorf("Error: %v", err)
 		return
 	}
-	model := CreateTextModel(doc.ID)
+	model := CreateTextModel(DefaultModelConfig())
 
 	for j := 0; j < 2; j++ {
 		for i := 0; i < numTransforms; i++ {
@@ -139,7 +139,7 @@ func TestTransformStories(t *testing.T) {
 			t.Errorf("Error: %v", err)
 			return
 		}
-		model := CreateTextModel(doc.ID)
+		model := CreateTextModel(DefaultModelConfig())
 
 		stages = append(stages,
 			[]byte(fmt.Sprintf("\tInitial : %v\n", doc.Content.(string)))...)
@@ -191,7 +191,7 @@ func TestTextModelUnicodeTransforms(t *testing.T) {
 		return
 	}
 
-	model := CreateTextModel(doc.ID)
+	model := CreateTextModel(DefaultModelConfig())
 	if _, _, err = model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 12,
@@ -225,5 +225,43 @@ func TestTextModelUnicodeTransforms(t *testing.T) {
 	received := doc.Content.(string)
 	if expected != received {
 		t.Errorf("Expected %v, received %v", expected, received)
+	}
+}
+
+func TestLimits(t *testing.T) {
+	doc, err := CreateNewDocument("Test", "Doc test", "text", "1")
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+
+	config := DefaultModelConfig()
+	config.MaxDocumentSize = 100
+	config.MaxTransformLength = 10
+
+	model := CreateTextModel(config)
+
+	if _, _, err = model.PushTransform(OTransform{
+		Version:  model.GetVersion() + 1,
+		Position: 0,
+		Insert:   "hello world, this is greater than 10 bytes.",
+		Delete:   0,
+	}); err == nil {
+		t.Errorf("Expected failed transform")
+	}
+
+	for i := 0; i < 10; i++ {
+		if _, _, err = model.PushTransform(OTransform{
+			Version:  model.GetVersion() + 1,
+			Position: 0,
+			Insert:   "1234567890",
+			Delete:   0,
+		}); err != nil {
+			t.Errorf("Legit tform error: %v", err)
+		}
+	}
+
+	if _, err = model.FlushTransforms(&doc.Content, 60); err == nil {
+		t.Errorf("Expected failed flush")
 	}
 }
