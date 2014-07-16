@@ -89,6 +89,8 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 		cp -LR "$(BIN)/js" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "./config" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "./static" "./releases/$(VERSION)/$(PROJECT)"; \
+		cp -LR "./scripts/install.sh" "./releases/$(VERSION)/$(PROJECT)"; \
+		cp -LR "./scripts/uninstall.sh" "./releases/$(VERSION)/$(PROJECT)"; \
 		cd "./releases/$(VERSION)"; \
 		tar -czf "$${a_name}.tar.gz" "./$(PROJECT)"; \
 		rm -r "./$(PROJECT)"; \
