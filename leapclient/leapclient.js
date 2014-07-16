@@ -256,7 +256,12 @@ _leap_model.prototype.submit = function(transform) {
 _leap_model.prototype.receive = function(transforms) {
 	"use strict";
 
-	// TODO: Validate that the transforms match the version expected.
+	var expected_version = this._version + this._unapplied.length + 1;
+	if ( (transforms.length > 0) && (transforms[0].version !== expected_version) ) {
+		return { error :
+			("Received unexpected transform version: " + transforms[0].version +
+				", expected: " + expected_version) };
+	}
 
 	switch (this._leap_state) {
 	case this.READY:
@@ -582,7 +587,7 @@ leap_client.prototype.connect = function(address, _websocket) {
 			leap_obj._socket.send(JSON.stringify({
 				command : "ping"
 			}));
-		}, 5000);
+		}, 5000); // MAGIC NUMBER OH GOD, we should have a config object.
 		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.CONNECT, arguments ]);
 	};
 

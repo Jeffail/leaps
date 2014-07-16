@@ -75,15 +75,17 @@ leap_bind_textarea.prototype._apply_transform = function(transform) {
 	"use strict";
 
 	var cursor_pos = this._text_area.selectionStart;
+	var cursor_pos_end = this._text_area.selectionEnd;
 	var content = this._text_area.value;
 
 	if ( transform.position <= cursor_pos ) {
 		cursor_pos += (transform.insert.length - transform.num_delete);
+		cursor_pos_end += (transform.insert.length - transform.num_delete);
 	}
 
 	this._content = this._text_area.value = this._leap_client.apply(transform, content);
 	this._text_area.selectionStart = cursor_pos;
-	this._text_area.selectionEnd = cursor_pos; // TODO
+	this._text_area.selectionEnd = cursor_pos_end;
 };
 
 /* trigger_diff triggers whenever a change may have occurred to the wrapped textarea element, and

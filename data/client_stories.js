@@ -36,14 +36,14 @@
 				{
 					"response_type" : "transforms",
 					"transforms" : [
-						{ "position" : 6, "num_delete" : 0, "insert" : "dumb ", "version" : 3 },
-						{ "position" : 11, "num_delete" : 5, "insert" : "internet", "version" : 4 }
+						{ "position" : 6, "num_delete" : 0, "insert" : "dumb ", "version" : 2 },
+						{ "position" : 11, "num_delete" : 5, "insert" : "internet", "version" : 3 }
 					]
 				},
 				{
 					"response_type" : "transforms",
 					"transforms" : [
-						{ "position" : 6, "num_delete" : 0, "insert" : "crazy ", "version" : 5 }
+						{ "position" : 6, "num_delete" : 0, "insert" : "crazy ", "version" : 4 }
 					]
 				}
 			],

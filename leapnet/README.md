@@ -6,3 +6,4 @@ STATUS: INCOMPLETE
 
 TODO:
 - Leaps websocket client for bridging connection between curators.
+- HTTP poller client

@@ -8,4 +8,3 @@ TODO:
 
 - Implementation of LeapLocator (curator) that maps a cluster of curators and acts as a network bridge.
 - More document storage solutions
-- More options for interacting with documents (delete, update, archive?)

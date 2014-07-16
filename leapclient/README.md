@@ -15,4 +15,3 @@ STATUS: TESTING INCOMPLETE
 TODO:
 
 - Create more auto tests and more in depth user story tests.
-- More text editor binders.

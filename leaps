@@ -11,6 +11,9 @@
 DAEMON=/usr/sbin/leaps
 NAME=leaps
 
+RUNAS=leaps
+CONFIG=/etc/leaps.js
+
 PID=/var/run/leaps.pid
 LOG=/var/log/leaps.log
 
@@ -23,13 +26,20 @@ start() {
 			return 1
 		fi
 		echo 'Starting service...' >&2
-		local CMD="$DAEMON -c /etc/leaps/config.js &> \"$LOG\" & echo \$!"
-		su -c "$CMD" $RUNAS > "$PIDFILE"
+		touch $LOG
+		chown $RUNAS $LOG
+		local CMD="$DAEMON -c $CONFIG &> \"$LOG\" & echo \$!"
+		su -c "$CMD" $RUNAS > "$PID"
         echo 'Service started' >&2
 }
 # Stop the service
 stop() {
-		if [ ! -f "$PID" ] && ! kill -0 $(cat "$PID"); then
+		if [ ! -f "$PID" ]; then
+			echo 'Service not running' >&2
+			return 1
+		fi
+		if [ ! kill -0 $(cat "$PID") ]; then
+			rm -f "$PID"
 			echo 'Service not running' >&2
 			return 1
 		fi
@@ -39,16 +49,16 @@ stop() {
 }
 # Check the status of the service
 status() {
-	printf "%-50s" "Checking $NAME..."
-	if [ -f $PIDFILE ]; then
-		PID=`cat $PIDFILE`
-		if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
-			printf "%s\n" "Process dead but pidfile exists"
+	echo "Checking $NAME..." >&2
+	if [ -f $PID ]; then
+		PID_VAL=`cat $PID`
+		if [ -z "`ps axf | grep ${PID_VAL} | grep -v grep`" ]; then
+			echo "Process dead but pidfile exists" >&2
 		else
-			echo "Running"
+			echo "Running" >&2
 		fi
 	else
-		printf "%s\n" "Service not running"
+		echo "Service not running" >&2
 	fi
 }
 
