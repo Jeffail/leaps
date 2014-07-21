@@ -112,7 +112,7 @@ func senderClient(id string, feeds <-chan leaplib.OTransform, t *testing.T) {
 			}
 			websocket.JSON.Send(ws, LeapTextClientMessage{
 				Command:   "submit",
-				Transform: feed,
+				Transform: &feed,
 			})
 			websocket.JSON.Send(ws, LeapTextClientMessage{
 				Command: "ping",

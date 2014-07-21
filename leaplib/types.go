@@ -115,7 +115,7 @@ identification and a channel for broadcasting transforms and other data.
 */
 type BinderClient struct {
 	Token            string
-	TransformSndChan chan<- []interface{}
+	TransformSndChan chan<- interface{}
 }
 
 /*
@@ -151,7 +151,7 @@ type BinderPortal struct {
 	Document         *Document
 	Version          int
 	Error            error
-	TransformRcvChan <-chan []interface{}
+	TransformRcvChan <-chan interface{}
 	RequestSndChan   chan<- BinderRequest
 }
 
@@ -177,6 +177,27 @@ func (p *BinderPortal) SendTransform(ot interface{}, timeout time.Duration) (int
 	case <-time.After(timeout):
 	}
 	return 0, errors.New("timeout occured waiting for binder response")
+}
+
+/*
+SendUpdate - A helper function for submitting an update to the binder. The binder will return an
+error in the event of one.
+*/
+func (p *BinderPortal) SendUpdate(update interface{}, timeout time.Duration) error {
+	// Buffered channels because the server skips blocked sends
+	errChan := make(chan error, 1)
+	p.RequestSndChan <- BinderRequest{
+		Token:       p.Token,
+		Transform:   update,
+		VersionChan: nil,
+		ErrorChan:   errChan,
+	}
+	select {
+	case err := <-errChan:
+		return err
+	case <-time.After(timeout):
+	}
+	return errors.New("timeout occured waiting for binder response")
 }
 
 /*--------------------------------------------------------------------------------------------------

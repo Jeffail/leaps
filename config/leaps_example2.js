@@ -6,6 +6,9 @@
 		},
 		"logger": {
 			"level": 3
+		},
+		"binder": {
+			"close_inactivity_period_s": 15
 		}
 	},
 	"http_server": {

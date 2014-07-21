@@ -81,12 +81,8 @@ func TestNewBinder(t *testing.T) {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
 
-	tforms1 := <-portal1.TransformRcvChan
-	tforms2 := <-portal2.TransformRcvChan
-
-	if len1, len2 := len(tforms1), len(tforms2); len1 != 1 || len2 != 1 {
-		t.Errorf("Wrong count of transforms, tforms1: %v, tforms2: %v", len1, len2)
-	}
+	_ = <-portal1.TransformRcvChan
+	_ = <-portal2.TransformRcvChan
 
 	portal3 := binder.Subscribe("")
 	if exp, rec := "super hello universe", portal3.Document.Content.(string); exp != rec {
@@ -112,16 +108,14 @@ func goodClient(b *BinderPortal, expecting int, t *testing.T, wg *sync.WaitGroup
 	seen := 0
 	for change := range b.TransformRcvChan {
 		seen++
-		for _, tformWrap := range change {
-			tform, ok := tformWrap.(OTransform)
-			if !ok {
-				t.Errorf("did not receive expected OTransform")
-			} else if tform.Insert != fmt.Sprintf("%v", changes) {
-				t.Errorf("Wrong order of transforms, expected %v, received %v",
-					changes, tform.Insert)
-			}
-			changes++
+		tform, ok := change.(OTransform)
+		if !ok {
+			t.Errorf("did not receive expected OTransform")
+		} else if tform.Insert != fmt.Sprintf("%v", changes) {
+			t.Errorf("Wrong order of transforms, expected %v, received %v",
+				changes, tform.Insert)
 		}
+		changes++
 	}
 	if seen != expecting {
 		t.Errorf("Good client didn't receive all expected transforms: %v != %v", expecting, seen)
@@ -214,21 +208,19 @@ func goodStoryClient(b *BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t
 	tformIndex, lenCorrected := 0, len(bstory.TCorrected)
 	go func() {
 		for ret := range b.TransformRcvChan {
-			for _, tformWrap := range ret {
-				tform, ok := tformWrap.(OTransform)
-				if !ok {
-					t.Errorf("did not receive expected OTransform")
-				} else if tform.Version != bstory.TCorrected[tformIndex].Version ||
-					tform.Insert != bstory.TCorrected[tformIndex].Insert ||
-					tform.Delete != bstory.TCorrected[tformIndex].Delete ||
-					tform.Position != bstory.TCorrected[tformIndex].Position {
-					t.Errorf("Transform not expected, %v != %v", tform, bstory.TCorrected[tformIndex])
-				}
-				tformIndex++
-				if tformIndex == lenCorrected {
-					wg.Done()
-					return
-				}
+			tform, ok := ret.(OTransform)
+			if !ok {
+				t.Errorf("did not receive expected OTransform")
+			} else if tform.Version != bstory.TCorrected[tformIndex].Version ||
+				tform.Insert != bstory.TCorrected[tformIndex].Insert ||
+				tform.Delete != bstory.TCorrected[tformIndex].Delete ||
+				tform.Position != bstory.TCorrected[tformIndex].Position {
+				t.Errorf("Transform not expected, %v != %v", tform, bstory.TCorrected[tformIndex])
+			}
+			tformIndex++
+			if tformIndex == lenCorrected {
+				wg.Done()
+				return
 			}
 		}
 		t.Errorf("channel was closed before receiving last change")

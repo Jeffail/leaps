@@ -169,6 +169,8 @@ func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (*leaplib.
 			return h.locator.FindDocument(clientMsg.Token, clientMsg.ID)
 		}
 		return nil, errors.New("find request must contain a valid document ID")
+	case "ping":
+		return nil, nil
 	}
 	return nil, fmt.Errorf("first message must be an initializer request, client sent: %v", clientMsg.Command)
 }
@@ -177,6 +179,12 @@ func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (*leaplib.
 websocketHandler - The method for creating fresh websocket clients.
 */
 func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
+	defer func() {
+		if err := ws.Close(); err != nil {
+			h.log(leaplib.LeapError, fmt.Sprintf("Failed to close socket: %v", err))
+		}
+	}()
+
 	select {
 	case <-h.closeChan:
 		websocket.JSON.Send(ws, LeapServerMessage{
@@ -189,31 +197,35 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 
 	h.log(leaplib.LeapInfo, "Fresh client connected via websocket")
 
-	var launchCmd LeapClientMessage
-	websocket.JSON.Receive(ws, &launchCmd)
+	for {
+		var launchCmd LeapClientMessage
+		websocket.JSON.Receive(ws, &launchCmd)
 
-	if binder, err := h.processInitMessage(&launchCmd); err == nil {
-		h.log(leaplib.LeapInfo, fmt.Sprintf("Client bound to document %v", binder.Document.ID))
+		if binder, err := h.processInitMessage(&launchCmd); err == nil && binder != nil {
+			h.log(leaplib.LeapInfo, fmt.Sprintf("Client bound to document %v", binder.Document.ID))
 
-		websocket.JSON.Send(ws, LeapServerMessage{
-			Type:     "document",
-			Document: binder.Document,
-			Version:  &binder.Version,
-		})
+			websocket.JSON.Send(ws, LeapServerMessage{
+				Type:     "document",
+				Document: binder.Document,
+				Version:  &binder.Version,
+			})
 
-		// TODO: Generic
-		hbind := HTTPTextModel{
-			config:    h.config.Binder,
-			logger:    h.logger,
-			closeChan: h.closeChan,
+			// TODO: Generic
+			hbind := HTTPTextModel{
+				config:    h.config.Binder,
+				logger:    h.logger,
+				closeChan: h.closeChan,
+			}
+			LaunchWebsocketTextModel(&hbind, ws, binder)
+			return
+		} else if err != nil {
+			h.log(leaplib.LeapInfo, fmt.Sprintf("Client failed to init: %v", err))
+			websocket.JSON.Send(ws, LeapServerMessage{
+				Type:  "error",
+				Error: fmt.Sprintf("socket initialization failed: %v", err),
+			})
+			return
 		}
-		LaunchWebsocketTextModel(&hbind, ws, binder)
-	} else {
-		h.log(leaplib.LeapInfo, fmt.Sprintf("Client failed to init: %v", err))
-		websocket.JSON.Send(ws, LeapServerMessage{
-			Type:  "error",
-			Error: fmt.Sprintf("socket initialization failed: %v", err),
-		})
 	}
 }
 

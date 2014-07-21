@@ -214,7 +214,7 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 	/* Channel is buffered by one element to be non-blocking, any blocked send will
 	 * lead to a rejected client, bad client!
 	 */
-	sndChan := make(chan []interface{}, 1)
+	sndChan := make(chan interface{}, 1)
 
 	// We need to read the full document here anyway, so might as well flush.
 	doc, err := b.flush()
@@ -262,28 +262,32 @@ func (b *Binder) processJob(request BinderRequest) {
 		return
 	}
 
-	newOTs := make([]interface{}, 1)
-	var err error
-	var version int
+	dispatch := request.Transform
 
-	b.log(LeapDebug, fmt.Sprintf("Received transform: %v", request.Transform))
-	newOTs[0], version, err = b.model.PushTransform(request.Transform)
+	if request.VersionChan != nil {
+		var err error
+		var version int
 
-	if err != nil {
-		b.logger.IncrementStat("binder.process_job.error")
+		b.log(LeapDebug, fmt.Sprintf("Received transform: %v", request.Transform))
+		dispatch, version, err = b.model.PushTransform(request.Transform)
+
+		if err != nil {
+			b.logger.IncrementStat("binder.process_job.error")
+			select {
+			case request.ErrorChan <- err:
+			default:
+			}
+			return
+		}
 		select {
-		case request.ErrorChan <- err:
+		case request.VersionChan <- version:
 		default:
 		}
-		return
+		b.logger.IncrementStat("binder.process_job.success")
+	} else {
+		request.ErrorChan <- nil
+		b.logger.IncrementStat("binder.process_update.success")
 	}
-
-	select {
-	case request.VersionChan <- version:
-	default:
-	}
-
-	b.logger.IncrementStat("binder.process_job.success")
 
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
@@ -293,7 +297,7 @@ func (b *Binder) processJob(request BinderRequest) {
 			continue
 		}
 		select {
-		case c.TransformSndChan <- newOTs:
+		case c.TransformSndChan <- dispatch:
 		case <-time.After(clientKickPeriod):
 			/* The client may have stopped listening, or is just being slow.
 			 * Either way, we have a strict policy here of no time wasters.
@@ -362,7 +366,7 @@ func (b *Binder) checkActive() bool {
 
 		for _, c := range b.clients {
 			select {
-			case c.TransformSndChan <- []interface{}{}:
+			case c.TransformSndChan <- nil:
 				return true
 			case <-time.After(clientKickPeriod):
 			}

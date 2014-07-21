@@ -37,8 +37,9 @@ LeapTextClientMessage - A structure that defines a message format to expect from
 to a text model. Commands can currently only be 'submit' (submit a transform to a bound document).
 */
 type LeapTextClientMessage struct {
-	Command   string             `json:"command"`
-	Transform leaplib.OTransform `json:"transform,omitempty"`
+	Command   string              `json:"command"`
+	Transform *leaplib.OTransform `json:"transform,omitempty"`
+	Position  *int64              `json:"position,omitempty"`
 }
 
 /*
@@ -49,7 +50,7 @@ transform), or 'error' (an error message to display to the client).
 type LeapTextServerMessage struct {
 	Type       string               `json:"response_type"`
 	Transforms []leaplib.OTransform `json:"transforms,omitempty"`
-	Version    *int                 `json:"version,omitempty"`
+	Version    int                  `json:"version,omitempty"`
 	Error      string               `json:"error,omitempty"`
 }
 
@@ -77,12 +78,6 @@ LaunchWebsocketTextModel - Launches a text model that wraps a connected websocke
 BinderPortal representing a text document.
 */
 func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *leaplib.BinderPortal) {
-	defer func() {
-		if err := socket.Close(); err != nil {
-			h.log(leaplib.LeapError, fmt.Sprintf("Failed to close socket: %v", err))
-		}
-	}()
-
 	bindTOut := time.Duration(h.config.BindSendTimeout) * time.Millisecond
 
 	// TODO: Preserve reference of doc ID?
@@ -117,11 +112,19 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			h.log(leaplib.LeapDebug, fmt.Sprintf("Received %v command from client", msg.Command))
 			switch msg.Command {
 			case "submit":
-				if ver, err := binder.SendTransform(msg.Transform, bindTOut); err == nil {
+				if msg.Transform == nil {
+					h.log(leaplib.LeapError, "Client submit contained nil transform")
+					websocket.JSON.Send(socket, LeapTextServerMessage{
+						Type:  "error",
+						Error: "submit error: transform was nil",
+					})
+					return
+				}
+				if ver, err := binder.SendTransform(*msg.Transform, bindTOut); err == nil {
 					h.log(leaplib.LeapDebug, "Sending correction to client")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:    "correction",
-						Version: &ver,
+						Version: ver,
 					})
 				} else {
 					h.log(leaplib.LeapError, fmt.Sprintf("Transform request failed %v", err))
@@ -131,6 +134,20 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 					})
 					return
 				}
+			case "update":
+				if msg.Position != nil {
+					if err := binder.SendUpdate(leaplib.PositionUpdate{
+						Position: *msg.Position,
+						Token:    binder.Token,
+					}, bindTOut); err != nil {
+						h.log(leaplib.LeapError, fmt.Sprintf("Client update failed %v", err))
+						websocket.JSON.Send(socket, LeapTextServerMessage{
+							Type:  "error",
+							Error: fmt.Sprintf("update error: %v", err),
+						})
+						return
+					}
+				}
 			case "ping":
 				// Do nothing
 			default:
@@ -139,33 +156,20 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 					Error: "command not recognised",
 				})
 			}
-		case tformsWrap, open := <-binder.TransformRcvChan:
+		case tform, open := <-binder.TransformRcvChan:
 			if !open {
 				return
 			}
-			if len(tformsWrap) == 0 {
-				break
-			}
-
-			fatal := false
-
-			tforms := make([]leaplib.OTransform, len(tformsWrap))
-			for i, tformWrap := range tformsWrap {
-				if tform, ok := tformWrap.(leaplib.OTransform); ok {
-					tforms[i] = tform
+			if tform != nil {
+				if ot, ok := tform.(leaplib.OTransform); ok {
+					h.log(leaplib.LeapDebug, "Sending %v transform to client")
+					websocket.JSON.Send(socket, LeapTextServerMessage{
+						Type:       "transforms",
+						Transforms: []leaplib.OTransform{ot},
+					})
 				} else {
-					fatal = true
-					h.log(leaplib.LeapError, fmt.Sprintf("Received unexpected type from RcvChan: %v", tformWrap))
-					break
+					h.log(leaplib.LeapError, fmt.Sprintf("Received unexpected type from RcvChan: %v", tform))
 				}
-			}
-
-			if !fatal {
-				h.log(leaplib.LeapDebug, fmt.Sprintf("Sending %v transforms to client", len(tforms)))
-				websocket.JSON.Send(socket, LeapTextServerMessage{
-					Type:       "transforms",
-					Transforms: tforms,
-				})
 			}
 		case <-h.closeChan:
 			return
