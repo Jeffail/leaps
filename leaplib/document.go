@@ -23,12 +23,8 @@ THE SOFTWARE.
 package leaplib
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
-	"time"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -55,7 +51,7 @@ content. We also validate here that the content type provided matches the type.
 func CreateNewDocument(title, description, doctype string, content interface{}) (*Document, error) {
 
 	doc := &Document{
-		ID:          GenerateID(title, description),
+		ID:          GenerateID(fmt.Sprintf("%v%v", title, description)),
 		Title:       title,
 		Description: description,
 		Type:        doctype,
@@ -111,18 +107,6 @@ func ParseDocumentContent(doctype string, content string) (interface{}, error) {
 	default:
 		return nil, errors.New("document type was not recognized")
 	}
-}
-
-/*
-GenerateID - Create a unique ID for a document using a hash of the title, description, a timestamp
-and a pseudo random integer as a hex encoded string with the timestamp on the end.
-*/
-func GenerateID(title, description string) string {
-	tstamp := time.Now().Unix()
-	hasher := sha1.New()
-	hasher.Write([]byte(fmt.Sprintf("%v%v%v%v", title, description, rand.Int(), tstamp)))
-
-	return fmt.Sprintf("%v%v", hex.EncodeToString(hasher.Sum(nil)), tstamp)
 }
 
 /*--------------------------------------------------------------------------------------------------

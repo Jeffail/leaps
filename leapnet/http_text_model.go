@@ -88,9 +88,6 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 	// TODO: Preserve reference of doc ID?
 	binder.Document = nil
 
-	// This is used to flag client submitted transforms that we shouldn't send back
-	ignoreTforms := []int{}
-
 	readChan := make(chan LeapTextClientMessage)
 	go func() {
 		for {
@@ -121,7 +118,6 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			switch msg.Command {
 			case "submit":
 				if ver, err := binder.SendTransform(msg.Transform, bindTOut); err == nil {
-					ignoreTforms = append(ignoreTforms, ver)
 					h.log(leaplib.LeapDebug, "Sending correction to client")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:    "correction",
@@ -165,24 +161,11 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			}
 
 			if !fatal {
-				skip := false
-				for i, ignore := range ignoreTforms {
-					if ignore == tforms[0].Version {
-						skip = true
-						ignoreTforms = append(ignoreTforms[:i], ignoreTforms[i+1:]...)
-						break
-					}
-				}
-
-				if !skip {
-					h.log(leaplib.LeapDebug, fmt.Sprintf("Sending %v transforms to client", len(tforms)))
-					websocket.JSON.Send(socket, LeapTextServerMessage{
-						Type:       "transforms",
-						Transforms: tforms,
-					})
-				} else {
-					h.log(leaplib.LeapDebug, "Skipping clients own submitted transforms")
-				}
+				h.log(leaplib.LeapDebug, fmt.Sprintf("Sending %v transforms to client", len(tforms)))
+				websocket.JSON.Send(socket, LeapTextServerMessage{
+					Type:       "transforms",
+					Transforms: tforms,
+				})
 			}
 		case <-h.closeChan:
 			return

@@ -416,6 +416,8 @@ leap_client.prototype._process_message = function(message) {
 			return "failed to receive transforms: " + action_err;
 		}
 		break;
+	case "update":
+		break;
 	case "correction":
 		if ( this._model === null ) {
 			return "correction was received before initialization";

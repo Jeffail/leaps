@@ -171,7 +171,7 @@ func (c *Curator) FindDocument(token string, id string) (*BinderPortal, error) {
 
 	if binder, ok := c.openBinders[id]; ok {
 		c.logger.IncrementStat("curator.subscribed_client")
-		return binder.Subscribe(), nil
+		return binder.Subscribe(token), nil
 	}
 
 	binder, err := BindExisting(id, c.store, c.config.BinderConfig, c.errorChan, c.logger)
@@ -182,7 +182,7 @@ func (c *Curator) FindDocument(token string, id string) (*BinderPortal, error) {
 	c.openBinders[id] = binder
 
 	c.logger.IncrementStat("curator.subscribed_client")
-	return binder.Subscribe(), nil
+	return binder.Subscribe(token), nil
 }
 
 /*
@@ -196,7 +196,7 @@ func (c *Curator) NewDocument(token string, doc *Document) (*BinderPortal, error
 	}
 
 	// Always generate a fresh ID
-	doc.ID = GenerateID(doc.Title, doc.Description)
+	doc.ID = GenerateID(fmt.Sprintf("%v%v", doc.Title, doc.Description))
 
 	if err := ValidateDocument(doc); err != nil {
 		c.logger.IncrementStat("curator.validate_new_document.error")
@@ -214,7 +214,7 @@ func (c *Curator) NewDocument(token string, doc *Document) (*BinderPortal, error
 	c.binderMutex.Unlock()
 
 	c.logger.IncrementStat("curator.subscribed_client")
-	return binder.Subscribe(), nil
+	return binder.Subscribe(token), nil
 }
 
 /*

@@ -74,6 +74,31 @@ type Model interface {
  */
 
 /*
+PositionUpdate - A struct containing an update to a clients cursor position.
+*/
+type PositionUpdate struct {
+	Position int64  `json:"position"`
+	Token    string `json:"user_id"`
+}
+
+/*
+JoinUpdate - A struct containing an update about joining clients.
+*/
+type JoinUpdate struct {
+	JoinedClients []string `json:"new_clients"`
+}
+
+/*
+LeaveUpdate - A struct containing an update about leaving clients.
+*/
+type LeaveUpdate struct {
+	LeftClients []string `json:"left_clients"`
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
+/*
 BinderError - A binder has encountered a problem and needs to close. In order for this to happen it
 needs to inform its owner that it should be shut down. BinderError is a structure used to carry
 our error message and our ID over an error channel. A BinderError with the Err set to nil can be
@@ -85,22 +110,44 @@ type BinderError struct {
 }
 
 /*
+BinderClient - A struct representing a connected client held by a binder, contains a token for
+identification and a channel for broadcasting transforms and other data.
+*/
+type BinderClient struct {
+	Token            string
+	TransformSndChan chan<- []interface{}
+}
+
+/*
 BinderRequest - A container used to communicate with a binder, it holds a transform to be
 submitted to the document model. Two channels are used for return values from the request.
 VersionChan is used to send back the actual version of the transform submitted. ErrorChan is used to
 send errors that occur. Both channels must be non-blocking, so a buffer of 1 is recommended.
 */
 type BinderRequest struct {
+	Token       string
 	Transform   interface{}
 	VersionChan chan<- int
 	ErrorChan   chan<- error
 }
 
 /*
+BinderSubscribeBundle - A container that holds all data necessary to provide a binder that you
+wish to subscribe to. Contains a user token for identifying the client and a channel for
+receiving the resultant BinderPortal.
+*/
+type BinderSubscribeBundle struct {
+	Token         string
+	PortalRcvChan chan<- *BinderPortal
+}
+
+/*
 BinderPortal - A container that holds all data necessary to begin an open portal with the binder,
-allowing fresh transforms to be submitted and returned as they come.
+allowing fresh transforms to be submitted and returned as they come. Also carries the token of the
+client.
 */
 type BinderPortal struct {
+	Token            string
 	Document         *Document
 	Version          int
 	Error            error
@@ -117,6 +164,7 @@ func (p *BinderPortal) SendTransform(ot interface{}, timeout time.Duration) (int
 	errChan := make(chan error, 1)
 	verChan := make(chan int, 1)
 	p.RequestSndChan <- BinderRequest{
+		Token:       p.Token,
 		Transform:   ot,
 		VersionChan: verChan,
 		ErrorChan:   errChan,

@@ -36,7 +36,7 @@ func main() {
 		}
 	}()
 
-	portal, portal2 := binder.Subscribe(), binder.Subscribe()
+	portal, portal2 := binder.Subscribe(""), binder.Subscribe("")
 
 	go func() {
 		for _ = range portal2.TransformRcvChan {

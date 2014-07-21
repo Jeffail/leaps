@@ -65,13 +65,13 @@ storage strategy.
 */
 type Binder struct {
 	ID            string
-	SubscribeChan chan (chan<- *BinderPortal)
+	SubscribeChan chan BinderSubscribeBundle
 
 	logger     *LeapsLogger
 	model      Model
 	block      DocumentStore
 	config     BinderConfig
-	clients    [](chan<- []interface{})
+	clients    []BinderClient
 	jobs       chan BinderRequest
 	errorChan  chan<- BinderError
 	closedChan chan bool
@@ -91,12 +91,12 @@ func BindExisting(
 
 	binder := Binder{
 		ID:            id,
-		SubscribeChan: make(chan (chan<- *BinderPortal)),
+		SubscribeChan: make(chan BinderSubscribeBundle),
 		logger:        logger,
 		model:         CreateTextModel(config.ModelConfig), //TODO: Generic
 		block:         block,
 		config:        config,
-		clients:       [](chan<- []interface{}){},
+		clients:       []BinderClient{},
 		jobs:          make(chan BinderRequest),
 		errorChan:     errorChan,
 		closedChan:    make(chan bool),
@@ -133,12 +133,12 @@ func BindNew(
 
 	binder := Binder{
 		ID:            document.ID,
-		SubscribeChan: make(chan (chan<- *BinderPortal)),
+		SubscribeChan: make(chan BinderSubscribeBundle),
 		logger:        logger,
 		model:         CreateTextModel(config.ModelConfig), // TODO: Make generic
 		block:         block,
 		config:        config,
-		clients:       [](chan<- []interface{}){},
+		clients:       []BinderClient{},
 		jobs:          make(chan BinderRequest),
 		errorChan:     errorChan,
 		closedChan:    make(chan bool),
@@ -163,11 +163,25 @@ func BindNew(
 /*
 Subscribe - Returns a BinderPortal struct that allows a client to bootstrap and sync with the binder
 with the document content, current unapplied changes and channels for sending and receiving
-transforms.
+transforms. Accepts a string as a token for identifying the user, if left empty the token is
+generated.
+
+Multiple clients can connect with the same token, however, these users will be treated
+as if the same client, therefore not receiving each others messages, cursor positions being
+overwritten and being kicked in unison.
 */
-func (b *Binder) Subscribe() *BinderPortal {
+func (b *Binder) Subscribe(token string) *BinderPortal {
+	if len(token) == 0 {
+		token = GenerateID("client salt")
+	}
+
 	retChan := make(chan *BinderPortal, 1)
-	b.SubscribeChan <- retChan
+	bundle := BinderSubscribeBundle{
+		PortalRcvChan: retChan,
+		Token:         token,
+	}
+	b.SubscribeChan <- bundle
+
 	return <-retChan
 }
 
@@ -189,6 +203,49 @@ log - Helper function for logging events, only actually logs when verbose loggin
 */
 func (b *Binder) log(level int, message string) {
 	b.logger.Log(level, "binder", fmt.Sprintf("(%v) %v", b.ID, message))
+}
+
+/*
+processSubscriber - Processes a prospective client wishing to subscribe to this binder. This
+involves flushing the model in order to obtain a clean version of the document, if this fails
+we return false to flag the binder loop that we should shut down.
+*/
+func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
+	/* Channel is buffered by one element to be non-blocking, any blocked send will
+	 * lead to a rejected client, bad client!
+	 */
+	sndChan := make(chan []interface{}, 1)
+
+	// We need to read the full document here anyway, so might as well flush.
+	doc, err := b.flush()
+	if err != nil {
+		return err
+	}
+
+	select {
+	case request.PortalRcvChan <- &BinderPortal{
+		Token:            request.Token,
+		Version:          b.model.GetVersion(),
+		Document:         doc,
+		Error:            nil,
+		TransformRcvChan: sndChan,
+		RequestSndChan:   b.jobs,
+	}:
+		b.clients = append(b.clients, BinderClient{
+			Token:            request.Token,
+			TransformSndChan: sndChan,
+		})
+	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
+		// We're not bothered if you suck, you just don't get enrolled. Deal with it.
+		b.logger.IncrementStat("binder.rejected_client")
+		b.log(LeapInfo, fmt.Sprintf("Rejected client request %v", request.Token))
+		return nil
+	}
+
+	b.logger.IncrementStat("binder.subscribed_client")
+	b.log(LeapInfo, fmt.Sprintf("Subscribed new client %v", request.Token))
+
+	return nil
 }
 
 /*
@@ -230,24 +287,28 @@ func (b *Binder) processJob(request BinderRequest) {
 
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
-	for i, clientChan := range b.clients {
+	for i, c := range b.clients {
+		// Skip sends for clients with matching tokens
+		if c.Token == request.Token {
+			continue
+		}
 		select {
-		case clientChan <- newOTs:
+		case c.TransformSndChan <- newOTs:
 		case <-time.After(clientKickPeriod):
 			/* The client may have stopped listening, or is just being slow.
 			 * Either way, we have a strict policy here of no time wasters.
 			 */
-			close(b.clients[i])
-			b.clients[i] = nil
+			close(b.clients[i].TransformSndChan)
+			b.clients[i].TransformSndChan = nil
 		}
 		// Currently also sends to client that submitted it, oops, or no oops?
 	}
 
 	deadClients := 0
-	newClients := [](chan<- []interface{}){}
-	for _, clientChan := range b.clients {
-		if clientChan != nil {
-			newClients = append(newClients, clientChan)
+	newClients := []BinderClient{}
+	for _, c := range b.clients {
+		if c.TransformSndChan != nil {
+			newClients = append(newClients, c)
 		} else {
 			deadClients++
 		}
@@ -299,9 +360,9 @@ func (b *Binder) checkActive() bool {
 	if len(b.clients) > 0 {
 		clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
-		for _, clientChan := range b.clients {
+		for _, c := range b.clients {
 			select {
-			case clientChan <- []interface{}{}:
+			case c.TransformSndChan <- []interface{}{}:
 				return true
 			case <-time.After(clientKickPeriod):
 			}
@@ -326,30 +387,13 @@ func (b *Binder) loop() {
 	for {
 		running := true
 		select {
-		case client, open := <-b.SubscribeChan:
+		case clientBundle, open := <-b.SubscribeChan:
 			if running && open {
-				// We need to read the full document here anyway, so might as well flush.
-				doc, err := b.flush()
-				if err != nil {
+				if err := b.processSubscriber(clientBundle); err != nil {
 					b.errorChan <- BinderError{ID: b.ID, Err: err}
 					b.log(LeapError, fmt.Sprintf("Flush error: %v, shutting down", err))
 					running = false
 				} else {
-					/* Channel is buffered by one element to be non-blocking, any blocked send will
-					 * lead to a rejected client, bad client!
-					 */
-					sndChan := make(chan []interface{}, 1)
-					b.clients = append(b.clients, sndChan)
-					b.logger.IncrementStat("binder.subscribed_client")
-					b.log(LeapInfo, "Subscribing new client")
-
-					client <- &BinderPortal{
-						Version:          b.model.GetVersion(),
-						Document:         doc,
-						Error:            nil,
-						TransformRcvChan: sndChan,
-						RequestSndChan:   b.jobs,
-					}
 					flushTimer.Reset(flushPeriod)
 					closeTimer.Reset(closePeriod)
 				}
@@ -389,9 +433,9 @@ func (b *Binder) loop() {
 			b.logger.IncrementStat("binder.closing")
 			b.log(LeapInfo, "Closing, shutting down client channels")
 			oldClients := b.clients
-			b.clients = [](chan<- []interface{}){}
+			b.clients = []BinderClient{}
 			for _, client := range oldClients {
-				close(client)
+				close(client.TransformSndChan)
 			}
 			b.log(LeapInfo, fmt.Sprintf("Attempting final flush of %v", b.ID))
 			if _, err := b.flush(); err != nil {

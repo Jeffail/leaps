@@ -56,7 +56,7 @@ func TestNewBinder(t *testing.T) {
 		}
 	}()
 
-	portal1, portal2 := binder.Subscribe(), binder.Subscribe()
+	portal1, portal2 := binder.Subscribe(""), binder.Subscribe("")
 	if v, err := portal1.SendTransform(
 		OTransform{
 			Position: 6,
@@ -69,6 +69,18 @@ func TestNewBinder(t *testing.T) {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
 
+	if v, err := portal2.SendTransform(
+		OTransform{
+			Position: 0,
+			Version:  3,
+			Delete:   0,
+			Insert:   "super ",
+		},
+		time.Second,
+	); v != 3 || err != nil {
+		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
+	}
+
 	tforms1 := <-portal1.TransformRcvChan
 	tforms2 := <-portal2.TransformRcvChan
 
@@ -76,8 +88,8 @@ func TestNewBinder(t *testing.T) {
 		t.Errorf("Wrong count of transforms, tforms1: %v, tforms2: %v", len1, len2)
 	}
 
-	portal3 := binder.Subscribe()
-	if exp, rec := "hello universe", portal3.Document.Content.(string); exp != rec {
+	portal3 := binder.Subscribe("")
+	if exp, rec := "super hello universe", portal3.Document.Content.(string); exp != rec {
 		t.Errorf("Wrong content, expected %v, received %v", exp, rec)
 	}
 }
@@ -156,7 +168,7 @@ func TestClients(t *testing.T) {
 		}
 	}
 
-	portal := binder.Subscribe()
+	portal := binder.Subscribe("")
 
 	if v, err := portal.SendTransform(tform(portal.Version+1), time.Second); v != 2 || err != nil {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
@@ -166,16 +178,16 @@ func TestClients(t *testing.T) {
 	tformToSend := 50
 
 	for i := 0; i < 10; i++ {
-		go goodClient(binder.Subscribe(), tformToSend, t, &wg)
-		go badClient(binder.Subscribe(), t, &wg)
+		go goodClient(binder.Subscribe(""), tformToSend, t, &wg)
+		go badClient(binder.Subscribe(""), t, &wg)
 	}
 
 	wg.Add(tformToSend)
 
 	for i := 0; i < tformToSend; i++ {
 		if i%2 == 0 {
-			go goodClient(binder.Subscribe(), tformToSend-i, t, &wg)
-			go badClient(binder.Subscribe(), t, &wg)
+			go goodClient(binder.Subscribe(""), tformToSend-i, t, &wg)
+			go badClient(binder.Subscribe(""), t, &wg)
 		}
 		if v, err := portal.SendTransform(tform(i+3), time.Second); v != i+3 || err != nil {
 			t.Errorf("Send Transform error, expected v: %v, got v: %v, err: %v", i+3, v, err)
@@ -272,12 +284,12 @@ func TestBinderStories(t *testing.T) {
 		wg.Add(nClients)
 
 		for j := 0; j < nClients; j++ {
-			goodStoryClient(binder.Subscribe(), &story, &wg, t)
+			goodStoryClient(binder.Subscribe(""), &story, &wg, t)
 		}
 
 		time.Sleep(10 * time.Millisecond)
 
-		bp := binder.Subscribe()
+		bp := binder.Subscribe("")
 		go func() {
 			for _ = range bp.TransformRcvChan {
 			}
@@ -291,7 +303,7 @@ func TestBinderStories(t *testing.T) {
 
 		wg.Wait()
 
-		newClient := binder.Subscribe()
+		newClient := binder.Subscribe("")
 		if got, exp := newClient.Document.Content.(string), story.Result; got != exp {
 			t.Errorf("Wrong result, expected: %v, received: %v", exp, got)
 		}
