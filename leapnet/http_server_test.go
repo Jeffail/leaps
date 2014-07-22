@@ -57,6 +57,7 @@ func findDocument(id string, ws *websocket.Conn) error {
 
 	switch initResponse.Type {
 	case "document":
+	case "update":
 	case "error":
 		return fmt.Errorf("Server returned error: %v", initResponse.Error)
 	default:
@@ -92,6 +93,7 @@ func senderClient(id string, feeds <-chan leaplib.OTransform, t *testing.T) {
 					crctChan <- true
 				case "transforms":
 					rcvChan <- serverMsg.Transforms
+				case "update":
 				case "error":
 					t.Errorf("Server returned error: %v", serverMsg.Error)
 				default:
@@ -161,6 +163,8 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 					t.Errorf("listening client received correction")
 				case "transforms":
 					rcvChan <- serverMsg.Transforms
+				case "update":
+					// Ignore
 				case "error":
 					t.Errorf("Server returned error: %v", serverMsg.Error)
 				default:

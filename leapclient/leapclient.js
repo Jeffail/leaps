@@ -90,6 +90,36 @@ _leap_model.prototype._validate_transforms = function(transforms) {
 	}
 };
 
+/* _validate_updates iterates an array of user update objects and validates that each update
+ * contains the correct fields. Returns an error message as a string if there was a problem.
+ */
+_leap_model.prototype._validate_updates = function(user_updates) {
+	"use strict";
+
+	for ( var i = 0, l = user_updates.length; i < l; i++ ) {
+		var update = user_updates[i];
+
+		if ( undefined !== update.position &&
+		    "number" !== typeof(update.position) ) {
+			update.position = parseInt(update.position);
+			if ( isNaN(update.position) ) {
+				return "update contained NaN value for position: " + JSON.stringify(update);
+			}
+		}
+		if ( undefined !== update.active &&
+		    "boolean" !== typeof(update.active) ) {
+			if ("string" !== typeof(update.active)) {
+				return "update contained invalid type for active: " + JSON.stringify(update);
+			}
+			update.active = ("true" === update.active);
+		}
+		if ( undefined === update.user_id ||
+		    "string" !== typeof(update.user_id) ) {
+			return "update contained invalid type for user_id: " + JSON.stringify(update);
+		}
+	}
+};
+
 /* merge_transforms takes two transforms (the next to be sent, and the one that follows) and
  * attempts to merge them into one transform. This will not be possible with some combinations, and
  * the function returns a boolean to indicate whether the merge was successful.
@@ -295,8 +325,12 @@ var leap_client = function() {
 		DISCONNECT: "disconnect",
 		DOCUMENT: "document",
 		TRANSFORMS: "transforms",
+		USER: "user",
 		ERROR: "error"
 	};
+
+	// Milliseconds period between cursor position updates to server
+	this._POSITION_POLL_PERIOD = 500;
 
 	this._events = {};
 };
@@ -417,6 +451,17 @@ leap_client.prototype._process_message = function(message) {
 		}
 		break;
 	case "update":
+		if ( null === message.user_updates ||
+		   !(message.user_updates instanceof Array) ) {
+			return "message update type contained invalid user_updates";
+		}
+		validate_error = this._model._validate_updates(message.user_updates);
+		if ( validate_error !== undefined ) {
+			return "received updatess with error: " + validate_error;
+		}
+		for ( var i = 0, l = message.user_updates.length; i < l; i++ ) {
+			this._dispatch_event(this.EVENT_TYPE.USER, [ message.user_updates[i] ]);
+		}
 		break;
 	case "correction":
 		if ( this._model === null ) {
@@ -470,6 +515,23 @@ leap_client.prototype.send_transform = function(transform) {
 	if ( action_err !== undefined ) {
 		return "model failed to submit: " + action_err;
 	}
+};
+
+/* update_cursor is the function to call to send the server (and all other clients) an update to your
+ * current cursor position in the document, this shows others where your point of interest is in the
+ * shared document.
+ */
+leap_client.prototype.update_cursor = function(position) {
+	"use strict";
+
+	if ( "number" !== typeof(position) ) {
+		return "must supply position as a valid integer value";
+	}
+
+	this._socket.send(JSON.stringify({
+		command:  "update",
+		position: position
+	}));
 };
 
 /* join_document prompts the client to request to join a document from the server. It will return an

@@ -74,25 +74,12 @@ type Model interface {
  */
 
 /*
-PositionUpdate - A struct containing an update to a clients cursor position.
+UserUpdate - A struct containing an update for a clients' status.
 */
-type PositionUpdate struct {
-	Position int64  `json:"position"`
+type UserUpdate struct {
+	Position *int64 `json:"position,omitempty"`
+	Active   bool   `json:"active"`
 	Token    string `json:"user_id"`
-}
-
-/*
-JoinUpdate - A struct containing an update about joining clients.
-*/
-type JoinUpdate struct {
-	JoinedClients []string `json:"new_clients"`
-}
-
-/*
-LeaveUpdate - A struct containing an update about leaving clients.
-*/
-type LeaveUpdate struct {
-	LeftClients []string `json:"left_clients"`
 }
 
 /*--------------------------------------------------------------------------------------------------

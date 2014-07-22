@@ -55,6 +55,10 @@ var leap_bind_textarea = function(leap_client, text_area) {
 		binder._content = binder._text_area.value = doc.content;
 		binder._ready = true;
 		binder._text_area.disabled = false;
+
+		binder._pos_interval = setInterval(function() {
+			binder._leap_client.update_cursor.apply(binder._leap_client, [ binder._text_area.selectionStart ]);
+		}, leap_client._POSITION_POLL_PERIOD);
 	});
 
 	this._leap_client.subscribe_event("transforms", function(transforms) {
@@ -65,6 +69,13 @@ var leap_bind_textarea = function(leap_client, text_area) {
 
 	this._leap_client.subscribe_event("disconnect", function() {
 		binder._text_area.disabled = true;
+		if ( undefined !== binder._pos_interval ) {
+			clearTimeout(binder._pos_interval);
+		}
+	});
+
+	this._leap_client.subscribe_event("user", function(user) {
+		console.log("User update: " + JSON.stringify(user));
 	});
 };
 

@@ -50,6 +50,12 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 
 		binder._ready = true;
 		binder._blind_eye_turned = false;
+
+		binder._pos_interval = setInterval(function() {
+			var live_document = binder._codemirror.getDoc();
+			var position = live_document.indexFromPos(live_document.getCursor());
+			binder._leap_client.update_cursor.apply(binder._leap_client, [ position ]);
+		}, leap_client._POSITION_POLL_PERIOD);
 	});
 
 	this._leap_client.subscribe_event("transforms", function(transforms) {
@@ -59,6 +65,9 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 	});
 
 	this._leap_client.subscribe_event("disconnect", function() {
+		if ( undefined !== binder._pos_interval ) {
+			clearTimeout(binder._pos_interval);
+		}
 	});
 };
 

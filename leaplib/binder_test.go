@@ -31,6 +31,62 @@ import (
 	"time"
 )
 
+func TestUpdates(t *testing.T) {
+	errChan := make(chan BinderError)
+	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	logConf := DefaultLoggerConfig()
+	logConf.LogLevel = LeapError
+
+	logger := CreateLogger(logConf)
+
+	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan, logger)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	go func() {
+		for e := range errChan {
+			t.Errorf("From error channel: %v", e.Err)
+		}
+	}()
+
+	portal1, portal2 := binder.Subscribe(""), binder.Subscribe("")
+	for i := 0; i < 100; i++ {
+		if err = portal1.SendUpdate(UserUpdate{
+			Token: portal1.Token,
+		}, time.Second); err != nil {
+			t.Errorf("Updated error: %v", err)
+		}
+		u1 := <-portal2.TransformRcvChan
+		if update, ok := u1.(UserUpdate); ok {
+			if update.Token != portal1.Token {
+				t.Errorf("Received incorrect token: %v", update.Token)
+			}
+		} else {
+			t.Errorf("Received non-update type")
+		}
+		if err = portal2.SendUpdate(UserUpdate{
+			Token: portal2.Token,
+		}, time.Second); err != nil {
+			t.Errorf("Updated error: %v", err)
+		}
+		u2 := <-portal1.TransformRcvChan
+		if update, ok := u2.(UserUpdate); ok {
+			if update.Token != portal2.Token {
+				t.Errorf("Received incorrect token: %v", update.Token)
+			}
+		} else {
+			t.Errorf("Received non-update type")
+		}
+	}
+}
+
 func TestNewBinder(t *testing.T) {
 	errChan := make(chan BinderError)
 	doc, err := CreateNewDocument("test", "test1", "text", "hello world")

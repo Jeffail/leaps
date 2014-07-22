@@ -23,6 +23,73 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
+/*
+_create_leaps_ace_marker - creates a marker for displaying the cursor positions of other users in an
+ace editor.
+*/
+var _create_leaps_ace_marker = function(ace_editor) {
+	var marker = {};
+
+	marker.cursors = [];
+
+	marker.update = function(html, markerLayer, session, config) {
+		var cursors = marker.cursors;
+		for (var i = 0; i < cursors.length; i++) {
+			var index = cursors[i].position;
+
+			var pos = session.getDocument().indexToPosition(index, 0);
+			var screenPos = session.documentToScreenPosition(pos);
+
+            var height = config.lineHeight;
+            var width = config.characterWidth;
+            var top = markerLayer.$getTop(screenPos.row, config);
+            var left = markerLayer.$padding + screenPos.column * width;
+
+            html.push(
+                "<div class='LeapsCursorClass' style='",
+                "height:", height, "px;",
+                "top:", top, "px;",
+                "left:", left, "px; width:", width, "px'></div>"
+            );
+		}
+	};
+
+	marker.redraw = function() {
+	   marker.session._signal("changeFrontMarker");
+	};
+
+	marker.updateCursor = function(user) {
+		var cursors = marker.cursors, current, i, l;
+		for ( i = 0, l = cursors.length; i < l; i++ ) {
+			if ( cursors[i].user_id === user.user_id ) {
+				current = cursors[i];
+				current.position = user.position;
+				current.updated = new Date().getTime();
+				break;
+			}
+		}
+		if ( undefined === current ) {
+			if ( user.active ) {
+				current = {
+					user_id: user.user_id,
+					position: user.position,
+					updated: new Date().getTime()
+				};
+				cursors.push(current);
+			}
+		} else if ( !user.active ) {
+			cursors.splice(i, 1);
+		}
+
+		marker.redraw();
+	};
+
+	marker.session = ace_editor.getSession();
+	marker.session.addDynamicMarker(marker, true);
+
+	return marker;
+};
+
 /* leap_bind_ace_editor takes an existing leap_client and uses it to convert an Ace web editor
  * (http://ace.c9.io) into a live leaps shared editor.
  */
@@ -37,6 +104,8 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 	this._blind_eye_turned = false;
 
 	this._ace.setReadOnly(true);
+
+	this._marker = _create_leaps_ace_marker(this._ace);
 
 	var binder = this;
 
@@ -55,6 +124,14 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 
 		binder._ready = true;
 		binder._blind_eye_turned = false;
+
+		binder._pos_interval = setInterval(function() {
+			var session = binder._ace.getSession(), doc = session.getDocument();
+			var position = session.getSelection().getCursor();
+			var index = doc.positionToIndex(position, 0);
+
+			binder._leap_client.update_cursor.apply(binder._leap_client, [ index ]);
+		}, leap_client._POSITION_POLL_PERIOD);
 	});
 
 	this._leap_client.subscribe_event("transforms", function(transforms) {
@@ -65,6 +142,14 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 
 	this._leap_client.subscribe_event("disconnect", function() {
 		binder._ace.setReadOnly(true);
+
+		if ( undefined !== binder._pos_interval ) {
+			clearTimeout(binder._pos_interval);
+		}
+	});
+
+	this._leap_client.subscribe_event("user", function(user) {
+		binder._marker.updateCursor.apply(binder._marker, [ user ]);
 	});
 };
 

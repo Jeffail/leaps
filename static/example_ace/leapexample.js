@@ -1,7 +1,9 @@
+var ace_editor;
+
 window.onload = function() {
 	"use strict";
 
-	var ace_editor = ace.edit("editor");
+	ace_editor = ace.edit("editor");
 	ace_editor.setTheme("ace/theme/monokai");
 	ace_editor.getSession().setMode("ace/mode/javascript");
 

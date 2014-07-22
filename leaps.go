@@ -38,6 +38,14 @@ import (
 /*--------------------------------------------------------------------------------------------------
  */
 
+var (
+	leapsVersion string
+	dateBuilt    string
+)
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 /*
 LeapsConfig - The all encompassing leaps configuration. Contains configurations for individual leaps
 components, which determine the role of this leaps instance. Currently a stand alone leaps server is
@@ -54,14 +62,20 @@ type LeapsConfig struct {
 
 func main() {
 	var (
-		curator    leapnet.LeapLocator
-		err        error
-		closeChan  = make(chan bool)
-		configPath = flag.String("c", "", "Path to a configuration file")
-		leapsMode  = flag.String("m", "curator", "Leaps service mode, supports: curator, curator or curator")
+		curator     leapnet.LeapLocator
+		err         error
+		closeChan   = make(chan bool)
+		showVersion = flag.Bool("v", false, "Display version info")
+		configPath  = flag.String("c", "", "Path to a configuration file")
+		leapsMode   = flag.String("m", "curator", "Leaps service mode, supports: curator, curator or curator")
 	)
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("Leaps version: %v\nDate: %v\n", leapsVersion, dateBuilt)
+		return
+	}
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 

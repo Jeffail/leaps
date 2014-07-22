@@ -30,13 +30,16 @@ JS_BIN := $(BIN)/js
 JS_BIN_FILES = $(shell ls $(JS_BIN))
 
 VERSION := $(shell git describe --tags || echo "v0.0.0")
+DATE := $(shell date +"%c" | tr ' :' '__')
+
+GOFLAGS := -ldflags "-X main.leapsVersion $(VERSION) -X main.dateBuilt $(DATE)"
 
 all: build
 
 build: check
 	@mkdir -p $(JS_BIN)
 	@echo "building $(BIN)/$(PROJECT)"
-	@go build -o $(BIN)/$(PROJECT)
+	@go build -o $(BIN)/$(PROJECT) $(GOFLAGS)
 	@echo "copying/compressing js libraries into $(JS_BIN)"
 	@cp $(JS_CLIENT) $(JS_BIN)/leaps.js; \
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-min.js"; \
@@ -75,7 +78,7 @@ multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" GOOS="$${plat%/*}" GOARCH="$${plat\#*/}" GOARM=7; \
 		bindir="$(BIN)/$${GOOS}_$${GOARCH}" exepath="$${bindir}/$(PROJECT)"; \
 		echo "building $${exepath} with GOOS=$${GOOS}, GOARCH=$${GOARCH}, GOARM=$${GOARM}"; \
-		mkdir -p "$$bindir"; GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath"; \
+		mkdir -p "$$bindir"; GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath" $(GOFLAGS); \
 	)
 
 multiplat: build

@@ -34,7 +34,8 @@ import (
 
 /*
 LeapTextClientMessage - A structure that defines a message format to expect from clients connected
-to a text model. Commands can currently only be 'submit' (submit a transform to a bound document).
+to a text model. Commands can currently be 'submit' (submit a transform to a bound document), or
+'update' (submit an update to the users cursor position).
 */
 type LeapTextClientMessage struct {
 	Command   string              `json:"command"`
@@ -45,11 +46,13 @@ type LeapTextClientMessage struct {
 /*
 LeapTextServerMessage - A structure that defines a response message from a text model to a client.
 Type can be 'transforms' (continuous delivery), 'correction' (actual version of a submitted
-transform), or 'error' (an error message to display to the client).
+transform), 'update' (an update to a users status) or 'error' (an error message to display to the
+client).
 */
 type LeapTextServerMessage struct {
 	Type       string               `json:"response_type"`
 	Transforms []leaplib.OTransform `json:"transforms,omitempty"`
+	Updates    []leaplib.UserUpdate `json:"user_updates,omitempty"`
 	Version    int                  `json:"version,omitempty"`
 	Error      string               `json:"error,omitempty"`
 }
@@ -107,6 +110,12 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 		select {
 		case msg, open := <-readChan:
 			if !open {
+				if err := binder.SendUpdate(leaplib.UserUpdate{
+					Active: false,
+					Token:  binder.Token,
+				}, bindTOut); err != nil {
+					h.log(leaplib.LeapError, fmt.Sprintf("Client update failed %v", err))
+				}
 				return
 			}
 			h.log(leaplib.LeapDebug, fmt.Sprintf("Received %v command from client", msg.Command))
@@ -136,8 +145,9 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 				}
 			case "update":
 				if msg.Position != nil {
-					if err := binder.SendUpdate(leaplib.PositionUpdate{
-						Position: *msg.Position,
+					if err := binder.SendUpdate(leaplib.UserUpdate{
+						Position: msg.Position,
+						Active:   true,
 						Token:    binder.Token,
 					}, bindTOut); err != nil {
 						h.log(leaplib.LeapError, fmt.Sprintf("Client update failed %v", err))
@@ -162,10 +172,16 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			}
 			if tform != nil {
 				if ot, ok := tform.(leaplib.OTransform); ok {
-					h.log(leaplib.LeapDebug, "Sending %v transform to client")
+					h.log(leaplib.LeapDebug, "Sending transform to client")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:       "transforms",
 						Transforms: []leaplib.OTransform{ot},
+					})
+				} else if update, ok := tform.(leaplib.UserUpdate); ok {
+					h.log(leaplib.LeapDebug, "Sending update to client")
+					websocket.JSON.Send(socket, LeapTextServerMessage{
+						Type:    "update",
+						Updates: []leaplib.UserUpdate{update},
 					})
 				} else {
 					h.log(leaplib.LeapError, fmt.Sprintf("Received unexpected type from RcvChan: %v", tform))

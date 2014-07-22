@@ -25,3 +25,8 @@ body {
 	height: 600px;
 	width: 95%;
 }
+
+.LeapsCursorClass {
+	position: absolute;
+	border-left: 2px solid gold;
+}
