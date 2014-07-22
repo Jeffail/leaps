@@ -46,7 +46,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
             var left = markerLayer.$padding + screenPos.column * width;
 
             html.push(
-                "<div class='LeapsCursorClass' style='",
+                "<div class='LeapsAceCursor' style='",
                 "height:", height, "px;",
                 "top:", top, "px;",
                 "left:", left, "px; width:", width, "px'></div>"
@@ -95,6 +95,23 @@ var _create_leaps_ace_marker = function(ace_editor) {
  */
 var leap_bind_ace_editor = function(leap_client, ace_editor) {
 	"use strict";
+
+	if ( null === document.getElementById("leaps-ace-style") ) {
+		var node = document.createElement('style');
+		node.id = "leaps-ace-style";
+		node.innerHTML =
+		"@keyframes LeapsBlinkCursor {" +
+			"0% { opacity: 1;}" +
+			"50% { opacity: 0;}" +
+			"100% { opacity: 1;}" +
+		"}" +
+		".LeapsAceCursor {" +
+			"position: absolute;" +
+			"border-left: 2px solid gold;" +
+			"animation: LeapsBlinkCursor 1s linear 0s infinite alternate;" +
+		"}";
+		document.body.appendChild(node);
+	}
 
 	this._ace = ace_editor;
 	this._leap_client = leap_client;
