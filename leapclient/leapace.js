@@ -35,9 +35,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 	marker.update = function(html, markerLayer, session, config) {
 		var cursors = marker.cursors;
 		for (var i = 0; i < cursors.length; i++) {
-			var index = cursors[i].position;
-
-			var pos = session.getDocument().indexToPosition(index, 0);
+			var pos = cursors[i].position;
 			var screenPos = session.documentToScreenPosition(pos);
 
             var height = config.lineHeight;
@@ -63,7 +61,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 		for ( i = 0, l = cursors.length; i < l; i++ ) {
 			if ( cursors[i].user_id === user.user_id ) {
 				current = cursors[i];
-				current.position = user.position;
+				current.position = marker.session.getDocument().indexToPosition(user.position, 0);
 				current.updated = new Date().getTime();
 				break;
 			}
@@ -72,7 +70,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 			if ( user.active ) {
 				current = {
 					user_id: user.user_id,
-					position: user.position,
+					position: marker.session.getDocument().indexToPosition(user.position, 0),
 					updated: new Date().getTime()
 				};
 				cursors.push(current);
