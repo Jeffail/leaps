@@ -108,6 +108,7 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		".LeapsAceCursor {" +
 			"position: absolute;" +
 			"border-left: 2px solid gold;" +
+			"background-color: rgba(50, 50, 50, 0.2);" +
 			"animation: LeapsBlinkCursor 1s linear 0s infinite alternate;" +
 		"}";
 		document.body.appendChild(node);
