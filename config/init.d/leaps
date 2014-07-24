@@ -28,7 +28,7 @@ start() {
 		echo 'Starting service...' >&2
 		touch $LOG
 		chown $RUNAS $LOG
-		local CMD="$DAEMON -c $CONFIG &> \"$LOG\" & echo \$!"
+		local CMD="$DAEMON -c $CONFIG &>> \"$LOG\" & echo \$!"
 		su -c "$CMD" $RUNAS > "$PID"
         echo 'Service started' >&2
 }

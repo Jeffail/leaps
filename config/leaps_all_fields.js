@@ -37,7 +37,7 @@
 	"http_server": {
 		"static_path": "/leaps",
 		"socket_path": "/leaps/socket",
-		"address": ":8080",
+		"address": "localhost:8080",
 		"www_dir": "",
 		"binder": {
 			"bind_send_timeout_ms": 10
@@ -46,7 +46,7 @@
 	"stats_server": {
 		"static_path": "/",
 		"stats_path": "/leapstats",
-		"address": ":4040",
+		"address": "localhost:4040",
 		"www_dir": "",
 		"stat_timeout_ms": 200,
 		"request_timeout_s": 10

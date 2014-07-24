@@ -92,7 +92,7 @@ func CreateNewCurator(config CuratorConfig) (*Curator, error) {
 		logger:        CreateLogger(config.LoggerConfig),
 		authenticator: auth,
 		openBinders:   make(map[string]*Binder),
-		errorChan:     make(chan BinderError),
+		errorChan:     make(chan BinderError, 10),
 		closeChan:     make(chan bool),
 		closedChan:    make(chan bool),
 	}

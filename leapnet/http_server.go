@@ -59,7 +59,7 @@ func DefaultHTTPServerConfig() HTTPServerConfig {
 	return HTTPServerConfig{
 		StaticPath:     "/leaps",
 		Path:           "/leaps/socket",
-		Address:        ":8080",
+		Address:        "localhost:8080",
 		StaticFilePath: "",
 		Binder: HTTPBinderConfig{
 			BindSendTimeout: 10,

@@ -28,6 +28,8 @@ _create_leaps_ace_marker - creates a marker for displaying the cursor positions 
 ace editor.
 */
 var _create_leaps_ace_marker = function(ace_editor) {
+	"use strict";
+
 	var marker = {};
 
 	marker.cursors = [];
@@ -98,16 +100,10 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		var node = document.createElement('style');
 		node.id = "leaps-ace-style";
 		node.innerHTML =
-		"@keyframes LeapsBlinkCursor {" +
-			"0% { opacity: 1;}" +
-			"50% { opacity: 0;}" +
-			"100% { opacity: 1;}" +
-		"}" +
 		".LeapsAceCursor {" +
 			"position: absolute;" +
 			"border-left: 2px solid gold;" +
 			"background-color: rgba(50, 50, 50, 0.2);" +
-			"animation: LeapsBlinkCursor 1s linear 0s infinite alternate;" +
 		"}";
 		document.body.appendChild(node);
 	}

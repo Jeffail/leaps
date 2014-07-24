@@ -53,7 +53,7 @@ func DefaultStatsServerConfig() StatsServerConfig {
 	return StatsServerConfig{
 		StaticPath:     "/",
 		Path:           "/leapstats",
-		Address:        ":4040",
+		Address:        "localhost:4040",
 		StaticFilePath: "",
 		StatsTimeout:   200,
 		RequestTimeout: 10,

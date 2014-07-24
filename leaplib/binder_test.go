@@ -31,6 +31,34 @@ import (
 	"time"
 )
 
+func TestGracefullShutdown(t *testing.T) {
+	errChan := make(chan BinderError, 10)
+
+	logConf := DefaultLoggerConfig()
+	logConf.LogLevel = LeapError
+
+	doc, _ := CreateNewDocument("test", "test1", "text", "hello world")
+
+	logger := CreateLogger(logConf)
+
+	store := MemoryStore{documents: map[string]*Document{
+		"KILL_ME": doc,
+	}}
+
+	binder, err := BindExisting("KILL_ME", &store, DefaultBinderConfig(), errChan, logger)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+
+	testClient := binder.Subscribe("")
+	delete(store.documents, "KILL_ME")
+	testClient.SendTransform(OTransform{Position: 0, Insert: "hello", Version: 2}, time.Second)
+
+	<-errChan
+	binder.Close()
+}
+
 func TestUpdates(t *testing.T) {
 	errChan := make(chan BinderError)
 	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
