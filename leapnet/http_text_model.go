@@ -41,6 +41,7 @@ type LeapTextClientMessage struct {
 	Command   string              `json:"command"`
 	Transform *leaplib.OTransform `json:"transform,omitempty"`
 	Position  *int64              `json:"position,omitempty"`
+	Message   string              `json:"message,omitempty"`
 }
 
 /*
@@ -144,8 +145,9 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 					return
 				}
 			case "update":
-				if msg.Position != nil {
+				if msg.Position != nil || len(msg.Message) > 0 {
 					if err := binder.SendUpdate(leaplib.UserUpdate{
+						Message:  msg.Message,
 						Position: msg.Position,
 						Active:   true,
 						Token:    binder.Token,

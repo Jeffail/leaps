@@ -132,7 +132,10 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		binder._ace.setValue(doc.content);
 		binder._ace.setReadOnly(false);
 		binder._ace.clearSelection();
-		binder._ace.getSession().getUndoManager().reset();
+
+		var old_undo = binder._ace.getSession().getUndoManager();
+		old_undo.reset();
+		binder._ace.getSession().setUndoManager(old_undo);
 
 		binder._ready = true;
 		binder._blind_eye_turned = false;

@@ -77,6 +77,7 @@ type Model interface {
 UserUpdate - A struct containing an update for a clients' status.
 */
 type UserUpdate struct {
+	Message  string `json:"message,omitempty"`
 	Position *int64 `json:"position,omitempty"`
 	Active   bool   `json:"active"`
 	Token    string `json:"user_id"`

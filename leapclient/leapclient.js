@@ -106,6 +106,10 @@ _leap_model.prototype._validate_updates = function(user_updates) {
 				return "update contained NaN value for position: " + JSON.stringify(update);
 			}
 		}
+		if ( undefined !== update.message &&
+		    "string" !== typeof(update.message) ) {
+			return "update contained invalid type for message: " + JSON.stringify(update);
+		}
 		if ( undefined !== update.active &&
 		    "boolean" !== typeof(update.active) ) {
 			if ("string" !== typeof(update.active)) {
@@ -515,6 +519,21 @@ leap_client.prototype.send_transform = function(transform) {
 	if ( action_err !== undefined ) {
 		return "model failed to submit: " + action_err;
 	}
+};
+
+/* send_message - send a text message out to all other users connected to your shared document.
+ */
+leap_client.prototype.send_message = function(message) {
+	"use strict";
+
+	if ( "string" !== typeof(message) ) {
+		return "must supply message as a valid string value";
+	}
+
+	this._socket.send(JSON.stringify({
+		command:  "update",
+		message: message
+	}));
 };
 
 /* update_cursor is the function to call to send the server (and all other clients) an update to your
