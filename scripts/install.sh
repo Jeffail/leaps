@@ -1,6 +1,5 @@
 #!/bin/bash
-id -u leaps &>/dev/null || useradd -s /bin/bash leaps
-echo leaps:leaps | chpasswd
+id -u leaps &>/dev/null || (useradd -s /bin/bash leaps && echo leaps:leaps | chpasswd)
 
 cp ./leaps /usr/sbin/leaps
 cp ./config/init.d/leaps /etc/init.d/leaps

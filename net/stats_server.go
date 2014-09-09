@@ -20,12 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package leapnet
+package net
 
 import (
 	"errors"
 	"fmt"
-	"github.com/jeffail/leaps/leaplib"
+	"github.com/jeffail/leaps/lib"
 	"net/http"
 	"time"
 )
@@ -70,7 +70,7 @@ of the service.
 */
 type StatsServer struct {
 	config   StatsServerConfig
-	logger   *leaplib.LeapsLogger
+	logger   *lib.LeapsLogger
 	server   *http.Server
 	serveMux *http.ServeMux
 }
@@ -78,7 +78,7 @@ type StatsServer struct {
 /*
 CreateStatsServer - Create a new leaps StatsServer.
 */
-func CreateStatsServer(logger *leaplib.LeapsLogger, config StatsServerConfig) (*StatsServer, error) {
+func CreateStatsServer(logger *lib.LeapsLogger, config StatsServerConfig) (*StatsServer, error) {
 	statsServer := StatsServer{
 		config:   config,
 		logger:   logger,
@@ -134,10 +134,10 @@ func (s *StatsServer) Listen() error {
 	if len(s.config.Address) == 0 {
 		return errors.New("invalid config value for Address")
 	}
-	s.log(leaplib.LeapInfo, fmt.Sprintf("Listening for stats requests at address: %v",
+	s.log(lib.LeapInfo, fmt.Sprintf("Listening for stats requests at address: %v",
 		fmt.Sprintf("%v%v", s.config.Address, s.config.Path)))
 	if len(s.config.StaticPath) > 0 && len(s.config.StaticFilePath) > 0 {
-		s.log(leaplib.LeapInfo, fmt.Sprintf("Serving static stats file requests at address: %v",
+		s.log(lib.LeapInfo, fmt.Sprintf("Serving static stats file requests at address: %v",
 			fmt.Sprintf("%v%v", s.config.Address, s.config.StaticPath)))
 	}
 	err := s.server.ListenAndServe()

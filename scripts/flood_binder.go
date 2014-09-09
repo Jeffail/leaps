@@ -2,29 +2,30 @@ package main
 
 import (
 	"fmt"
-	ll "github.com/jeffail/leaps/leaplib"
 	"time"
+
+	"github.com/jeffail/leaps/lib"
 )
 
 func main() {
-	errChan := make(chan ll.BinderError)
-	doc, err := ll.CreateNewDocument("test", "test1", "text", "hello world 123")
+	errChan := make(chan lib.BinderError)
+	doc, err := lib.CreateNewDocument("test", "test1", "text", "helibo world 123")
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return
 	}
 
-	logConf := ll.DefaultLoggerConfig()
-	//logConf.LogLevel = ll.LeapDebug
+	logConf := lib.DefaultLoggerConfig()
+	//logConf.LogLevel = lib.LeapDebug
 
-	logger := ll.CreateLogger(logConf)
+	logger := lib.CreateLogger(logConf)
 
-	store, _ := ll.GetMemoryStore(ll.DocumentStoreConfig{})
+	store, _ := lib.GetMemoryStore(lib.DocumentStoreConfig{})
 
-	binderConfig := ll.DefaultBinderConfig()
+	binderConfig := lib.DefaultBinderConfig()
 	binderConfig.RetentionPeriod = 1
 
-	binder, err := ll.BindNew(doc, store, binderConfig, errChan, logger)
+	binder, err := lib.BindNew(doc, store, binderConfig, errChan, logger)
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return
@@ -48,11 +49,11 @@ func main() {
 
 	for {
 		if v, err := portal.SendTransform(
-			ll.OTransform{
+			lib.OTransform{
 				Position: 0,
 				Version:  targetV,
 				Delete:   11,
-				Insert:   "hello world",
+				Insert:   "helibo world",
 			},
 			time.Second,
 		); v != targetV || err != nil {

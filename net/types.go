@@ -20,10 +20,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package leapnet
+package net
 
 import (
-	"github.com/jeffail/leaps/leaplib"
+	"github.com/jeffail/leaps/lib"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -36,13 +36,13 @@ servers of curators.
 */
 type LeapLocator interface {
 	// FindDocument - Find and return a binder portal to an existing document
-	FindDocument(string, string) (*leaplib.BinderPortal, error)
+	FindDocument(string, string) (*lib.BinderPortal, error)
 
 	// NewDocument - Create and return a binder portal to a new document
-	NewDocument(string, *leaplib.Document) (*leaplib.BinderPortal, error)
+	NewDocument(string, *lib.Document) (*lib.BinderPortal, error)
 
 	// GetLogger - Obtain a reference to the LeapsLogger held by our curator
-	GetLogger() *leaplib.LeapsLogger
+	GetLogger() *lib.LeapsLogger
 
 	// Close - Close the LeapLocator
 	Close()

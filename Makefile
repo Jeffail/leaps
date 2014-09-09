@@ -21,7 +21,7 @@
 .PHONY: all build lint check clean install example multiplat package
 
 PROJECT := leaps
-JS_PATH := ./leapclient
+JS_PATH := ./client
 JS_CLIENT := $(JS_PATH)/leapclient.js
 
 BIN := ./bin

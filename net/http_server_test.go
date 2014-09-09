@@ -20,13 +20,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package leapnet
+package net
 
 import (
 	"code.google.com/p/go.net/websocket"
 	"encoding/json"
 	"fmt"
-	"github.com/jeffail/leaps/leaplib"
+	"github.com/jeffail/leaps/lib"
 	"io/ioutil"
 	"sync"
 	"testing"
@@ -35,8 +35,8 @@ import (
 
 type binderStory struct {
 	Content    string               `json:"content"`
-	Transforms []leaplib.OTransform `json:"transforms"`
-	TCorrected []leaplib.OTransform `json:"corrected_transforms"`
+	Transforms []lib.OTransform `json:"transforms"`
+	TCorrected []lib.OTransform `json:"corrected_transforms"`
 	Result     string               `json:"result"`
 }
 
@@ -67,7 +67,7 @@ func findDocument(id string, ws *websocket.Conn) error {
 	return nil
 }
 
-func senderClient(id string, feeds <-chan leaplib.OTransform, t *testing.T) {
+func senderClient(id string, feeds <-chan lib.OTransform, t *testing.T) {
 	origin := "http://localhost/"
 	url := "ws://localhost:8787/leaps/socket"
 
@@ -82,7 +82,7 @@ func senderClient(id string, feeds <-chan leaplib.OTransform, t *testing.T) {
 		return
 	}
 
-	rcvChan := make(chan []leaplib.OTransform, 5)
+	rcvChan := make(chan []lib.OTransform, 5)
 	crctChan := make(chan bool)
 	go func() {
 		for {
@@ -153,7 +153,7 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 		return
 	}
 
-	rcvChan := make(chan []leaplib.OTransform, 5)
+	rcvChan := make(chan []lib.OTransform, 5)
 	go func() {
 		for {
 			var serverMsg LeapTextServerMessage
@@ -221,13 +221,13 @@ func TestHttpServer(t *testing.T) {
 		return
 	}
 
-	curatorConfig := leaplib.DefaultCuratorConfig()
-	curatorConfig.LoggerConfig.LogLevel = leaplib.LeapError
+	curatorConfig := lib.DefaultCuratorConfig()
+	curatorConfig.LoggerConfig.LogLevel = lib.LeapError
 
 	httpServerConfig := DefaultHTTPServerConfig()
 	httpServerConfig.Address = "localhost:8787"
 
-	curator, err := leaplib.CreateNewCurator(curatorConfig)
+	curator, err := lib.CreateNewCurator(curatorConfig)
 	if err != nil {
 		t.Errorf("Curator error: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestHttpServer(t *testing.T) {
 
 		websocket.JSON.Send(ws, LeapClientMessage{
 			Command: "create",
-			Document: &leaplib.Document{
+			Document: &lib.Document{
 				Title:       fmt.Sprintf("Story%v", i),
 				Description: fmt.Sprintf("Story #%v", i),
 				Type:        "text",
@@ -282,7 +282,7 @@ func TestHttpServer(t *testing.T) {
 			return
 		}
 
-		feeds := make(chan leaplib.OTransform)
+		feeds := make(chan lib.OTransform)
 
 		wg := sync.WaitGroup{}
 		wg.Add(10)
