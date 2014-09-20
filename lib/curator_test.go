@@ -61,7 +61,7 @@ func TestCuratorClients(t *testing.T) {
 		return
 	}
 
-	portal, err := curator.NewDocument("", doc)
+	portal, err := curator.NewDocument("", "", doc)
 	doc = portal.Document
 	if err != nil {
 		t.Errorf("error: %v", err)

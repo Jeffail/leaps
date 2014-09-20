@@ -68,4 +68,4 @@ make
 
 Documentation for the main service library can be found here, for those interested in writing custom servers look at the Curator structure:
 
-https://godoc.org/github.com/Jeffail/leaps/leaplib
+https://godoc.org/github.com/Jeffail/leaps/lib

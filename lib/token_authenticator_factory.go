@@ -34,7 +34,9 @@ TokenAuthenticatorConfig - Holds generic configuration options for a token based
 solution.
 */
 type TokenAuthenticatorConfig struct {
-	Type string `json:"type"`
+	Type        string                   `json:"type"`
+	AllowCreate bool                     `json:"allow_creation"`
+	RedisConfig RedisAuthenticatorConfig `json:"redis_config"`
 }
 
 /*
@@ -42,7 +44,9 @@ DefaultTokenAuthenticatorConfig - Returns a default generic configuration.
 */
 func DefaultTokenAuthenticatorConfig() TokenAuthenticatorConfig {
 	return TokenAuthenticatorConfig{
-		Type: "none",
+		Type:        "none",
+		AllowCreate: true,
+		RedisConfig: DefaultRedisAuthenticatorConfig(),
 	}
 }
 
@@ -54,7 +58,7 @@ TokenAuthenticator - Implemented by types able to validate tokens for editing or
 This is abstracted in order to accommodate for multiple authentication strategies.
 */
 type TokenAuthenticator interface {
-	AuthoriseCreate(token string) bool
+	AuthoriseCreate(token, userID string) bool
 	AuthoriseJoin(token, documentID string) bool
 }
 
@@ -64,10 +68,12 @@ type TokenAuthenticator interface {
 /*
 TokenAuthenticatorFactory - Returns a document store object based on a configuration object.
 */
-func TokenAuthenticatorFactory(config TokenAuthenticatorConfig) (TokenAuthenticator, error) {
+func TokenAuthenticatorFactory(config TokenAuthenticatorConfig, logger *LeapsLogger) (TokenAuthenticator, error) {
 	switch config.Type {
 	case "none":
 		return GetAnarchy(config), nil
+	case "redis":
+		return CreateRedisAuthenticator(config, logger), nil
 	}
 	return nil, errors.New("configuration provided invalid token authenticator type")
 }
@@ -79,12 +85,16 @@ func TokenAuthenticatorFactory(config TokenAuthenticatorConfig) (TokenAuthentica
 Anarchy - Most basic implementation of TokenAuthenticator, everyone has access to everything.
 */
 type Anarchy struct {
+	config TokenAuthenticatorConfig
 }
 
 /*
 AuthoriseCreate - Always returns true, because anarchy.
 */
-func (a *Anarchy) AuthoriseCreate(_ string) bool {
+func (a *Anarchy) AuthoriseCreate(_, _ string) bool {
+	if !a.config.AllowCreate {
+		return false
+	}
 	return true
 }
 
@@ -99,7 +109,7 @@ func (a *Anarchy) AuthoriseJoin(_, _ string) bool {
 GetAnarchy - Get yourself a little taste of sweet, juicy anarchy.
 */
 func GetAnarchy(config TokenAuthenticatorConfig) TokenAuthenticator {
-	return &Anarchy{}
+	return &Anarchy{config}
 }
 
 /*--------------------------------------------------------------------------------------------------

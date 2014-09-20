@@ -34,8 +34,8 @@ import (
 ModelConfig - Holds configuration options for a transform model.
 */
 type ModelConfig struct {
-	MaxDocumentSize    int64 `json:"max_document_size"`
-	MaxTransformLength int64 `json:"max_transform_length"`
+	MaxDocumentSize    uint64 `json:"max_document_size"`
+	MaxTransformLength uint64 `json:"max_transform_length"`
 }
 
 /*

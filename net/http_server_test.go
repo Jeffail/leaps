@@ -23,21 +23,22 @@ THE SOFTWARE.
 package net
 
 import (
-	"code.google.com/p/go.net/websocket"
 	"encoding/json"
 	"fmt"
-	"github.com/jeffail/leaps/lib"
 	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
+
+	"code.google.com/p/go.net/websocket"
+	"github.com/jeffail/leaps/lib"
 )
 
 type binderStory struct {
-	Content    string               `json:"content"`
+	Content    string           `json:"content"`
 	Transforms []lib.OTransform `json:"transforms"`
 	TCorrected []lib.OTransform `json:"corrected_transforms"`
-	Result     string               `json:"result"`
+	Result     string           `json:"result"`
 }
 
 type binderStoriesContainer struct {
@@ -47,7 +48,7 @@ type binderStoriesContainer struct {
 func findDocument(id string, ws *websocket.Conn) error {
 	websocket.JSON.Send(ws, LeapClientMessage{
 		Command: "find",
-		ID:      id,
+		DocID:   id,
 	})
 
 	var initResponse LeapServerMessage
@@ -69,7 +70,7 @@ func findDocument(id string, ws *websocket.Conn) error {
 
 func senderClient(id string, feeds <-chan lib.OTransform, t *testing.T) {
 	origin := "http://localhost/"
-	url := "ws://localhost:8787/leaps/socket"
+	url := "ws://localhost:8254/leaps/socket"
 
 	ws, err := websocket.Dial(url, "", origin)
 	if err != nil {
@@ -138,7 +139,7 @@ func senderClient(id string, feeds <-chan lib.OTransform, t *testing.T) {
 }
 func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *testing.T) {
 	origin := "http://localhost/"
-	url := "ws://localhost:8787/leaps/socket"
+	url := "ws://localhost:8254/leaps/socket"
 
 	ws, err := websocket.Dial(url, "", origin)
 	if err != nil {
@@ -225,7 +226,7 @@ func TestHttpServer(t *testing.T) {
 	curatorConfig.LoggerConfig.LogLevel = lib.LeapError
 
 	httpServerConfig := DefaultHTTPServerConfig()
-	httpServerConfig.Address = "localhost:8787"
+	httpServerConfig.Address = "localhost:8254"
 
 	curator, err := lib.CreateNewCurator(curatorConfig)
 	if err != nil {
@@ -246,7 +247,7 @@ func TestHttpServer(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	origin := "http://localhost/"
-	url := "ws://localhost:8787/leaps/socket"
+	url := "ws://localhost:8254/leaps/socket"
 
 	for i, story := range scont.Stories {
 

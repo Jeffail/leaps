@@ -23,11 +23,12 @@ THE SOFTWARE.
 package net
 
 import (
-	"code.google.com/p/go.net/websocket"
 	"errors"
 	"fmt"
-	"github.com/jeffail/leaps/lib"
 	"net/http"
+
+	"code.google.com/p/go.net/websocket"
+	"github.com/jeffail/leaps/lib"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -75,9 +76,10 @@ LeapClientMessage - A structure that defines a message format to expect from cli
 be 'create' (init with new document) or 'find' (init with existing document).
 */
 type LeapClientMessage struct {
-	Command  string            `json:"command"`
-	Token    string            `json:"token"`
-	ID       string            `json:"document_id,omitempty"`
+	Command  string        `json:"command"`
+	Token    string        `json:"token"`
+	DocID    string        `json:"document_id,omitempty"`
+	UserID   string        `json:"user_id,omitempty"`
 	Document *lib.Document `json:"leap_document,omitempty"`
 }
 
@@ -86,10 +88,10 @@ LeapServerMessage - A structure that defines a response message from the server 
 can be 'document' (init response) or 'error' (an error message to display to the client).
 */
 type LeapServerMessage struct {
-	Type     string            `json:"response_type"`
+	Type     string        `json:"response_type"`
 	Document *lib.Document `json:"leap_document,omitempty"`
-	Version  *int              `json:"version,omitempty"`
-	Error    string            `json:"error,omitempty"`
+	Version  *int          `json:"version,omitempty"`
+	Error    string        `json:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -160,13 +162,13 @@ func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (*lib.Bind
 	switch clientMsg.Command {
 	case "create":
 		if clientMsg.Document != nil {
-			return h.locator.NewDocument(clientMsg.Token, clientMsg.Document)
+			return h.locator.NewDocument(clientMsg.Token, clientMsg.UserID, clientMsg.Document)
 		}
 		return nil, errors.New("create request must contain a valid document structure")
 	case "find":
-		if len(clientMsg.ID) > 0 {
-			h.log(lib.LeapInfo, fmt.Sprintf("Attempting to bind to document: %v", clientMsg.ID))
-			return h.locator.FindDocument(clientMsg.Token, clientMsg.ID)
+		if len(clientMsg.DocID) > 0 {
+			h.log(lib.LeapInfo, fmt.Sprintf("Attempting to bind to document: %v", clientMsg.DocID))
+			return h.locator.FindDocument(clientMsg.Token, clientMsg.DocID)
 		}
 		return nil, errors.New("find request must contain a valid document ID")
 	case "ping":

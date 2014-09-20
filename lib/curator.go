@@ -77,11 +77,13 @@ CreateNewCurator - Creates and returns a fresh curator, and launches its interna
 monitoring Binder errors.
 */
 func CreateNewCurator(config CuratorConfig) (*Curator, error) {
+	logger := CreateLogger(config.LoggerConfig)
+
 	store, err := DocumentStoreFactory(config.StoreConfig)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := TokenAuthenticatorFactory(config.AuthenticatorConfig)
+	auth, err := TokenAuthenticatorFactory(config.AuthenticatorConfig, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +91,7 @@ func CreateNewCurator(config CuratorConfig) (*Curator, error) {
 	curator := Curator{
 		config:        config,
 		store:         store,
-		logger:        CreateLogger(config.LoggerConfig),
+		logger:        logger,
 		authenticator: auth,
 		openBinders:   make(map[string]*Binder),
 		errorChan:     make(chan BinderError, 10),
@@ -188,13 +190,12 @@ func (c *Curator) FindDocument(token string, id string) (*BinderPortal, error) {
 /*
 NewDocument - Creates a fresh Binder for a new document, which is subsequently stored, returns an
 error if either the document ID is already currently in use, or if there is a problem storing the
-new document.
+new document. May require authentication, if so a userID is supplied.
 */
-func (c *Curator) NewDocument(token string, doc *Document) (*BinderPortal, error) {
-	if !c.authenticator.AuthoriseCreate(token) {
+func (c *Curator) NewDocument(token string, userID string, doc *Document) (*BinderPortal, error) {
+	if !c.authenticator.AuthoriseCreate(token, userID) {
 		return nil, fmt.Errorf("failed to gain permission to create with token: %v", token)
 	}
-
 	// Always generate a fresh ID
 	doc.ID = GenerateID(fmt.Sprintf("%v%v", doc.Title, doc.Description))
 
@@ -208,7 +209,6 @@ func (c *Curator) NewDocument(token string, doc *Document) (*BinderPortal, error
 	if err != nil {
 		return nil, err
 	}
-
 	c.binderMutex.Lock()
 	c.openBinders[doc.ID] = binder
 	c.binderMutex.Unlock()

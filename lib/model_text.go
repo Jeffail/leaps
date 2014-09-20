@@ -84,7 +84,7 @@ func (m *OModel) PushTransform(otBoxed interface{}) (interface{}, int, error) {
 	if ot.Delete < 0 {
 		return nil, 0, errors.New("transform contained negative delete")
 	}
-	if int64(len(ot.Insert)) > m.config.MaxTransformLength {
+	if uint64(len(ot.Insert)) > m.config.MaxTransformLength {
 		return nil, 0, errors.New("transform insert length exceeded the limit")
 	}
 
@@ -152,7 +152,7 @@ func (m *OModel) FlushTransforms(contentBoxed *interface{}, secondsRetention int
 	var err error
 	for i = 0; i < len(transforms); i++ {
 		lenContent += (len(transforms[i].Insert) - transforms[i].Delete)
-		if int64(lenContent) > m.config.MaxDocumentSize {
+		if uint64(lenContent) > m.config.MaxDocumentSize {
 			return i > 0, errors.New("cannot apply transform, document length would exceed limit")
 		}
 		if err = m.applyTransform(&runeContent, &transforms[i]); err != nil {
