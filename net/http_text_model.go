@@ -38,10 +38,10 @@ to a text model. Commands can currently be 'submit' (submit a transform to a bou
 'update' (submit an update to the users cursor position).
 */
 type LeapTextClientMessage struct {
-	Command   string              `json:"command"`
+	Command   string          `json:"command"`
 	Transform *lib.OTransform `json:"transform,omitempty"`
-	Position  *int64              `json:"position,omitempty"`
-	Message   string              `json:"message,omitempty"`
+	Position  *int64          `json:"position,omitempty"`
+	Message   string          `json:"message,omitempty"`
 }
 
 /*
@@ -51,11 +51,11 @@ transform), 'update' (an update to a users status) or 'error' (an error message 
 client).
 */
 type LeapTextServerMessage struct {
-	Type       string               `json:"response_type"`
+	Type       string           `json:"response_type"`
 	Transforms []lib.OTransform `json:"transforms,omitempty"`
 	Updates    []lib.UserUpdate `json:"user_updates,omitempty"`
-	Version    int                  `json:"version,omitempty"`
-	Error      string               `json:"error,omitempty"`
+	Version    int              `json:"version,omitempty"`
+	Error      string           `json:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------

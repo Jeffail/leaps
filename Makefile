@@ -59,7 +59,7 @@ build: check
 
 GOLINT=$(shell golint .)
 lint:
-	@go tool vet ./**/*.go && echo "$(GOLINT)" && test -z "$(GOLINT)" && jshint $(JS_PATH)/*.js
+	@gofmt -w . && go tool vet ./**/*.go && echo "$(GOLINT)" && test -z "$(GOLINT)" && jshint $(JS_PATH)/*.js
 
 check: lint
 	@go test ./...
