@@ -73,10 +73,12 @@ clean:
 install: check
 	@go install
 
-PLATFORMS = "darwin/amd64" "freebsd/amd64" "freebsd/arm" "linux/amd64" "linux/arm" "windows/amd64"
+PLATFORMS = "darwin/amd64/" "freebsd/amd64/" "freebsd/arm/7" "freebsd/arm/5" "linux/amd64/" "linux/arm/7" "linux/arm/5" "windows/amd64/"
+
 multiplatform_builds = $(foreach platform, $(PLATFORMS), \
-		plat="$(platform)" GOOS="$${plat%/*}" GOARCH="$${plat\#*/}" GOARM=7; \
-		bindir="$(BIN)/$${GOOS}_$${GOARCH}" exepath="$${bindir}/$(PROJECT)"; \
+		plat="$(platform)" armspec="$${plat\#*/}" \
+		GOOS="$${plat%/*/*}" GOARCH="$${armspec%/*}" GOARM="$${armspec\#*/}"; \
+		bindir="$(BIN)/$${GOOS}_$${GOARCH}$${GOARM}" exepath="$${bindir}/$(PROJECT)"; \
 		echo "building $${exepath} with GOOS=$${GOOS}, GOARCH=$${GOARCH}, GOARM=$${GOARM}"; \
 		mkdir -p "$$bindir"; GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath" $(GOFLAGS); \
 	)
@@ -85,7 +87,9 @@ multiplat: build
 	@$(multiplatform_builds)
 
 package_builds = $(foreach platform, $(PLATFORMS), \
-		plat="$(platform)" p_stamp="$${plat%/*}_$${plat\#*/}" a_name="$(PROJECT)-$${p_stamp}-$(VERSION)"; \
+		plat="$(platform)" armspec="$${plat\#*/}" \
+		GOOS="$${plat%/*/*}" GOARCH="$${armspec%/*}" GOARM="$${armspec\#*/}"; \
+		p_stamp="$${GOOS}_$${GOARCH}$${GOARM}" a_name="$(PROJECT)-$${p_stamp}-$(VERSION)"; \
 		echo "archiving $${a_name}"; \
 		mkdir -p "./releases/$(VERSION)"; \
 		cp -LR "$(BIN)/$${p_stamp}" "./releases/$(VERSION)/$(PROJECT)"; \

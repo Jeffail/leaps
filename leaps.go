@@ -55,6 +55,7 @@ components, which determine the role of this leaps instance. Currently a stand a
 the only supported role.
 */
 type LeapsConfig struct {
+	NumProcesses      int                   `json:"num_processes"`
 	CuratorConfig     lib.CuratorConfig     `json:"curator"`
 	HTTPServerConfig  net.HTTPServerConfig  `json:"http_server"`
 	StatsServerConfig net.StatsServerConfig `json:"stats_server"`
@@ -81,9 +82,9 @@ func main() {
 	}
 
 	rand.Seed(time.Now().Unix())
-	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	leapsConfig := LeapsConfig{
+		NumProcesses:      runtime.NumCPU(),
 		CuratorConfig:     lib.DefaultCuratorConfig(),
 		HTTPServerConfig:  net.DefaultHTTPServerConfig(),
 		StatsServerConfig: net.DefaultStatsServerConfig(),
@@ -110,6 +111,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Configuration marshal error: %v", err))
 		return
 	}
+	runtime.GOMAXPROCS(leapsConfig.NumProcesses)
 
 	// We are running in curator node.
 	switch *leapsMode {
