@@ -196,7 +196,10 @@ leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 
 	setTimeout((function() {
 		if ( this._content !== this._ace.getValue() ) {
-			console.error("internal content and editor content do not match");
+			this._leap_client._dispatch_event.apply(this._leap_client,
+				[ this._leap_client.EVENT_TYPE.ERROR, [
+					"Local editor has lost synchronization with server"
+				] ]);
 		}
 	}).bind(this), 0);
 };
@@ -235,18 +238,27 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 	}
 
 	if ( tform.insert === undefined && tform.num_delete === undefined ) {
-		console.error("change resulted in invalid transform: " + JSON.stringify(e.data));
+		this._leap_client._dispatch_event.apply(this._leap_client,
+			[ this._leap_client.EVENT_TYPE.ERROR, [
+				"Local change resulted in invalid transform"
+			] ]);
 	}
 
 	this._content = this._leap_client.apply(tform, this._content);
 	var err = this._leap_client.send_transform(tform);
 	if ( err !== undefined ) {
-		console.error(err);
+		this._leap_client._dispatch_event.apply(this._leap_client,
+			[ this._leap_client.EVENT_TYPE.ERROR, [
+				"Local change resulted in invalid transform: " + err
+			] ]);
 	}
 
 	setTimeout((function() {
 		if ( this._content !== this._ace.getValue() ) {
-			console.error("internal content and editor content do not match");
+			this._leap_client._dispatch_event.apply(this._leap_client,
+				[ this._leap_client.EVENT_TYPE.ERROR, [
+					"Local editor has lost synchronization with server"
+				] ]);
 		}
 	}).bind(this), 0);
 };

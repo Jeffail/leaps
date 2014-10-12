@@ -133,8 +133,10 @@ leap_bind_textarea.prototype._trigger_diff = function() {
 	if ( tform.insert !== undefined || tform.num_delete !== undefined ) {
 		var err = this._leap_client.send_transform(tform);
 		if ( err !== undefined ) {
-			console.error(err);
-			// TODO: handle errors gracefully
+			this._leap_client._dispatch_event.apply(this._leap_client,
+				[ this._leap_client.EVENT_TYPE.ERROR, [
+					"Local change resulted in invalid transform"
+				] ]);
 		}
 	}
 };
