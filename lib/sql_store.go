@@ -89,6 +89,7 @@ type SQLStore struct {
 	db         *sql.DB
 	createStmt *sql.Stmt
 	updateStmt *sql.Stmt
+	readStmt   *sql.Stmt
 }
 
 /*
@@ -126,14 +127,7 @@ func (m *SQLStore) Fetch(id string) (*Document, error) {
 
 	document.ID = id
 
-	err := m.db.QueryRow(fmt.Sprintf("SELECT %v, %v, %v, %v FROM %v WHERE %v = ?",
-		m.config.SQLConfig.TableConfig.TitleCol,
-		m.config.SQLConfig.TableConfig.DescriptionCol,
-		m.config.SQLConfig.TableConfig.TypeCol,
-		m.config.SQLConfig.TableConfig.ContentCol,
-		m.config.SQLConfig.TableConfig.Name,
-		m.config.SQLConfig.TableConfig.IDCol,
-	), id).Scan(&document.Title, &document.Description, &document.Type, &contentStr)
+	err := m.readStmt.QueryRow(id).Scan(&document.Title, &document.Description, &document.Type, &contentStr)
 
 	switch {
 	case err == sql.ErrNoRows:
@@ -155,8 +149,8 @@ GetSQLStore - Just a func that returns an SQLStore
 */
 func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 	var db *sql.DB
-	var createStr, updateStr string
-	var create, update *sql.Stmt
+	var createStr, updateStr, readStr string
+	var create, update, read *sql.Stmt
 	var err error
 
 	if len(config.SQLConfig.DSN) == 0 {
@@ -176,9 +170,11 @@ func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 	case "postgres":
 		createStr = "INSERT INTO %v (%v, %v, %v, %v, %v) VALUES ($1, $2, $3, $4, $5)"
 		updateStr = "UPDATE %v SET %v = $1, %v = $2, %v = $3, %v = $4 WHERE %v = $5"
+		readStr = "SELECT %v, %v, %v, %v FROM %v WHERE %v = $1"
 	default:
 		createStr = "INSERT INTO %v (%v, %v, %v, %v, %v) VALUES (?, ?, ?, ?, ?)"
 		updateStr = "UPDATE %v SET %v = ?, %v = ?, %v = ?, %v = ? WHERE %v = ?"
+		readStr = "SELECT %v, %v, %v, %v FROM %v WHERE %v = ?"
 	}
 
 	create, err = db.Prepare(fmt.Sprintf(createStr,
@@ -203,12 +199,24 @@ func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare update statement: %v", err)
 	}
+	read, err = db.Prepare(fmt.Sprintf(readStr,
+		config.SQLConfig.TableConfig.TitleCol,
+		config.SQLConfig.TableConfig.DescriptionCol,
+		config.SQLConfig.TableConfig.TypeCol,
+		config.SQLConfig.TableConfig.ContentCol,
+		config.SQLConfig.TableConfig.Name,
+		config.SQLConfig.TableConfig.IDCol,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare get statement: %v", err)
+	}
 
 	return &SQLStore{
 		db:         db,
 		config:     config,
 		createStmt: create,
 		updateStmt: update,
+		readStmt:   read,
 	}, nil
 }
 
