@@ -659,7 +659,7 @@ leap_client.prototype.connect = function(address, _websocket) {
 	};
 
 	this._socket.onclose = function() {
-		if ( undefined !== leap_obj._hearthbeat ) {
+		if ( undefined !== leap_obj._heartbeat ) {
 			clearTimeout(leap_obj._heartbeat);
 		}
 		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.DISCONNECT, [] ]);
@@ -675,7 +675,7 @@ leap_client.prototype.connect = function(address, _websocket) {
 	};
 
 	this._socket.onerror = function() {
-		if ( undefined !== leap_obj._hearthbeat ) {
+		if ( undefined !== leap_obj._heartbeat ) {
 			clearTimeout(leap_obj._heartbeat);
 		}
 		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, arguments ]);
@@ -687,7 +687,7 @@ leap_client.prototype.connect = function(address, _websocket) {
 leap_client.prototype.close = function() {
 	"use strict";
 
-	if ( undefined !== this._hearthbeat ) {
+	if ( undefined !== this._heartbeat ) {
 		clearTimeout(this._heartbeat);
 	}
 	if ( this._socket !== null && this._socket.readyState === 1 ) {
