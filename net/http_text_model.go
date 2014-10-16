@@ -23,10 +23,11 @@ THE SOFTWARE.
 package net
 
 import (
-	"code.google.com/p/go.net/websocket"
 	"fmt"
-	"github.com/jeffail/leaps/lib"
 	"time"
+
+	"code.google.com/p/go.net/websocket"
+	"github.com/jeffail/leaps/lib"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -106,6 +107,8 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			}
 		}
 	}()
+
+	h.logger.IncrementStat("http.client.connected")
 
 	for {
 		select {
@@ -190,6 +193,7 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 				}
 			}
 		case <-h.closeChan:
+			h.logger.DecrementStat("http.client.connected")
 			return
 		}
 	}

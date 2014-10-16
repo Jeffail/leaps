@@ -187,6 +187,8 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 		}
 	}()
 
+	h.logger.IncrementStat("http.websocket.opened")
+
 	select {
 	case <-h.closeChan:
 		websocket.JSON.Send(ws, LeapServerMessage{
