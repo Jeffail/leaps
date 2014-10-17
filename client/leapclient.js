@@ -678,7 +678,7 @@ leap_client.prototype.connect = function(address, _websocket) {
 		if ( undefined !== leap_obj._heartbeat ) {
 			clearTimeout(leap_obj._heartbeat);
 		}
-		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, arguments ]);
+		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, [ "socket connection error" ] ]);
 	};
 };
 
