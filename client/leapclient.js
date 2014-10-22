@@ -324,6 +324,8 @@ var leap_client = function() {
 
 	this._model = null;
 
+	this._cursor_position = 0;
+
 	this.EVENT_TYPE = {
 		CONNECT: "connect",
 		DISCONNECT: "disconnect",
@@ -532,7 +534,8 @@ leap_client.prototype.send_message = function(message) {
 
 	this._socket.send(JSON.stringify({
 		command:  "update",
-		message: message
+		message: message,
+		position: this._cursor_position
 	}));
 };
 
@@ -547,9 +550,10 @@ leap_client.prototype.update_cursor = function(position) {
 		return "must supply position as a valid integer value";
 	}
 
+	this._cursor_position = position;
 	this._socket.send(JSON.stringify({
 		command:  "update",
-		position: position
+		position: this._cursor_position
 	}));
 };
 

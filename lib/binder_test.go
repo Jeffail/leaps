@@ -176,7 +176,7 @@ func TestNewBinder(t *testing.T) {
 
 func badClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
 	// Do nothing, LOLOLOLOLOL AHAHAHAHAHAHAHAHAHA! TIME WASTTTTIIINNNGGGG!!!!
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	// The first transform is free (buffered chan)
 	<-b.TransformRcvChan
