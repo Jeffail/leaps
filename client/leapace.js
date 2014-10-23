@@ -40,17 +40,19 @@ var _create_leaps_ace_marker = function(ace_editor) {
 			var pos = cursors[i].position;
 			var screenPos = session.documentToScreenPosition(pos);
 
-            var height = config.lineHeight;
-            var width = config.characterWidth;
-            var top = markerLayer.$getTop(screenPos.row, config);
-            var left = markerLayer.$padding + screenPos.column * width;
+			var height = config.lineHeight;
+			var width = config.characterWidth;
+			var top = markerLayer.$getTop(screenPos.row, config);
+			var left = markerLayer.$padding + screenPos.column * width;
 
-            html.push(
-                "<div class='LeapsAceCursor' style='",
-                "height:", height, "px;",
-                "top:", top, "px;",
-                "left:", left, "px; width:", width, "px'></div>"
-            );
+			var stretch = 4;
+
+			html.push(
+				"<div class='LeapsAceCursor' style='",
+				"height:", (height + stretch), "px;",
+				"top:", (top - (stretch/2)), "px;",
+				"left:", left, "px; width:", width, "px'></div>"
+			);
 		}
 	};
 
@@ -102,8 +104,7 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		node.innerHTML =
 		".LeapsAceCursor {" +
 			"position: absolute;" +
-			"border-left: 2px solid gold;" +
-			"background-color: rgba(50, 50, 50, 0.2);" +
+			"border-left: 3px solid #D11956;" +
 		"}";
 		document.body.appendChild(node);
 	}
