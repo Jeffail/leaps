@@ -50,7 +50,7 @@ OModel - A representation of the transform model surrounding a document session.
 of changes submitted and recently applied in order to distribute those changes to clients.
 */
 type OModel struct {
-	config    ModelConfig  `json:"config"`
+	config    ModelConfig
 	Version   int          `json:"version"`
 	Applied   []OTransform `json:"applied"`
 	Unapplied []OTransform `json:"unapplied"`
