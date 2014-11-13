@@ -51,9 +51,9 @@ of changes submitted and recently applied in order to distribute those changes t
 */
 type OModel struct {
 	config    ModelConfig
-	Version   int          `json:"version"`
-	Applied   []OTransform `json:"applied"`
-	Unapplied []OTransform `json:"unapplied"`
+	Version   int
+	Applied   []OTransform
+	Unapplied []OTransform
 }
 
 /*

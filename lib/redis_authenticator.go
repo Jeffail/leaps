@@ -2,10 +2,10 @@ package lib
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/jeffail/leaps/util"
 	"github.com/youtube/vitess/go/pools"
 )
 
@@ -52,7 +52,7 @@ func (r resourceConn) Close() {
 RedisAuthenticator - A wrapper around the Redis client that acts as an authenticator.
 */
 type RedisAuthenticator struct {
-	logger *LeapsLogger
+	logger *util.Logger
 	config TokenAuthenticatorConfig
 	pool   *pools.ResourcePool
 }
@@ -60,21 +60,17 @@ type RedisAuthenticator struct {
 /*
 CreateRedisAuthenticator - Creates a RedisAuthenticator using the provided configuration.
 */
-func CreateRedisAuthenticator(config TokenAuthenticatorConfig, logger *LeapsLogger) *RedisAuthenticator {
+func CreateRedisAuthenticator(config TokenAuthenticatorConfig, logger *util.Logger) *RedisAuthenticator {
 	p := pools.NewResourcePool(func() (pools.Resource, error) {
 		c, err := redis.Dial("tcp", config.RedisConfig.URL)
 		return resourceConn{c}, err
 	}, 10, 200, time.Minute)
 
 	return &RedisAuthenticator{
-		logger: logger,
+		logger: logger.NewModule("[redis_auth]"),
 		config: config,
 		pool:   p,
 	}
-}
-
-func (s *RedisAuthenticator) log(level int, message string) {
-	s.logger.Log(level, "redis-authenticator", message)
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -90,16 +86,16 @@ func (s *RedisAuthenticator) AuthoriseCreate(token, userID string) bool {
 	}
 	userKey, err := s.ReadKey(token)
 	if err != nil {
-		s.log(LeapError, fmt.Sprintf("failed to get authorise create token: %v", err))
+		s.logger.Errorf("failed to get authorise create token: %v\n", err)
 		return false
 	}
 	if userKey != userID {
-		s.log(LeapWarn, fmt.Sprintf("create token invalid, provided: %v, actual: %v", userID, userKey))
+		s.logger.Warnf("create token invalid, provided: %v, actual: %v\n", userID, userKey)
 		return false
 	}
 	err = s.DeleteKey(token)
 	if err != nil {
-		s.log(LeapError, fmt.Sprintf("failed to delete key: %v", token))
+		s.logger.Errorf("failed to delete key: %v\n", token)
 	}
 	return true
 }
@@ -111,16 +107,16 @@ ID.
 func (s *RedisAuthenticator) AuthoriseJoin(token, documentID string) bool {
 	docKey, err := s.ReadKey(token)
 	if err != nil {
-		s.log(LeapError, fmt.Sprintf("failed to get authorise join token: %v", err))
+		s.logger.Errorf("failed to get authorise join token: %v\n", err)
 		return false
 	}
 	if docKey != documentID {
-		s.log(LeapWarn, fmt.Sprintf("join token invalid, provided: %v, actual: %v", documentID, docKey))
+		s.logger.Warnf("join token invalid, provided: %v, actual: %v\n", documentID, docKey)
 		return false
 	}
 	err = s.DeleteKey(token)
 	if err != nil {
-		s.log(LeapError, fmt.Sprintf("failed to delete key: %v", token))
+		s.logger.Errorf("failed to delete key: %v\n", token)
 	}
 	return true
 }

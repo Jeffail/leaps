@@ -26,12 +26,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/jeffail/leaps/lib"
+	"github.com/jeffail/leaps/util"
 )
 
 type binderStory struct {
@@ -209,6 +211,16 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 	}
 }
 
+func loggerAndStats() (*util.Logger, *util.Stats) {
+	logConf := util.DefaultLoggerConfig()
+	logConf.LogLevel = "OFF"
+
+	logger := util.NewLogger(os.Stdout, logConf)
+	stats := util.NewStats(util.DefaultStatsConfig())
+
+	return logger, stats
+}
+
 func TestHttpServer(t *testing.T) {
 	bytes, err := ioutil.ReadFile("../data/binder_stories.js")
 	if err != nil {
@@ -222,19 +234,18 @@ func TestHttpServer(t *testing.T) {
 		return
 	}
 
-	curatorConfig := lib.DefaultCuratorConfig()
-	curatorConfig.LoggerConfig.LogLevel = lib.LeapError
-
 	httpServerConfig := DefaultHTTPServerConfig()
 	httpServerConfig.Address = "localhost:8254"
 
-	curator, err := lib.CreateNewCurator(curatorConfig)
+	logger, stats := loggerAndStats()
+
+	curator, err := lib.CreateNewCurator(lib.DefaultCuratorConfig(), logger, stats)
 	if err != nil {
 		t.Errorf("Curator error: %v", err)
 	}
 
 	go func() {
-		http, err := CreateHTTPServer(curator, httpServerConfig, nil)
+		http, err := CreateHTTPServer(curator, httpServerConfig, logger, stats, nil)
 		if err != nil {
 			t.Errorf("Create HTTP error: %v", err)
 			return

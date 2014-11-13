@@ -2,12 +2,20 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/jeffail/leaps/lib"
+	"github.com/jeffail/leaps/util"
 )
 
 func main() {
+	logConf := util.DefaultLoggerConfig()
+	logConf.LogLevel = "INFO"
+
+	logger := util.NewLogger(os.Stdout, logConf)
+	stats := util.NewStats(util.DefaultStatsConfig())
+
 	errChan := make(chan lib.BinderError)
 	doc, err := lib.CreateNewDocument("test", "test1", "text", "helibo world 123")
 	if err != nil {
@@ -15,17 +23,12 @@ func main() {
 		return
 	}
 
-	logConf := lib.DefaultLoggerConfig()
-	//logConf.LogLevel = lib.LeapDebug
-
-	logger := lib.CreateLogger(logConf)
-
 	store, _ := lib.GetMemoryStore(lib.DocumentStoreConfig{})
 
 	binderConfig := lib.DefaultBinderConfig()
 	binderConfig.RetentionPeriod = 1
 
-	binder, err := lib.BindNew(doc, store, binderConfig, errChan, logger)
+	binder, err := lib.BindNew(doc, store, binderConfig, errChan, logger, stats)
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return

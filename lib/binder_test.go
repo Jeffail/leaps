@@ -26,26 +26,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jeffail/leaps/util"
 )
 
 func TestGracefullShutdown(t *testing.T) {
 	errChan := make(chan BinderError, 10)
 
-	logConf := DefaultLoggerConfig()
-	logConf.LogLevel = LeapError
+	logConf := util.DefaultLoggerConfig()
+	logConf.LogLevel = "OFF"
+
+	logger := util.NewLogger(os.Stdout, logConf)
+	stats := util.NewStats(util.DefaultStatsConfig())
 
 	doc, _ := CreateNewDocument("test", "test1", "text", "hello world")
-
-	logger := CreateLogger(logConf)
 
 	store := MemoryStore{documents: map[string]*Document{
 		"KILL_ME": doc,
 	}}
 
-	binder, err := BindExisting("KILL_ME", &store, DefaultBinderConfig(), errChan, logger)
+	binder, err := BindExisting("KILL_ME", &store, DefaultBinderConfig(), errChan, logger, stats)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -67,12 +71,20 @@ func TestUpdates(t *testing.T) {
 		return
 	}
 
-	logConf := DefaultLoggerConfig()
-	logConf.LogLevel = LeapError
+	logConf := util.DefaultLoggerConfig()
+	logConf.LogLevel = "OFF"
 
-	logger := CreateLogger(logConf)
+	logger := util.NewLogger(os.Stdout, logConf)
+	stats := util.NewStats(util.DefaultStatsConfig())
 
-	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan, logger)
+	binder, err := BindNew(
+		doc,
+		&MemoryStore{documents: map[string]*Document{}},
+		DefaultBinderConfig(),
+		errChan,
+		logger,
+		stats,
+	)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -123,12 +135,20 @@ func TestNewBinder(t *testing.T) {
 		return
 	}
 
-	logConf := DefaultLoggerConfig()
-	logConf.LogLevel = LeapError
+	logConf := util.DefaultLoggerConfig()
+	logConf.LogLevel = "OFF"
 
-	logger := CreateLogger(logConf)
+	logger := util.NewLogger(os.Stdout, logConf)
+	stats := util.NewStats(util.DefaultStatsConfig())
 
-	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan, logger)
+	binder, err := BindNew(
+		doc,
+		&MemoryStore{documents: map[string]*Document{}},
+		DefaultBinderConfig(),
+		errChan,
+		logger,
+		stats,
+	)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -174,7 +194,7 @@ func TestNewBinder(t *testing.T) {
 	}
 }
 
-func badClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
+/*func badClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
 	// Do nothing, LOLOLOLOLOL AHAHAHAHAHAHAHAHAHA! TIME WASTTTTIIINNNGGGG!!!!
 	time.Sleep(500 * time.Millisecond)
 
@@ -185,7 +205,7 @@ func badClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
 		t.Errorf("Bad client wasn't rejected")
 	}
 	wg.Done()
-}
+}*/
 
 func goodClient(b *BinderPortal, expecting int, t *testing.T, wg *sync.WaitGroup) {
 	changes := b.Version + 1
@@ -212,10 +232,11 @@ func TestClients(t *testing.T) {
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000
 
-	logConf := DefaultLoggerConfig()
-	logConf.LogLevel = LeapError
+	logConf := util.DefaultLoggerConfig()
+	logConf.LogLevel = "OFF"
 
-	logger := CreateLogger(logConf)
+	logger := util.NewLogger(os.Stdout, logConf)
+	stats := util.NewStats(util.DefaultStatsConfig())
 
 	wg := sync.WaitGroup{}
 
@@ -225,7 +246,14 @@ func TestClients(t *testing.T) {
 		return
 	}
 
-	binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, DefaultBinderConfig(), errChan, logger)
+	binder, err := BindNew(
+		doc,
+		&MemoryStore{documents: map[string]*Document{}},
+		DefaultBinderConfig(),
+		errChan,
+		logger,
+		stats,
+	)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -252,21 +280,19 @@ func TestClients(t *testing.T) {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
 
-	wg.Add(20)
+	wg.Add(10)
 	tformToSend := 50
 
 	for i := 0; i < 10; i++ {
 		go goodClient(binder.Subscribe(""), tformToSend, t, &wg)
-		go badClient(binder.Subscribe(""), t, &wg)
+		//go badClient(binder.Subscribe(""), t, &wg)
 	}
 
 	wg.Add(tformToSend)
 
 	for i := 0; i < tformToSend; i++ {
-		if i%2 == 0 {
-			go goodClient(binder.Subscribe(""), tformToSend-i, t, &wg)
-			go badClient(binder.Subscribe(""), t, &wg)
-		}
+		go goodClient(binder.Subscribe(""), tformToSend-i, t, &wg)
+		//go badClient(binder.Subscribe(""), t, &wg)
 		if v, err := portal.SendTransform(tform(i+3), time.Second); v != i+3 || err != nil {
 			t.Errorf("Send Transform error, expected v: %v, got v: %v, err: %v", i+3, v, err)
 		}
@@ -316,10 +342,11 @@ func goodStoryClient(b *BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t
 func TestBinderStories(t *testing.T) {
 	nClients := 10
 
-	logConf := DefaultLoggerConfig()
-	logConf.LogLevel = LeapError
+	logConf := util.DefaultLoggerConfig()
+	logConf.LogLevel = "OFF"
 
-	logger := CreateLogger(logConf)
+	logger := util.NewLogger(os.Stdout, logConf)
+	stats := util.NewStats(util.DefaultStatsConfig())
 
 	bytes, err := ioutil.ReadFile("../data/binder_stories.js")
 	if err != nil {
@@ -350,7 +377,7 @@ func TestBinderStories(t *testing.T) {
 			}
 		}()
 
-		binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan, logger)
+		binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan, logger, stats)
 		if err != nil {
 			t.Errorf("error: %v", err)
 			continue

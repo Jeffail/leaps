@@ -24,6 +24,8 @@ package lib
 
 import (
 	"errors"
+
+	"github.com/jeffail/leaps/util"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -68,7 +70,7 @@ type TokenAuthenticator interface {
 /*
 TokenAuthenticatorFactory - Returns a document store object based on a configuration object.
 */
-func TokenAuthenticatorFactory(config TokenAuthenticatorConfig, logger *LeapsLogger) (TokenAuthenticator, error) {
+func TokenAuthenticatorFactory(config TokenAuthenticatorConfig, logger *util.Logger) (TokenAuthenticator, error) {
 	switch config.Type {
 	case "none":
 		return GetAnarchy(config), nil

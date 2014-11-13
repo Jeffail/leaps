@@ -28,6 +28,7 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/jeffail/leaps/lib"
+	"github.com/jeffail/leaps/util"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -67,15 +68,9 @@ HTTPTextModel - an HTTP model that connects a binder of a text document to a cli
 */
 type HTTPTextModel struct {
 	config    HTTPBinderConfig
-	logger    *lib.LeapsLogger
+	logger    *util.Logger
+	stats     *util.Stats
 	closeChan <-chan bool
-}
-
-/*
-log - Helper function for logging events, only actually logs when verbose logging is configured.
-*/
-func (h *HTTPTextModel) log(level int, message string) {
-	h.logger.Log(level, "http_text", message)
 }
 
 /*
@@ -93,7 +88,7 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 		for {
 			select {
 			case <-h.closeChan:
-				h.log(lib.LeapInfo, "Closing websocket model")
+				h.logger.Infoln("Closing websocket model")
 				close(readChan)
 				return
 			default:
@@ -108,7 +103,7 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 		}
 	}()
 
-	h.logger.IncrementStat("http.client.connected")
+	h.stats.Incr("http.client.connected", 1)
 
 	for {
 		select {
@@ -118,15 +113,15 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 					Active: false,
 					Token:  binder.Token,
 				}, bindTOut); err != nil {
-					h.log(lib.LeapError, fmt.Sprintf("Client update failed %v", err))
+					h.logger.Errorf("Client update failed %v\n", err)
 				}
 				return
 			}
-			h.log(lib.LeapDebug, fmt.Sprintf("Received %v command from client", msg.Command))
+			h.logger.Debugf("Received %v command from client\n", msg.Command)
 			switch msg.Command {
 			case "submit":
 				if msg.Transform == nil {
-					h.log(lib.LeapError, "Client submit contained nil transform")
+					h.logger.Errorln("Client submit contained nil transform")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:  "error",
 						Error: "submit error: transform was nil",
@@ -134,13 +129,13 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 					return
 				}
 				if ver, err := binder.SendTransform(*msg.Transform, bindTOut); err == nil {
-					h.log(lib.LeapDebug, "Sending correction to client")
+					h.logger.Debugln("Sending correction to client")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:    "correction",
 						Version: ver,
 					})
 				} else {
-					h.log(lib.LeapError, fmt.Sprintf("Transform request failed %v", err))
+					h.logger.Errorf("Transform request failed %v\n", err)
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:  "error",
 						Error: fmt.Sprintf("submit error: %v", err),
@@ -155,7 +150,7 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 						Active:   true,
 						Token:    binder.Token,
 					}, bindTOut); err != nil {
-						h.log(lib.LeapError, fmt.Sprintf("Client update failed %v", err))
+						h.logger.Errorf("Client update failed %v\n", err)
 						websocket.JSON.Send(socket, LeapTextServerMessage{
 							Type:  "error",
 							Error: fmt.Sprintf("update error: %v", err),
@@ -177,23 +172,23 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			}
 			if tform != nil {
 				if ot, ok := tform.(lib.OTransform); ok {
-					h.log(lib.LeapDebug, "Sending transform to client")
+					h.logger.Traceln("Sending transform to client")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:       "transforms",
 						Transforms: []lib.OTransform{ot},
 					})
 				} else if update, ok := tform.(lib.UserUpdate); ok {
-					h.log(lib.LeapDebug, "Sending update to client")
+					h.logger.Traceln("Sending update to client")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:    "update",
 						Updates: []lib.UserUpdate{update},
 					})
 				} else {
-					h.log(lib.LeapError, fmt.Sprintf("Received unexpected type from RcvChan: %v", tform))
+					h.logger.Errorf("Received unexpected type from RcvChan: %v\n", tform)
 				}
 			}
 		case <-h.closeChan:
-			h.logger.DecrementStat("http.client.connected")
+			h.stats.Decr("http.client.connected", 1)
 			return
 		}
 	}

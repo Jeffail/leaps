@@ -36,6 +36,7 @@ import (
 
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/leaps/net"
+	"github.com/jeffail/leaps/util"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -55,10 +56,12 @@ components, which determine the role of this leaps instance. Currently a stand a
 the only supported role.
 */
 type LeapsConfig struct {
-	NumProcesses      int                   `json:"num_processes"`
-	CuratorConfig     lib.CuratorConfig     `json:"curator"`
-	HTTPServerConfig  net.HTTPServerConfig  `json:"http_server"`
-	StatsServerConfig net.StatsServerConfig `json:"stats_server"`
+	NumProcesses      int                    `json:"num_processes"`
+	LoggerConfig      util.LoggerConfig      `json:"logger"`
+	StatsConfig       util.StatsConfig       `json:"stats"`
+	CuratorConfig     lib.CuratorConfig      `json:"curator"`
+	HTTPServerConfig  net.HTTPServerConfig   `json:"http_server"`
+	StatsServerConfig util.StatsServerConfig `json:"stats_server"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -85,9 +88,11 @@ func main() {
 
 	leapsConfig := LeapsConfig{
 		NumProcesses:      runtime.NumCPU(),
+		LoggerConfig:      util.DefaultLoggerConfig(),
+		StatsConfig:       util.DefaultStatsConfig(),
 		CuratorConfig:     lib.DefaultCuratorConfig(),
 		HTTPServerConfig:  net.DefaultHTTPServerConfig(),
-		StatsServerConfig: net.DefaultStatsServerConfig(),
+		StatsServerConfig: util.DefaultStatsServerConfig(),
 	}
 
 	if len(*configPath) > 0 {
@@ -111,17 +116,21 @@ func main() {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Configuration marshal error: %v", err))
 		return
 	}
+
 	runtime.GOMAXPROCS(leapsConfig.NumProcesses)
 
-	// We are running in curator node.
+	logger := util.NewLogger(os.Stdout, leapsConfig.LoggerConfig)
+	stats := util.NewStats(leapsConfig.StatsConfig)
+
 	switch *leapsMode {
 	case "curator":
-		curator, err = lib.CreateNewCurator(leapsConfig.CuratorConfig)
+		// We are running in curator node.
+		curator, err = lib.CreateNewCurator(leapsConfig.CuratorConfig, logger, stats)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
 			return
 		}
-		leapHTTP, err := net.CreateHTTPServer(curator, leapsConfig.HTTPServerConfig, nil)
+		leapHTTP, err := net.CreateHTTPServer(curator, leapsConfig.HTTPServerConfig, logger, stats, nil)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("HTTP error: %v\n", err))
 			return
@@ -138,7 +147,7 @@ func main() {
 	}
 
 	// Run a stats service in the background.
-	statsServer, err := net.CreateStatsServer(curator.GetLogger(), leapsConfig.StatsServerConfig)
+	statsServer, err := util.NewStatsServer(leapsConfig.StatsServerConfig, logger, stats)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Stats error: %v\n", err))
 		return

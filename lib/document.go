@@ -57,11 +57,9 @@ func CreateNewDocument(title, description, doctype string, content interface{}) 
 		Type:        doctype,
 		Content:     content,
 	}
-
 	if err := ValidateDocument(doc); err != nil {
 		return nil, err
 	}
-
 	return doc, nil
 }
 

@@ -25,6 +25,8 @@ package lib
 import (
 	"fmt"
 	"sync"
+
+	"github.com/jeffail/leaps/util"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -36,7 +38,6 @@ CuratorConfig - Holds configuration options for a curator.
 type CuratorConfig struct {
 	StoreConfig         DocumentStoreConfig      `json:"storage"`
 	BinderConfig        BinderConfig             `json:"binder"`
-	LoggerConfig        LoggerConfig             `json:"logger"`
 	AuthenticatorConfig TokenAuthenticatorConfig `json:"authenticator"`
 }
 
@@ -48,7 +49,6 @@ func DefaultCuratorConfig() CuratorConfig {
 	return CuratorConfig{
 		StoreConfig:         DefaultDocumentStoreConfig(),
 		BinderConfig:        DefaultBinderConfig(),
-		LoggerConfig:        DefaultLoggerConfig(),
 		AuthenticatorConfig: DefaultTokenAuthenticatorConfig(),
 	}
 }
@@ -63,22 +63,21 @@ clients in locating their target Binders, and when necessary creates new Binders
 type Curator struct {
 	config        CuratorConfig
 	store         DocumentStore
-	logger        *LeapsLogger
+	logger        *util.Logger
+	stats         *util.Stats
 	authenticator TokenAuthenticator
 	openBinders   map[string]*Binder
 	binderMutex   sync.RWMutex
 	errorChan     chan BinderError
-	closeChan     chan bool
-	closedChan    chan bool
+	closeChan     chan struct{}
+	closedChan    chan struct{}
 }
 
 /*
 CreateNewCurator - Creates and returns a fresh curator, and launches its internal loop for
 monitoring Binder errors.
 */
-func CreateNewCurator(config CuratorConfig) (*Curator, error) {
-	logger := CreateLogger(config.LoggerConfig)
-
+func CreateNewCurator(config CuratorConfig, logger *util.Logger, stats *util.Stats) (*Curator, error) {
 	store, err := DocumentStoreFactory(config.StoreConfig)
 	if err != nil {
 		return nil, err
@@ -87,18 +86,17 @@ func CreateNewCurator(config CuratorConfig) (*Curator, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	curator := Curator{
 		config:        config,
 		store:         store,
-		logger:        logger,
+		logger:        logger.NewModule("[curator]"),
+		stats:         stats,
 		authenticator: auth,
 		openBinders:   make(map[string]*Binder),
 		errorChan:     make(chan BinderError, 10),
-		closeChan:     make(chan bool),
-		closedChan:    make(chan bool),
+		closeChan:     make(chan struct{}),
+		closedChan:    make(chan struct{}),
 	}
-
 	go curator.loop()
 
 	return &curator, nil
@@ -108,15 +106,8 @@ func CreateNewCurator(config CuratorConfig) (*Curator, error) {
 Close - Shut the curator down, you must ensure that this library cannot be accessed after closing.
 */
 func (c *Curator) Close() {
-	c.closeChan <- true
+	c.closeChan <- struct{}{}
 	<-c.closedChan
-}
-
-/*
-log - Helper function for logging events, only actually logs when verbose logging is configured.
-*/
-func (c *Curator) log(level int, message string) {
-	c.logger.Log(level, "curator", message)
 }
 
 /*
@@ -126,7 +117,7 @@ func (c *Curator) loop() {
 	for {
 		select {
 		case <-c.closeChan:
-			c.log(LeapInfo, "Received call to close, forwarding message to binders")
+			c.logger.Infoln("Received call to close, forwarding message to binders")
 			c.binderMutex.Lock()
 			for _, b := range c.openBinders {
 				b.Close()
@@ -136,20 +127,20 @@ func (c *Curator) loop() {
 			return
 		case err := <-c.errorChan:
 			if err.Err != nil {
-				c.logger.IncrementStat("curator.binder_chan.error")
-				c.log(LeapError, fmt.Sprintf("Binder (%v) %v\n", err.ID, err.Err))
+				c.stats.Incr("curator.binder_chan.error", 1)
+				c.logger.Errorf("Binder (%v) %v\n", err.ID, err.Err)
 			} else {
-				c.log(LeapInfo, fmt.Sprintf("Binder (%v) has requested shutdown\n", err.ID))
+				c.logger.Infof("Binder (%v) has requested shutdown\n", err.ID)
 			}
 			c.binderMutex.Lock()
 			if b, ok := c.openBinders[err.ID]; ok {
 				b.Close()
 				delete(c.openBinders, err.ID)
-				c.log(LeapInfo, fmt.Sprintf("Binder (%v) was closed\n", err.ID))
-				c.logger.IncrementStat("curator.binder_shutdown.success")
+				c.logger.Infof("Binder (%v) was closed\n", err.ID)
+				c.stats.Incr("curator.binder_shutdown.success", 1)
 			} else {
-				c.log(LeapError, fmt.Sprintf("Binder (%v) was not located in map\n", err.ID))
-				c.logger.IncrementStat("curator.binder_shutdown.error")
+				c.logger.Errorf("Binder (%v) was not located in map\n", err.ID)
+				c.stats.Incr("curator.binder_shutdown.error", 1)
 			}
 			c.binderMutex.Unlock()
 		}
@@ -165,25 +156,23 @@ that Binder for subscribing to. Returns an error if there was a problem locating
 */
 func (c *Curator) FindDocument(token string, id string) (*BinderPortal, error) {
 	if !c.authenticator.AuthoriseJoin(token, id) {
+		c.stats.Incr("curator.rejected_client", 1)
 		return nil, fmt.Errorf("failed to authorise join of document id: %v with token: %v", id, token)
 	}
-
 	c.binderMutex.Lock()
 	defer c.binderMutex.Unlock()
 
 	if binder, ok := c.openBinders[id]; ok {
-		c.logger.IncrementStat("curator.subscribed_client")
+		c.stats.Incr("curator.subscribed_client", 1)
 		return binder.Subscribe(token), nil
 	}
-
-	binder, err := BindExisting(id, c.store, c.config.BinderConfig, c.errorChan, c.logger)
+	binder, err := BindExisting(id, c.store, c.config.BinderConfig, c.errorChan, c.logger, c.stats)
 	if err != nil {
 		return nil, err
 	}
-
 	c.openBinders[id] = binder
 
-	c.logger.IncrementStat("curator.subscribed_client")
+	c.stats.Incr("curator.subscribed_client", 1)
 	return binder.Subscribe(token), nil
 }
 
@@ -200,12 +189,12 @@ func (c *Curator) NewDocument(token string, userID string, doc *Document) (*Bind
 	doc.ID = GenerateID(fmt.Sprintf("%v%v", doc.Title, doc.Description))
 
 	if err := ValidateDocument(doc); err != nil {
-		c.logger.IncrementStat("curator.validate_new_document.error")
+		c.stats.Incr("curator.validate_new_document.error", 1)
 		return nil, err
 	}
-	c.logger.IncrementStat("curator.validate_new_document.success")
+	c.stats.Incr("curator.validate_new_document.success", 1)
 
-	binder, err := BindNew(doc, c.store, c.config.BinderConfig, c.errorChan, c.logger)
+	binder, err := BindNew(doc, c.store, c.config.BinderConfig, c.errorChan, c.logger, c.stats)
 	if err != nil {
 		return nil, err
 	}
@@ -213,16 +202,8 @@ func (c *Curator) NewDocument(token string, userID string, doc *Document) (*Bind
 	c.openBinders[doc.ID] = binder
 	c.binderMutex.Unlock()
 
-	c.logger.IncrementStat("curator.subscribed_client")
+	c.stats.Incr("curator.subscribed_client", 1)
 	return binder.Subscribe(token), nil
-}
-
-/*
-GetLogger - The curator generates a LeapsLogger that all other leaps components should write to.
-GetLogger returns a reference to the logger for components not generated by the curator itself.
-*/
-func (c *Curator) GetLogger() *LeapsLogger {
-	return c.logger
 }
 
 /*--------------------------------------------------------------------------------------------------

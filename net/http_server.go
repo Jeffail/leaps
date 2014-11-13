@@ -29,6 +29,7 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/jeffail/leaps/lib"
+	"github.com/jeffail/leaps/util"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -103,7 +104,8 @@ leap documents) and bind it to http clients.
 */
 type HTTPServer struct {
 	config    HTTPServerConfig
-	logger    *lib.LeapsLogger
+	logger    *util.Logger
+	stats     *util.Stats
 	locator   LeapLocator
 	closeChan chan bool
 }
@@ -112,11 +114,19 @@ type HTTPServer struct {
 CreateHTTPServer - Create a new leaps HTTPServer, optionally registers to a custom http.ServeMux, or
 set this to nil to use the default http mux (recommended).
 */
-func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig, mux *http.ServeMux) (*HTTPServer, error) {
+func CreateHTTPServer(
+	locator LeapLocator,
+	config HTTPServerConfig,
+	logger *util.Logger,
+	stats *util.Stats,
+	mux *http.ServeMux,
+) (*HTTPServer, error) {
+
 	httpServer := HTTPServer{
 		config:    config,
 		locator:   locator,
-		logger:    locator.GetLogger(),
+		logger:    logger.NewModule("[http]"),
+		stats:     stats,
 		closeChan: make(chan bool),
 	}
 	if len(httpServer.config.Path) == 0 {
@@ -148,13 +158,6 @@ func CreateHTTPServer(locator LeapLocator, config HTTPServerConfig, mux *http.Se
  */
 
 /*
-log - Helper function for logging events, only actually logs when verbose logging is configured.
-*/
-func (h *HTTPServer) log(level int, message string) {
-	h.logger.Log(level, "http", message)
-}
-
-/*
 processInitMessage - Process an initial message from a client and, if the format is as expected,
 return a binder that satisfies the request.
 */
@@ -167,7 +170,7 @@ func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (*lib.Bind
 		return nil, errors.New("create request must contain a valid document structure")
 	case "find":
 		if len(clientMsg.DocID) > 0 {
-			h.log(lib.LeapInfo, fmt.Sprintf("Attempting to bind to document: %v", clientMsg.DocID))
+			h.logger.Infof("Attempting to bind to document: %v\n", clientMsg.DocID)
 			return h.locator.FindDocument(clientMsg.Token, clientMsg.DocID)
 		}
 		return nil, errors.New("find request must contain a valid document ID")
@@ -183,11 +186,11 @@ websocketHandler - The method for creating fresh websocket clients.
 func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 	defer func() {
 		if err := ws.Close(); err != nil {
-			h.log(lib.LeapError, fmt.Sprintf("Failed to close socket: %v", err))
+			h.logger.Errorf("Failed to close socket: %v\n", err)
 		}
 	}()
 
-	h.logger.IncrementStat("http.websocket.opened")
+	h.stats.Incr("http.websocket.opened", 1)
 
 	select {
 	case <-h.closeChan:
@@ -199,14 +202,14 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 	default:
 	}
 
-	h.log(lib.LeapInfo, "Fresh client connected via websocket")
+	h.logger.Infoln("Fresh client connected via websocket")
 
 	for {
 		var launchCmd LeapClientMessage
 		websocket.JSON.Receive(ws, &launchCmd)
 
 		if binder, err := h.processInitMessage(&launchCmd); err == nil && binder != nil {
-			h.log(lib.LeapInfo, fmt.Sprintf("Client bound to document %v", binder.Document.ID))
+			h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
 
 			websocket.JSON.Send(ws, LeapServerMessage{
 				Type:     "document",
@@ -217,13 +220,14 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 			// TODO: Generic
 			hbind := HTTPTextModel{
 				config:    h.config.Binder,
-				logger:    h.logger,
+				logger:    h.logger.NewModule("[socket]"),
+				stats:     h.stats,
 				closeChan: h.closeChan,
 			}
 			LaunchWebsocketTextModel(&hbind, ws, binder)
 			return
 		} else if err != nil {
-			h.log(lib.LeapInfo, fmt.Sprintf("Client failed to init: %v", err))
+			h.logger.Infof("Client failed to init: %v\n", err)
 			websocket.JSON.Send(ws, LeapServerMessage{
 				Type:  "error",
 				Error: fmt.Sprintf("socket initialization failed: %v", err),
@@ -241,11 +245,9 @@ func (h *HTTPServer) Listen() error {
 	if len(h.config.Address) == 0 {
 		return errors.New("invalid config value for URL.Address")
 	}
-	h.log(lib.LeapInfo, fmt.Sprintf("Listening for websockets at address: %v",
-		fmt.Sprintf("%v%v", h.config.Address, h.config.Path)))
+	h.logger.Infof("Listening for websockets at address: %v%v\n", h.config.Address, h.config.Path)
 	if len(h.config.StaticPath) > 0 {
-		h.log(lib.LeapInfo, fmt.Sprintf("Serving static file requests at address: %v",
-			fmt.Sprintf("%v%v", h.config.Address, h.config.StaticPath)))
+		h.logger.Infof("Serving static file requests at address: %v%v\n", h.config.Address, h.config.StaticPath)
 	}
 	err := http.ListenAndServe(h.config.Address, nil)
 	return err

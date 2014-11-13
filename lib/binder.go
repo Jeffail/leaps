@@ -26,6 +26,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jeffail/leaps/util"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -67,14 +69,15 @@ type Binder struct {
 	ID            string
 	SubscribeChan chan BinderSubscribeBundle
 
-	logger     *LeapsLogger
+	logger     *util.Logger
+	stats      *util.Stats
 	model      Model
 	block      DocumentStore
 	config     BinderConfig
 	clients    []BinderClient
 	jobs       chan BinderRequest
 	errorChan  chan<- BinderError
-	closedChan chan bool
+	closedChan chan struct{}
 }
 
 /*
@@ -86,32 +89,32 @@ func BindExisting(
 	block DocumentStore,
 	config BinderConfig,
 	errorChan chan<- BinderError,
-	logger *LeapsLogger,
+	logger *util.Logger,
+	stats *util.Stats,
 ) (*Binder, error) {
 
 	binder := Binder{
 		ID:            id,
 		SubscribeChan: make(chan BinderSubscribeBundle),
-		logger:        logger,
+		logger:        logger.NewModule("[binder]"),
+		stats:         stats,
 		model:         CreateTextModel(config.ModelConfig), //TODO: Generic
 		block:         block,
 		config:        config,
 		clients:       []BinderClient{},
 		jobs:          make(chan BinderRequest),
 		errorChan:     errorChan,
-		closedChan:    make(chan bool),
+		closedChan:    make(chan struct{}),
 	}
-
-	binder.log(LeapInfo, "Bound to existing document, attempting flush")
+	binder.logger.Infoln("Bound to existing document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
-		binder.logger.IncrementStat("binder.bind_existing.error")
+		stats.Incr("binder.bind_existing.error", 1)
 		return nil, err
 	}
-
 	go binder.loop()
 
-	binder.logger.IncrementStat("binder.bind_existing.success")
+	stats.Incr("binder.bind_existing.success", 1)
 	return &binder, nil
 }
 
@@ -124,36 +127,35 @@ func BindNew(
 	block DocumentStore,
 	config BinderConfig,
 	errorChan chan<- BinderError,
-	logger *LeapsLogger,
+	logger *util.Logger,
+	stats *util.Stats,
 ) (*Binder, error) {
 
 	if err := block.Create(document.ID, document); err != nil {
 		return nil, err
 	}
-
 	binder := Binder{
 		ID:            document.ID,
 		SubscribeChan: make(chan BinderSubscribeBundle),
-		logger:        logger,
+		logger:        logger.NewModule("[binder]"),
+		stats:         stats,
 		model:         CreateTextModel(config.ModelConfig), // TODO: Make generic
 		block:         block,
 		config:        config,
 		clients:       []BinderClient{},
 		jobs:          make(chan BinderRequest),
 		errorChan:     errorChan,
-		closedChan:    make(chan bool),
+		closedChan:    make(chan struct{}),
 	}
-
-	binder.log(LeapInfo, "Bound to new document, attempting flush")
+	binder.logger.Infoln("Bound to new document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
-		binder.logger.IncrementStat("binder.bind_new.error")
+		stats.Incr("binder.bind_new.error", 1)
 		return nil, err
 	}
-
 	go binder.loop()
 
-	binder.logger.IncrementStat("binder.bind_new.success")
+	stats.Incr("binder.bind_new.success", 1)
 	return &binder, nil
 }
 
@@ -174,7 +176,6 @@ func (b *Binder) Subscribe(token string) *BinderPortal {
 	if len(token) == 0 {
 		token = GenerateID("client salt")
 	}
-
 	retChan := make(chan *BinderPortal, 1)
 	bundle := BinderSubscribeBundle{
 		PortalRcvChan: retChan,
@@ -199,13 +200,6 @@ func (b *Binder) Close() {
  */
 
 /*
-log - Helper function for logging events, only actually logs when verbose logging is configured.
-*/
-func (b *Binder) log(level int, message string) {
-	b.logger.Log(level, "binder", fmt.Sprintf("(%v) %v", b.ID, message))
-}
-
-/*
 processSubscriber - Processes a prospective client wishing to subscribe to this binder. This
 involves flushing the model in order to obtain a clean version of the document, if this fails
 we return false to flag the binder loop that we should shut down.
@@ -221,7 +215,6 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 	if err != nil {
 		return err
 	}
-
 	select {
 	case request.PortalRcvChan <- &BinderPortal{
 		Token:            request.Token,
@@ -237,13 +230,12 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 		})
 	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
 		// We're not bothered if you suck, you just don't get enrolled. Deal with it.
-		b.logger.IncrementStat("binder.rejected_client")
-		b.log(LeapInfo, fmt.Sprintf("Rejected client request %v", request.Token))
+		b.stats.Incr("binder.rejected_client", 1)
+		b.logger.Infof("Rejected client request %v\n", request.Token)
 		return nil
 	}
-
-	b.logger.IncrementStat("binder.subscribed_client")
-	b.log(LeapInfo, fmt.Sprintf("Subscribed new client %v", request.Token))
+	b.stats.Incr("binder.subscribed_client", 1)
+	b.logger.Infof("Subscribed new client %v\n", request.Token)
 
 	return nil
 }
@@ -256,23 +248,22 @@ func (b *Binder) processJob(request BinderRequest) {
 	if request.Transform == nil {
 		select {
 		case request.ErrorChan <- errors.New("received job without a transform"):
-			b.logger.IncrementStat("binder.process_job.skipped")
+			b.stats.Incr("binder.process_job.skipped", 1)
 		default:
 		}
 		return
 	}
-
 	dispatch := request.Transform
 
 	if request.VersionChan != nil {
 		var err error
 		var version int
 
-		b.log(LeapDebug, fmt.Sprintf("Received transform: %v", request.Transform))
+		b.logger.Debugf("Received transform: %v\n", request.Transform)
 		dispatch, version, err = b.model.PushTransform(request.Transform)
 
 		if err != nil {
-			b.logger.IncrementStat("binder.process_job.error")
+			b.stats.Incr("binder.process_job.error", 1)
 			select {
 			case request.ErrorChan <- err:
 			default:
@@ -283,12 +274,11 @@ func (b *Binder) processJob(request BinderRequest) {
 		case request.VersionChan <- version:
 		default:
 		}
-		b.logger.IncrementStat("binder.process_job.success")
+		b.stats.Incr("binder.process_job.success", 1)
 	} else {
 		request.ErrorChan <- nil
-		b.logger.IncrementStat("binder.process_update.success")
+		b.stats.Incr("binder.process_update.success", 1)
 	}
-
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
 	for i, c := range b.clients {
@@ -307,7 +297,6 @@ func (b *Binder) processJob(request BinderRequest) {
 		}
 		// Currently also sends to client that submitted it, oops, or no oops?
 	}
-
 	deadClients := 0
 	newClients := []BinderClient{}
 	for _, c := range b.clients {
@@ -317,12 +306,10 @@ func (b *Binder) processJob(request BinderRequest) {
 			deadClients++
 		}
 	}
-
 	if deadClients > 0 {
-		b.logger.IncrementStat("binder.clients_kicked")
-		b.log(LeapInfo, fmt.Sprintf("Kicked %v inactive clients", deadClients))
+		b.stats.Incr("binder.clients_kicked", 1)
+		b.logger.Infof("Kicked %v inactive clients\n", deadClients)
 	}
-
 	b.clients = newClients
 }
 
@@ -337,21 +324,19 @@ func (b *Binder) flush() (*Document, error) {
 
 	doc, errStore = b.block.Fetch(b.ID)
 	if errStore != nil {
-		b.logger.IncrementStat("binder.block_fetch.error")
+		b.stats.Incr("binder.block_fetch.error", 1)
 		return nil, errStore
 	}
-
 	changed, errFlush = b.model.FlushTransforms(&doc.Content, b.config.RetentionPeriod)
 	if changed {
 		errStore = b.block.Store(b.ID, doc)
 	}
-
 	if errStore != nil || errFlush != nil {
-		b.logger.IncrementStat("binder.flush.error")
+		b.stats.Incr("binder.flush.error", 1)
 		return nil, fmt.Errorf("%v, %v", errFlush, errStore)
 	}
 	if changed {
-		b.logger.IncrementStat("binder.flush.success")
+		b.stats.Incr("binder.flush.success", 1)
 	}
 	return doc, nil
 }
@@ -395,14 +380,14 @@ func (b *Binder) loop() {
 			if running && open {
 				if err := b.processSubscriber(clientBundle); err != nil {
 					b.errorChan <- BinderError{ID: b.ID, Err: err}
-					b.log(LeapError, fmt.Sprintf("Flush error: %v, shutting down", err))
+					b.logger.Errorf("Flush error: %v, shutting down\n", err)
 					running = false
 				} else {
 					flushTimer.Reset(flushPeriod)
 					closeTimer.Reset(closePeriod)
 				}
 			} else {
-				b.log(LeapInfo, "Subscribe channel closed, shutting down")
+				b.logger.Infoln("Subscribe channel closed, shutting down")
 				running = false
 			}
 		case job, open := <-b.jobs:
@@ -410,12 +395,12 @@ func (b *Binder) loop() {
 				b.processJob(job)
 				closeTimer.Reset(closePeriod)
 			} else {
-				b.log(LeapInfo, "Jobs channel closed, shutting down")
+				b.logger.Infoln("Jobs channel closed, shutting down")
 				running = false
 			}
 		case <-flushTimer.C:
 			if _, err := b.flush(); err != nil {
-				b.log(LeapError, fmt.Sprintf("Flush error: %v, shutting down", err))
+				b.logger.Errorf("Flush error: %v, shutting down\n", err)
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 				running = false
 			}
@@ -424,7 +409,7 @@ func (b *Binder) loop() {
 			active := b.checkActive()
 
 			if !active {
-				b.log(LeapInfo, "Binder inactive, requesting shutdown")
+				b.logger.Infoln("Binder inactive, requesting shutdown")
 				// Send graceful close request
 				b.errorChan <- BinderError{ID: b.ID, Err: nil}
 			}
@@ -434,14 +419,14 @@ func (b *Binder) loop() {
 			flushTimer.Stop()
 			closeTimer.Stop()
 
-			b.logger.IncrementStat("binder.closing")
-			b.log(LeapInfo, "Closing, shutting down client channels")
+			b.stats.Incr("binder.closing", 1)
+			b.logger.Infoln("Closing, shutting down client channels")
 			oldClients := b.clients
 			b.clients = []BinderClient{}
 			for _, client := range oldClients {
 				close(client.TransformSndChan)
 			}
-			b.log(LeapInfo, fmt.Sprintf("Attempting final flush of %v", b.ID))
+			b.logger.Infof("Attempting final flush of %v\n", b.ID)
 			if _, err := b.flush(); err != nil {
 				b.errorChan <- BinderError{ID: b.ID, Err: err}
 			}

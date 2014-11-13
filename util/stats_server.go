@@ -20,12 +20,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package net
+package util
 
 import (
 	"errors"
-	"fmt"
-	"github.com/jeffail/leaps/lib"
 	"net/http"
 	"time"
 )
@@ -52,7 +50,7 @@ for each field.
 func DefaultStatsServerConfig() StatsServerConfig {
 	return StatsServerConfig{
 		StaticPath:     "/",
-		Path:           "/leapstats",
+		Path:           "/stats",
 		Address:        "localhost:4040",
 		StaticFilePath: "",
 		StatsTimeout:   200,
@@ -70,18 +68,20 @@ of the service.
 */
 type StatsServer struct {
 	config   StatsServerConfig
-	logger   *lib.LeapsLogger
+	logger   *Logger
+	stats    *Stats
 	server   *http.Server
 	serveMux *http.ServeMux
 }
 
 /*
-CreateStatsServer - Create a new leaps StatsServer.
+NewStatsServer - Create a new leaps StatsServer.
 */
-func CreateStatsServer(logger *lib.LeapsLogger, config StatsServerConfig) (*StatsServer, error) {
+func NewStatsServer(config StatsServerConfig, logger *Logger, stats *Stats) (*StatsServer, error) {
 	statsServer := StatsServer{
 		config:   config,
-		logger:   logger,
+		logger:   logger.NewModule("[stats]"),
+		stats:    stats,
 		server:   nil,
 		serveMux: http.NewServeMux(),
 	}
@@ -107,20 +107,15 @@ func CreateStatsServer(logger *lib.LeapsLogger, config StatsServerConfig) (*Stat
  */
 
 /*
-log - Helper function for logging events, only actually logs when verbose logging is configured.
-*/
-func (s *StatsServer) log(level int, message string) {
-	s.logger.Log(level, "stats", message)
-}
-
-/*
 StatsHandler - The StatsServer request handler.
 */
 func (s *StatsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if s.config.Path == r.URL.Path {
-		if stats, err := s.logger.GetStats(time.Duration(s.config.StatsTimeout) * time.Millisecond); err == nil {
+		if stats, err := s.stats.GetStats(time.Duration(s.config.StatsTimeout) * time.Millisecond); err == nil {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(*stats))
+			w.Write([]byte(stats))
+		} else {
+			s.logger.Errorf("failed to obtain stats: %v\n", err)
 		}
 	} else {
 		s.serveMux.ServeHTTP(w, r)
@@ -134,11 +129,9 @@ func (s *StatsServer) Listen() error {
 	if len(s.config.Address) == 0 {
 		return errors.New("invalid config value for Address")
 	}
-	s.log(lib.LeapInfo, fmt.Sprintf("Listening for stats requests at address: %v",
-		fmt.Sprintf("%v%v", s.config.Address, s.config.Path)))
+	s.logger.Infof("Listening for stats requests at address: %v%v\n", s.config.Address, s.config.Path)
 	if len(s.config.StaticPath) > 0 && len(s.config.StaticFilePath) > 0 {
-		s.log(lib.LeapInfo, fmt.Sprintf("Serving static stats file requests at address: %v",
-			fmt.Sprintf("%v%v", s.config.Address, s.config.StaticPath)))
+		s.logger.Infof("Serving static stats file requests at address: %v%v\n", s.config.Address, s.config.StaticPath)
 	}
 	err := s.server.ListenAndServe()
 	return err
