@@ -45,7 +45,7 @@ func loggerAndStats() (*util.Logger, *util.Stats) {
 func TestNewCurator(t *testing.T) {
 	log, stats := loggerAndStats()
 
-	cur, err := CreateNewCurator(DefaultCuratorConfig(), log, stats)
+	cur, err := NewCurator(DefaultCuratorConfig(), log, stats)
 	if err != nil {
 		t.Errorf("Create curator error: %v", err)
 		return
@@ -60,7 +60,7 @@ func TestCuratorClients(t *testing.T) {
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000
 
-	curator, err := CreateNewCurator(DefaultCuratorConfig(), log, stats)
+	curator, err := NewCurator(DefaultCuratorConfig(), log, stats)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return

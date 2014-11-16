@@ -232,7 +232,6 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 				Type:  "error",
 				Error: fmt.Sprintf("socket initialization failed: %v", err),
 			})
-			return
 		}
 	}
 }

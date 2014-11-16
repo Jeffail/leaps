@@ -125,7 +125,7 @@ func main() {
 	switch *leapsMode {
 	case "curator":
 		// We are running in curator node.
-		curator, err = lib.CreateNewCurator(leapsConfig.CuratorConfig, logger, stats)
+		curator, err = lib.NewCurator(leapsConfig.CuratorConfig, logger, stats)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
 			return

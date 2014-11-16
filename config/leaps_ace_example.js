@@ -1,11 +1,21 @@
 {
+	"logger": {
+		"prefix": "[leaps]",
+		"log_level": "DEBUG",
+		"add_timestamp": true
+	},
+	"stats": {
+		"job_buffer": 100,
+		"prefix": "leaps",
+		"retain_internal": true
+	},
 	"curator": {
 		"storage": {
 			"type": "mock",
 			"name": "test_document"
 		},
 		"logger": {
-			"level": 3
+			"level": "DEBUG"
 		},
 		"binder": {
 			"transform_model": {
@@ -22,7 +32,7 @@
 	},
 	"stats_server": {
 		"static_path": "/",
-		"stats_path": "/leapstats",
+		"stats_path": "/stats",
 		"address": ":4040",
 		"www_dir": "./static/stats"
 	}

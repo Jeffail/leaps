@@ -31,49 +31,6 @@ import (
  */
 
 /*
-ModelConfig - Holds configuration options for a transform model.
-*/
-type ModelConfig struct {
-	MaxDocumentSize    uint64 `json:"max_document_size"`
-	MaxTransformLength uint64 `json:"max_transform_length"`
-}
-
-/*
-DefaultModelConfig - Returns a default ModelConfig.
-*/
-func DefaultModelConfig() ModelConfig {
-	return ModelConfig{
-		MaxDocumentSize:    50000000, // ~50MB
-		MaxTransformLength: 50000,    // ~50KB
-	}
-}
-
-/*
-Model - an interface that represents an internal operation transform model of a particular type.
-Initially text is the only supported transform model, however, the plan will eventually be to have
-different models for various types of document that should all be supported by our binder.
-*/
-type Model interface {
-	/* PushTransform - Push a single transform to our model, and if successful, return the updated
-	 * transform along with the new version of the document.
-	 */
-	PushTransform(ot interface{}) (interface{}, int, error)
-
-	/* FlushTransforms - apply all unapplied transforms to content, and delete old applied
-	 * in accordance with our retention period. Returns a bool indicating whether any changes
-	 * were applied, and an error in case a fatal problem was encountered.
-	 */
-	FlushTransforms(content *interface{}, secondsRetention int64) (bool, error)
-
-	/* GetVersion - returns the current version of the document.
-	 */
-	GetVersion() int
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-/*
 UserUpdate - A struct containing an update for a clients' status.
 */
 type UserUpdate struct {
@@ -95,15 +52,6 @@ used as a graceful shutdown request.
 type BinderError struct {
 	ID  string
 	Err error
-}
-
-/*
-BinderClient - A struct representing a connected client held by a binder, contains a token for
-identification and a channel for broadcasting transforms and other data.
-*/
-type BinderClient struct {
-	Token            string
-	TransformSndChan chan<- interface{}
 }
 
 /*
@@ -129,6 +77,9 @@ type BinderSubscribeBundle struct {
 	PortalRcvChan chan<- *BinderPortal
 }
 
+/*--------------------------------------------------------------------------------------------------
+ */
+
 /*
 BinderPortal - A container that holds all data necessary to begin an open portal with the binder,
 allowing fresh transforms to be submitted and returned as they come. Also carries the token of the
@@ -141,6 +92,7 @@ type BinderPortal struct {
 	Error            error
 	TransformRcvChan <-chan interface{}
 	RequestSndChan   chan<- BinderRequest
+	ExitChan         chan<- string
 }
 
 /*
@@ -186,6 +138,16 @@ func (p *BinderPortal) SendUpdate(update interface{}, timeout time.Duration) err
 	case <-time.After(timeout):
 	}
 	return errors.New("timeout occured waiting for binder response")
+}
+
+/*
+Exit - Inform the binder that this client is shutting down.
+*/
+func (p *BinderPortal) Exit(timeout time.Duration) {
+	select {
+	case p.ExitChan <- p.Token:
+	case <-time.After(timeout):
+	}
 }
 
 /*--------------------------------------------------------------------------------------------------

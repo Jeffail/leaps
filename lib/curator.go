@@ -63,33 +63,39 @@ clients in locating their target Binders, and when necessary creates new Binders
 type Curator struct {
 	config        CuratorConfig
 	store         DocumentStore
-	logger        *util.Logger
+	log           *util.Logger
 	stats         *util.Stats
 	authenticator TokenAuthenticator
-	openBinders   map[string]*Binder
-	binderMutex   sync.RWMutex
-	errorChan     chan BinderError
-	closeChan     chan struct{}
-	closedChan    chan struct{}
+
+	// Binders
+	openBinders map[string]*Binder
+	binderMutex sync.RWMutex
+
+	// Control channels
+	errorChan  chan BinderError
+	closeChan  chan struct{}
+	closedChan chan struct{}
 }
 
 /*
-CreateNewCurator - Creates and returns a fresh curator, and launches its internal loop for
-monitoring Binder errors.
+NewCurator - Creates and returns a fresh curator, and launches its internal loop for monitoring
+Binder errors.
 */
-func CreateNewCurator(config CuratorConfig, logger *util.Logger, stats *util.Stats) (*Curator, error) {
+func NewCurator(config CuratorConfig, log *util.Logger, stats *util.Stats) (*Curator, error) {
 	store, err := DocumentStoreFactory(config.StoreConfig)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := TokenAuthenticatorFactory(config.AuthenticatorConfig, logger)
+	auth, err := TokenAuthenticatorFactory(config.AuthenticatorConfig, log)
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debugln("Creating curator")
 	curator := Curator{
 		config:        config,
 		store:         store,
-		logger:        logger.NewModule("[curator]"),
+		log:           log.NewModule("[curator]"),
 		stats:         stats,
 		authenticator: auth,
 		openBinders:   make(map[string]*Binder),
@@ -103,9 +109,11 @@ func CreateNewCurator(config CuratorConfig, logger *util.Logger, stats *util.Sta
 }
 
 /*
-Close - Shut the curator down, you must ensure that this library cannot be accessed after closing.
+Close - Shut the curator and all subsequent binders down. This call blocks until the shut down is
+finished, and you must ensure that this library cannot be accessed after closing.
 */
 func (c *Curator) Close() {
+	c.log.Debugln("Close called")
 	c.closeChan <- struct{}{}
 	<-c.closedChan
 }
@@ -114,10 +122,29 @@ func (c *Curator) Close() {
 loop - The main loop of the curator, this loop simply listens to the error and close channels.
 */
 func (c *Curator) loop() {
+	c.log.Debugln("Loop called")
 	for {
 		select {
+		case err := <-c.errorChan:
+			if err.Err != nil {
+				c.stats.Incr("curator.binder_chan.error", 1)
+				c.log.Errorf("Binder (%v) %v\n", err.ID, err.Err)
+			} else {
+				c.log.Infof("Binder (%v) has requested shutdown\n", err.ID)
+			}
+			c.binderMutex.Lock()
+			if b, ok := c.openBinders[err.ID]; ok {
+				b.Close()
+				delete(c.openBinders, err.ID)
+				c.log.Infof("Binder (%v) was closed\n", err.ID)
+				c.stats.Incr("curator.binder_shutdown.success", 1)
+			} else {
+				c.log.Errorf("Binder (%v) was not located in map\n", err.ID)
+				c.stats.Incr("curator.binder_shutdown.error", 1)
+			}
+			c.binderMutex.Unlock()
 		case <-c.closeChan:
-			c.logger.Infoln("Received call to close, forwarding message to binders")
+			c.log.Infoln("Received call to close, forwarding message to binders")
 			c.binderMutex.Lock()
 			for _, b := range c.openBinders {
 				b.Close()
@@ -125,24 +152,6 @@ func (c *Curator) loop() {
 			c.binderMutex.Unlock()
 			close(c.closedChan)
 			return
-		case err := <-c.errorChan:
-			if err.Err != nil {
-				c.stats.Incr("curator.binder_chan.error", 1)
-				c.logger.Errorf("Binder (%v) %v\n", err.ID, err.Err)
-			} else {
-				c.logger.Infof("Binder (%v) has requested shutdown\n", err.ID)
-			}
-			c.binderMutex.Lock()
-			if b, ok := c.openBinders[err.ID]; ok {
-				b.Close()
-				delete(c.openBinders, err.ID)
-				c.logger.Infof("Binder (%v) was closed\n", err.ID)
-				c.stats.Incr("curator.binder_shutdown.success", 1)
-			} else {
-				c.logger.Errorf("Binder (%v) was not located in map\n", err.ID)
-				c.stats.Incr("curator.binder_shutdown.error", 1)
-			}
-			c.binderMutex.Unlock()
 		}
 	}
 }
@@ -151,28 +160,33 @@ func (c *Curator) loop() {
  */
 
 /*
-FindDocument - Locates an existing, or creates a fresh Binder for an existing document and returns
-that Binder for subscribing to. Returns an error if there was a problem locating the document.
+FindDocument - Locates or creates a Binder for an existing document and returns that Binder for
+subscribing to. Returns an error if there was a problem locating the document.
 */
-func (c *Curator) FindDocument(token string, id string) (*BinderPortal, error) {
+func (c *Curator) FindDocument(token, id string) (*BinderPortal, error) {
+	c.log.Debugf("finding document %v, with token %v\n", id, token)
+
 	if !c.authenticator.AuthoriseJoin(token, id) {
-		c.stats.Incr("curator.rejected_client", 1)
-		return nil, fmt.Errorf("failed to authorise join of document id: %v with token: %v", id, token)
+		c.stats.Incr("curator.find.rejected_client", 1)
+		return nil, fmt.Errorf("failed to authorise join of document id: %v with token: %v\n", id, token)
 	}
+	c.stats.Incr("curator.find.accepted_client", 1)
+
 	c.binderMutex.Lock()
 	defer c.binderMutex.Unlock()
 
+	// Check for existing binder
 	if binder, ok := c.openBinders[id]; ok {
-		c.stats.Incr("curator.subscribed_client", 1)
 		return binder.Subscribe(token), nil
 	}
-	binder, err := BindExisting(id, c.store, c.config.BinderConfig, c.errorChan, c.logger, c.stats)
+	binder, err := BindExisting(id, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {
+		c.stats.Incr("curator.bind_existing.failed", 1)
+		c.log.Errorf("Failed to bind to document %v: %v\n", id, err)
 		return nil, err
 	}
 	c.openBinders[id] = binder
 
-	c.stats.Incr("curator.subscribed_client", 1)
 	return binder.Subscribe(token), nil
 }
 
@@ -182,27 +196,34 @@ error if either the document ID is already currently in use, or if there is a pr
 new document. May require authentication, if so a userID is supplied.
 */
 func (c *Curator) NewDocument(token string, userID string, doc *Document) (*BinderPortal, error) {
+	c.log.Debugf("Creating new document with token %v\n", token)
+
 	if !c.authenticator.AuthoriseCreate(token, userID) {
-		return nil, fmt.Errorf("failed to gain permission to create with token: %v", token)
+		c.stats.Incr("curator.create.rejected_client", 1)
+		return nil, fmt.Errorf("failed to gain permission to create with token: %v\n", token)
 	}
+	c.stats.Incr("curator.create.accepted_client", 1)
+
 	// Always generate a fresh ID
 	doc.ID = GenerateID(fmt.Sprintf("%v%v", doc.Title, doc.Description))
 
 	if err := ValidateDocument(doc); err != nil {
-		c.stats.Incr("curator.validate_new_document.error", 1)
+		c.log.Infof("Validate document failed: %v\n", err)
+		c.stats.Incr("curator.validate_document.error", 1)
 		return nil, err
 	}
-	c.stats.Incr("curator.validate_new_document.success", 1)
+	c.stats.Incr("curator.validate_document.success", 1)
 
-	binder, err := BindNew(doc, c.store, c.config.BinderConfig, c.errorChan, c.logger, c.stats)
+	binder, err := BindNew(doc, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {
+		c.stats.Incr("curator.bind_new.failed", 1)
+		c.log.Errorf("Failed to bind to new document: %v\n", err)
 		return nil, err
 	}
 	c.binderMutex.Lock()
 	c.openBinders[doc.ID] = binder
 	c.binderMutex.Unlock()
 
-	c.stats.Incr("curator.subscribed_client", 1)
 	return binder.Subscribe(token), nil
 }
 

@@ -80,6 +80,10 @@ BinderPortal representing a text document.
 func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *lib.BinderPortal) {
 	bindTOut := time.Duration(h.config.BindSendTimeout) * time.Millisecond
 
+	defer func() {
+		binder.Exit(bindTOut)
+	}()
+
 	// TODO: Preserve reference of doc ID?
 	binder.Document = nil
 
@@ -88,7 +92,7 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 		for {
 			select {
 			case <-h.closeChan:
-				h.logger.Infoln("Closing websocket model")
+				h.logger.Debugln("Closing websocket model")
 				close(readChan)
 				return
 			default:

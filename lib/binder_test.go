@@ -419,10 +419,11 @@ func TestBinderStories(t *testing.T) {
 	config := DefaultBinderConfig()
 	config.CloseInactivityPeriod = 1
 
-	logConf := DefaultLoggerConfig()
-	logConf.LogLevel = LeapError
+	logConf := util.DefaultLoggerConfig()
+	logConf.LogLevel = "OFF"
 
-	logger := CreateLogger(logConf)
+	logger := util.NewLogger(os.Stdout, logConf)
+	stats := util.NewStats(util.DefaultStatsConfig())
 
 	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
 	if err != nil {
@@ -431,7 +432,7 @@ func TestBinderStories(t *testing.T) {
 	}
 
 	errChan := make(chan BinderError)
-	_, err = BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan, logger)
+	_, err = BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan, logger, stats)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
