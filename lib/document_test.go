@@ -22,16 +22,14 @@ THE SOFTWARE.
 
 package lib
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestIDGenerator(t *testing.T) {
 	num := 10000
 	ids := make(map[string]bool, num)
 	collisions := 0
 	for i := 0; i < num; i++ {
-		newdoc, err := CreateNewDocument("test", "test", "text", "hello world")
+		newdoc, err := NewDocument("hello world")
 		if err != nil {
 			t.Errorf("Error: %v", err)
 		} else {
@@ -43,26 +41,5 @@ func TestIDGenerator(t *testing.T) {
 	}
 	if collisions > 0 {
 		t.Errorf("There were %v ID collisions out of %v documents generated.", collisions, num)
-	}
-}
-
-func TestDocumentConversions(t *testing.T) {
-	test, testtype := "hello world", "text"
-	result, err := SerializeDocumentContent(testtype, test)
-	if err != nil {
-		t.Errorf("Serialize error: %v", err)
-	}
-	if test != result {
-		t.Errorf("Serialize error: %v != %v", test, result)
-	}
-
-	resultParse, err := ParseDocumentContent(testtype, test)
-	if err != nil {
-		t.Errorf("Serialize error: %v", err)
-	}
-	if resultString, ok := resultParse.(string); !ok {
-		t.Errorf("Parse returned unexpected type")
-	} else if test != resultString {
-		t.Errorf("Serialize error: %v != %v", test, resultString)
 	}
 }

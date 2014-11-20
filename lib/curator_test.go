@@ -66,7 +66,7 @@ func TestCuratorClients(t *testing.T) {
 		return
 	}
 
-	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	doc, err := NewDocument("hello world")
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return

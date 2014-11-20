@@ -53,11 +53,11 @@ transform), 'update' (an update to a users status) or 'error' (an error message 
 client).
 */
 type LeapTextServerMessage struct {
-	Type       string           `json:"response_type"`
-	Transforms []lib.OTransform `json:"transforms,omitempty"`
-	Updates    []lib.UserUpdate `json:"user_updates,omitempty"`
-	Version    int              `json:"version,omitempty"`
-	Error      string           `json:"error,omitempty"`
+	Type       string              `json:"response_type"`
+	Transforms []lib.OTransform    `json:"transforms,omitempty"`
+	Updates    []lib.ClientMessage `json:"user_updates,omitempty"`
+	Version    int                 `json:"version,omitempty"`
+	Error      string              `json:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ type HTTPTextModel struct {
 LaunchWebsocketTextModel - Launches a text model that wraps a connected websocket around a
 BinderPortal representing a text document.
 */
-func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *lib.BinderPortal) {
+func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder lib.BinderPortal) {
 	bindTOut := time.Duration(h.config.BindSendTimeout) * time.Millisecond
 
 	defer func() {
@@ -113,15 +113,14 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 		select {
 		case msg, open := <-readChan:
 			if !open {
-				if err := binder.SendUpdate(lib.UserUpdate{
+				binder.SendMessage(lib.ClientMessage{
 					Active: false,
 					Token:  binder.Token,
-				}, bindTOut); err != nil {
-					h.logger.Errorf("Client update failed %v\n", err)
-				}
+				})
+				h.logger.Debugln("Closing websocket due to closed read channel")
 				return
 			}
-			h.logger.Debugf("Received %v command from client\n", msg.Command)
+			h.logger.Tracef("Received %v command from client\n", msg.Command)
 			switch msg.Command {
 			case "submit":
 				if msg.Transform == nil {
@@ -130,10 +129,15 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 						Type:  "error",
 						Error: "submit error: transform was nil",
 					})
+					h.logger.Debugln("Closing websocket due to nil transform")
+					binder.SendMessage(lib.ClientMessage{
+						Active: false,
+						Token:  binder.Token,
+					})
 					return
 				}
 				if ver, err := binder.SendTransform(*msg.Transform, bindTOut); err == nil {
-					h.logger.Debugln("Sending correction to client")
+					h.logger.Traceln("Sending correction to client")
 					websocket.JSON.Send(socket, LeapTextServerMessage{
 						Type:    "correction",
 						Version: ver,
@@ -144,23 +148,21 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 						Type:  "error",
 						Error: fmt.Sprintf("submit error: %v", err),
 					})
+					h.logger.Debugln("Closing websocket due to failed transform send")
+					binder.SendMessage(lib.ClientMessage{
+						Active: false,
+						Token:  binder.Token,
+					})
 					return
 				}
 			case "update":
 				if msg.Position != nil || len(msg.Message) > 0 {
-					if err := binder.SendUpdate(lib.UserUpdate{
+					binder.SendMessage(lib.ClientMessage{
 						Message:  msg.Message,
 						Position: msg.Position,
 						Active:   true,
 						Token:    binder.Token,
-					}, bindTOut); err != nil {
-						h.logger.Errorf("Client update failed %v\n", err)
-						websocket.JSON.Send(socket, LeapTextServerMessage{
-							Type:  "error",
-							Error: fmt.Sprintf("update error: %v", err),
-						})
-						return
-					}
+					})
 				}
 			case "ping":
 				// Do nothing
@@ -172,27 +174,27 @@ func LaunchWebsocketTextModel(h *HTTPTextModel, socket *websocket.Conn, binder *
 			}
 		case tform, open := <-binder.TransformRcvChan:
 			if !open {
+				h.logger.Debugln("Closing websocket due to closed transform channel")
 				return
 			}
-			if tform != nil {
-				if ot, ok := tform.(lib.OTransform); ok {
-					h.logger.Traceln("Sending transform to client")
-					websocket.JSON.Send(socket, LeapTextServerMessage{
-						Type:       "transforms",
-						Transforms: []lib.OTransform{ot},
-					})
-				} else if update, ok := tform.(lib.UserUpdate); ok {
-					h.logger.Traceln("Sending update to client")
-					websocket.JSON.Send(socket, LeapTextServerMessage{
-						Type:    "update",
-						Updates: []lib.UserUpdate{update},
-					})
-				} else {
-					h.logger.Errorf("Received unexpected type from RcvChan: %v\n", tform)
-				}
+			h.logger.Traceln("Sending transform to client")
+			websocket.JSON.Send(socket, LeapTextServerMessage{
+				Type:       "transforms",
+				Transforms: []lib.OTransform{tform},
+			})
+		case msg, open := <-binder.MessageRcvChan:
+			if !open {
+				h.logger.Debugln("Closing websocket due to closed message channel")
+				return
 			}
+			h.logger.Traceln("Sending update to client")
+			websocket.JSON.Send(socket, LeapTextServerMessage{
+				Type:    "update",
+				Updates: []lib.ClientMessage{msg},
+			})
 		case <-h.closeChan:
 			h.stats.Decr("http.client.connected", 1)
+			h.logger.Debugln("Closing websocket due to closed channel signal")
 			return
 		}
 	}

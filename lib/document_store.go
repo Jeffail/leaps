@@ -151,11 +151,8 @@ func GetMockStore(config DocumentStoreConfig) (DocumentStore, error) {
 		documents: make(map[string]*Document),
 	}
 	memStore.documents[config.Name] = &Document{
-		ID:          config.Name,
-		Title:       config.Name,
-		Description: config.Name,
-		Type:        "text",
-		Content:     "Open this page multiple times to see the edits appear in all of them.",
+		ID:      config.Name,
+		Content: "Open this page multiple times to see the edits appear in all of them.",
 	}
 	return memStore, nil
 }

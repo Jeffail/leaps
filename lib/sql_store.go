@@ -38,12 +38,9 @@ import (
 TableConfig - The configuration fields for specifying the table labels of the SQL database target.
 */
 type TableConfig struct {
-	Name           string `json:"table"`
-	IDCol          string `json:"id_column"`
-	TitleCol       string `json:"title_column"`
-	DescriptionCol string `json:"description_column"`
-	TypeCol        string `json:"type_column"`
-	ContentCol     string `json:"content_column"`
+	Name       string `json:"table"`
+	IDCol      string `json:"id_column"`
+	ContentCol string `json:"content_column"`
 }
 
 /*
@@ -51,12 +48,9 @@ DefaultTableConfig - Default table configuration.
 */
 func DefaultTableConfig() TableConfig {
 	return TableConfig{
-		Name:           "leaps_documents",
-		IDCol:          "ID",
-		TitleCol:       "TITLE",
-		DescriptionCol: "DESCRIPTION",
-		TypeCol:        "TYPE",
-		ContentCol:     "CONTENT",
+		Name:       "leaps_documents",
+		IDCol:      "ID",
+		ContentCol: "CONTENT",
 	}
 }
 
@@ -96,12 +90,7 @@ type SQLStore struct {
 Create - Create a new document in a database table.
 */
 func (m *SQLStore) Create(id string, doc *Document) error {
-	contentStr, err := SerializeDocumentContent(doc.Type, doc.Content)
-	if err != nil {
-		return err
-	}
-
-	_, err = m.createStmt.Exec(id, doc.Title, doc.Description, doc.Type, contentStr)
+	_, err := m.createStmt.Exec(id, doc.Content)
 	return err
 }
 
@@ -109,12 +98,7 @@ func (m *SQLStore) Create(id string, doc *Document) error {
 Store - Store document in a database table.
 */
 func (m *SQLStore) Store(id string, doc *Document) error {
-	contentStr, err := SerializeDocumentContent(doc.Type, doc.Content)
-	if err != nil {
-		return err
-	}
-
-	_, err = m.updateStmt.Exec(doc.Title, doc.Description, doc.Type, contentStr, id)
+	_, err := m.updateStmt.Exec(doc.Content, id)
 	return err
 }
 
@@ -123,22 +107,15 @@ Fetch - Fetch document from a database table.
 */
 func (m *SQLStore) Fetch(id string) (*Document, error) {
 	var document Document
-	var contentStr string
-
 	document.ID = id
 
-	err := m.readStmt.QueryRow(id).Scan(&document.Title, &document.Description, &document.Type, &contentStr)
+	err := m.readStmt.QueryRow(id).Scan(&document.Content)
 
 	switch {
 	case err == sql.ErrNoRows:
 		return nil, errors.New("document ID was not found in table")
 	case err != nil:
 		return nil, err
-	}
-
-	document.Content, err = ParseDocumentContent(document.Type, contentStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse row content: %v", err)
 	}
 
 	return &document, nil
@@ -168,21 +145,18 @@ func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 
 	switch config.Type {
 	case "postgres":
-		createStr = "INSERT INTO %v (%v, %v, %v, %v, %v) VALUES ($1, $2, $3, $4, $5)"
-		updateStr = "UPDATE %v SET %v = $1, %v = $2, %v = $3, %v = $4 WHERE %v = $5"
-		readStr = "SELECT %v, %v, %v, %v FROM %v WHERE %v = $1"
+		createStr = "INSERT INTO %v (%v, %v) VALUES ($1, $2)"
+		updateStr = "UPDATE %v SET %v = $1 WHERE %v = $2"
+		readStr = "SELECT %v FROM %v WHERE %v = $1"
 	default:
-		createStr = "INSERT INTO %v (%v, %v, %v, %v, %v) VALUES (?, ?, ?, ?, ?)"
-		updateStr = "UPDATE %v SET %v = ?, %v = ?, %v = ?, %v = ? WHERE %v = ?"
-		readStr = "SELECT %v, %v, %v, %v FROM %v WHERE %v = ?"
+		createStr = "INSERT INTO %v (%v, %v) VALUES (?, ?)"
+		updateStr = "UPDATE %v SET %v = ? WHERE %v = ?"
+		readStr = "SELECT %v FROM %v WHERE %v = ?"
 	}
 
 	create, err = db.Prepare(fmt.Sprintf(createStr,
 		config.SQLConfig.TableConfig.Name,
 		config.SQLConfig.TableConfig.IDCol,
-		config.SQLConfig.TableConfig.TitleCol,
-		config.SQLConfig.TableConfig.DescriptionCol,
-		config.SQLConfig.TableConfig.TypeCol,
 		config.SQLConfig.TableConfig.ContentCol,
 	))
 	if err != nil {
@@ -190,9 +164,6 @@ func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 	}
 	update, err = db.Prepare(fmt.Sprintf(updateStr,
 		config.SQLConfig.TableConfig.Name,
-		config.SQLConfig.TableConfig.TitleCol,
-		config.SQLConfig.TableConfig.DescriptionCol,
-		config.SQLConfig.TableConfig.TypeCol,
 		config.SQLConfig.TableConfig.ContentCol,
 		config.SQLConfig.TableConfig.IDCol,
 	))
@@ -200,9 +171,6 @@ func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
 		return nil, fmt.Errorf("failed to prepare update statement: %v", err)
 	}
 	read, err = db.Prepare(fmt.Sprintf(readStr,
-		config.SQLConfig.TableConfig.TitleCol,
-		config.SQLConfig.TableConfig.DescriptionCol,
-		config.SQLConfig.TableConfig.TypeCol,
 		config.SQLConfig.TableConfig.ContentCol,
 		config.SQLConfig.TableConfig.Name,
 		config.SQLConfig.TableConfig.IDCol,

@@ -23,26 +23,24 @@ THE SOFTWARE.
 package lib
 
 import (
-	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"time"
+
+	"code.google.com/p/go-uuid/uuid"
 )
 
 /*--------------------------------------------------------------------------------------------------
  */
 
 /*
-GenerateID - Create a unique ID for using a hash of a string, a timestamp and a pseudo random
-integer as a hex encoded string with the timestamp on the end.
+GenerateID - Generates a unique identifier.
 */
-func GenerateID(content string) string {
+func GenerateID() string {
 	tstamp := time.Now().Unix()
-	hasher := sha1.New()
-	hasher.Write([]byte(fmt.Sprintf("%v%v%v", content, rand.Int(), tstamp)))
+	stamp := uuid.NewRandom()
 
-	return fmt.Sprintf("%v%v", hex.EncodeToString(hasher.Sum(nil)), tstamp)
+	return fmt.Sprintf("%v%v", hex.EncodeToString(stamp), tstamp)
 }
 
 /*--------------------------------------------------------------------------------------------------

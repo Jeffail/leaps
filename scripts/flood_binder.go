@@ -17,7 +17,7 @@ func main() {
 	stats := util.NewStats(util.DefaultStatsConfig())
 
 	errChan := make(chan lib.BinderError)
-	doc, err := lib.CreateNewDocument("test", "test1", "text", "helibo world 123")
+	doc, err := lib.NewDocument("helibo world 123")
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return
@@ -28,7 +28,11 @@ func main() {
 	binderConfig := lib.DefaultBinderConfig()
 	binderConfig.RetentionPeriod = 1
 
-	binder, err := lib.BindNew(doc, store, binderConfig, errChan, logger, stats)
+	if err := store.Create(doc.ID, doc); err != nil {
+		fmt.Printf("error: %v\n", err)
+		return
+	}
+	binder, err := lib.NewBinder(doc.ID, store, binderConfig, errChan, logger, stats)
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return

@@ -5,7 +5,7 @@ cp ./leaps /usr/sbin/leaps
 cp ./config/init.d/leaps /etc/init.d/leaps
 
 if [ ! -f /etc/leaps.js ]; then
-	cp ./config/leaps_all_fields.js /etc/leaps.js
+	./leaps --print-json > /etc/leaps.js
 fi
 
 chmod 755 /etc/init.d/leaps

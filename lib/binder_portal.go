@@ -31,40 +31,24 @@ import (
  */
 
 /*
-UserUpdate - A struct containing an update for a clients' status.
+TransformSubmission - A struct used to submit a transform to a binder. The submission must contain
+the token of the client, as well as two channels for returning either the corrected version of the
+transform if successful, or an error if the submit was unsuccessful.
 */
-type UserUpdate struct {
-	Message  string `json:"message,omitempty"`
-	Position *int64 `json:"position,omitempty"`
-	Active   bool   `json:"active"`
-	Token    string `json:"user_id"`
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-/*
-BinderError - A binder has encountered a problem and needs to close. In order for this to happen it
-needs to inform its owner that it should be shut down. BinderError is a structure used to carry
-our error message and our ID over an error channel. A BinderError with the Err set to nil can be
-used as a graceful shutdown request.
-*/
-type BinderError struct {
-	ID  string
-	Err error
-}
-
-/*
-BinderRequest - A container used to communicate with a binder, it holds a transform to be
-submitted to the document model. Two channels are used for return values from the request.
-VersionChan is used to send back the actual version of the transform submitted. ErrorChan is used to
-send errors that occur. Both channels must be non-blocking, so a buffer of 1 is recommended.
-*/
-type BinderRequest struct {
+type TransformSubmission struct {
 	Token       string
-	Transform   interface{}
+	Transform   OTransform
 	VersionChan chan<- int
 	ErrorChan   chan<- error
+}
+
+/*
+MessageSubmission - A struct used to submit a message to a binder. The submission must contain the
+token of the client in order to avoid the message being sent back to the same client.
+*/
+type MessageSubmission struct {
+	Token   string
+	Message ClientMessage
 }
 
 /*
@@ -74,7 +58,7 @@ receiving the resultant BinderPortal.
 */
 type BinderSubscribeBundle struct {
 	Token         string
-	PortalRcvChan chan<- *BinderPortal
+	PortalRcvChan chan<- BinderPortal
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -90,20 +74,22 @@ type BinderPortal struct {
 	Document         *Document
 	Version          int
 	Error            error
-	TransformRcvChan <-chan interface{}
-	RequestSndChan   chan<- BinderRequest
+	TransformRcvChan <-chan OTransform
+	MessageRcvChan   <-chan ClientMessage
+	TransformSndChan chan<- TransformSubmission
+	MessageSndChan   chan<- MessageSubmission
 	ExitChan         chan<- string
 }
 
 /*
-SendTransform - A helper function for submitting a transform to the binder. The binder responds
-with either an error or a corrected version number for the document at the time of your submission.
+SendTransform - Submits a transform to the binder. The binder responds with either an error or a
+corrected version number for the transform. This is safe to call from any goroutine.
 */
-func (p *BinderPortal) SendTransform(ot interface{}, timeout time.Duration) (int, error) {
+func (p *BinderPortal) SendTransform(ot OTransform, timeout time.Duration) (int, error) {
 	// Buffered channels because the server skips blocked sends
 	errChan := make(chan error, 1)
 	verChan := make(chan int, 1)
-	p.RequestSndChan <- BinderRequest{
+	p.TransformSndChan <- TransformSubmission{
 		Token:       p.Token,
 		Transform:   ot,
 		VersionChan: verChan,
@@ -120,24 +106,14 @@ func (p *BinderPortal) SendTransform(ot interface{}, timeout time.Duration) (int
 }
 
 /*
-SendUpdate - A helper function for submitting an update to the binder. The binder will return an
-error in the event of one.
+SendMessage - Sends a message to the binder, which is subsequently sent out to all other clients.
+This is safe to call from any goroutine.
 */
-func (p *BinderPortal) SendUpdate(update interface{}, timeout time.Duration) error {
-	// Buffered channels because the server skips blocked sends
-	errChan := make(chan error, 1)
-	p.RequestSndChan <- BinderRequest{
-		Token:       p.Token,
-		Transform:   update,
-		VersionChan: nil,
-		ErrorChan:   errChan,
+func (p *BinderPortal) SendMessage(message ClientMessage) {
+	p.MessageSndChan <- MessageSubmission{
+		Token:   p.Token,
+		Message: message,
 	}
-	select {
-	case err := <-errChan:
-		return err
-	case <-time.After(timeout):
-	}
-	return errors.New("timeout occured waiting for binder response")
 }
 
 /*

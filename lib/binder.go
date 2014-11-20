@@ -74,21 +74,22 @@ type Binder struct {
 	stats  *util.Stats
 
 	// Clients
-	clients       map[string]chan<- interface{}
+	clients       map[string]BinderClient
 	SubscribeChan chan BinderSubscribeBundle
 
 	// Control channels
-	jobChan    chan BinderRequest
-	exitChan   chan string
-	errorChan  chan<- BinderError
-	closedChan chan struct{}
+	transformChan chan TransformSubmission
+	messageChan   chan MessageSubmission
+	exitChan      chan string
+	errorChan     chan<- BinderError
+	closedChan    chan struct{}
 }
 
 /*
-BindExisting - Creates a binder targeting a specific, existing document. Takes the id of the
-document along with the DocumentStore to acquire and store the document with.
+NewBinder - Creates a binder targeting an existing document determined via an ID. Must provide a
+DocumentStore to acquire the document and apply future updates to.
 */
-func BindExisting(
+func NewBinder(
 	id string,
 	block DocumentStore,
 	config BinderConfig,
@@ -100,68 +101,27 @@ func BindExisting(
 	binder := Binder{
 		ID:            id,
 		config:        config,
-		model:         CreateTextModel(config.ModelConfig), //TODO: Generic
+		model:         CreateTextModel(config.ModelConfig),
 		block:         block,
 		log:           log.NewModule("[binder]"),
 		stats:         stats,
-		clients:       make(map[string]chan<- interface{}),
+		clients:       make(map[string]BinderClient),
 		SubscribeChan: make(chan BinderSubscribeBundle),
-		jobChan:       make(chan BinderRequest),
+		transformChan: make(chan TransformSubmission),
+		messageChan:   make(chan MessageSubmission),
 		exitChan:      make(chan string),
 		errorChan:     errorChan,
 		closedChan:    make(chan struct{}),
 	}
-	binder.log.Debugln("Bound to existing document, attempting flush")
+	binder.log.Debugln("Bound to document, attempting flush")
 
 	if _, err := binder.flush(); err != nil {
-		stats.Incr("binder.bind_existing.error", 1)
+		stats.Incr("binder.new.error", 1)
 		return nil, err
 	}
 	go binder.loop()
 
-	stats.Incr("binder.bind_existing.success", 1)
-	return &binder, nil
-}
-
-/*
-BindNew - Creates a binder around a new document. Requires a DocumentStore to store the document
-with. Returns the binder, the ID of the new document, and a potential error.
-*/
-func BindNew(
-	document *Document,
-	block DocumentStore,
-	config BinderConfig,
-	errorChan chan<- BinderError,
-	log *util.Logger,
-	stats *util.Stats,
-) (*Binder, error) {
-
-	if err := block.Create(document.ID, document); err != nil {
-		return nil, err
-	}
-	binder := Binder{
-		ID:            document.ID,
-		log:           log.NewModule("[binder]"),
-		stats:         stats,
-		model:         CreateTextModel(config.ModelConfig), // TODO: Make generic
-		block:         block,
-		config:        config,
-		clients:       make(map[string]chan<- interface{}),
-		SubscribeChan: make(chan BinderSubscribeBundle),
-		jobChan:       make(chan BinderRequest),
-		exitChan:      make(chan string),
-		errorChan:     errorChan,
-		closedChan:    make(chan struct{}),
-	}
-	binder.log.Debugln("Bound to new document, attempting flush")
-
-	if _, err := binder.flush(); err != nil {
-		stats.Incr("binder.bind_new.error", 1)
-		return nil, err
-	}
-	go binder.loop()
-
-	stats.Incr("binder.bind_new.success", 1)
+	stats.Incr("binder.new.success", 1)
 	return &binder, nil
 }
 
@@ -169,20 +129,49 @@ func BindNew(
  */
 
 /*
-Subscribe - Returns a BinderPortal struct that allows a client to bootstrap and sync with the binder
-with the document content, current unapplied changes and channels for sending and receiving
-transforms. Accepts a string as a token for identifying the user, if left empty the token is
-generated.
-
-Multiple clients can connect with the same token, however, these users will be treated
-as if the same client, therefore not receiving each others messages, cursor positions being
-overwritten and being kicked in unison.
+ ClientMessage - A struct containing various updates to a clients' state and an optional message to
+ be distributed out to all other clients of a binder.
 */
-func (b *Binder) Subscribe(token string) *BinderPortal {
+type ClientMessage struct {
+	Message  string `json:"message,omitempty"`
+	Position *int64 `json:"position,omitempty"`
+	Active   bool   `json:"active"`
+	Token    string `json:"user_id"`
+}
+
+/*
+BinderClient - A struct containing information about a connected client and channels used by the
+binder to push transforms and user updates out.
+*/
+type BinderClient struct {
+	Token         string
+	TransformChan chan<- OTransform
+	MessageChan   chan<- ClientMessage
+}
+
+/*
+BinderError - A binder has encountered a problem and needs to close. In order for this to happen it
+needs to inform its owner that it should be shut down. BinderError is a structure used to carry
+our error message and our ID over an error channel. A BinderError with the Err set to nil can be
+used as a graceful shutdown request.
+*/
+type BinderError struct {
+	ID  string
+	Err error
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
+/*
+Subscribe - Returns a BinderPortal, which represents a contract between a client and the binder. If
+the subscription was unsuccessful the BinderPortal will contain an error.
+*/
+func (b *Binder) Subscribe(token string) BinderPortal {
 	if len(token) == 0 {
-		token = GenerateID("client salt")
+		token = GenerateID()
 	}
-	retChan := make(chan *BinderPortal, 1)
+	retChan := make(chan BinderPortal, 1)
 	bundle := BinderSubscribeBundle{
 		PortalRcvChan: retChan,
 		Token:         token,
@@ -216,7 +205,8 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 		return errors.New("rejected due to duplicate token")
 	}
 
-	sndChan := make(chan interface{}, 1)
+	transformSndChan := make(chan OTransform, 1)
+	messageSndChan := make(chan ClientMessage, 1)
 
 	// We need to read the full document here anyway, so might as well flush.
 	doc, err := b.flush()
@@ -224,23 +214,30 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 		return err
 	}
 	select {
-	case request.PortalRcvChan <- &BinderPortal{
+	case request.PortalRcvChan <- BinderPortal{
 		Token:            request.Token,
 		Version:          b.model.GetVersion(),
 		Document:         doc,
 		Error:            nil,
-		TransformRcvChan: sndChan,
-		RequestSndChan:   b.jobChan,
+		TransformRcvChan: transformSndChan,
+		MessageRcvChan:   messageSndChan,
+		TransformSndChan: b.transformChan,
+		MessageSndChan:   b.messageChan,
 		ExitChan:         b.exitChan,
 	}:
 		b.stats.Incr("binder.subscribed_clients", 1)
 		b.log.Debugf("Subscribed new client %v\n", request.Token)
-		b.clients[request.Token] = sndChan
+		b.clients[request.Token] = BinderClient{
+			Token:         request.Token,
+			TransformChan: transformSndChan,
+			MessageChan:   messageSndChan,
+		}
 	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
-		// We're not bothered if you suck, you just don't get enrolled. Deal with it.
+		/* We're not bothered if you suck, you just don't get enrolled, and this isn't
+		 * considered an error. Deal with it.
+		 */
 		b.stats.Incr("binder.rejected_client", 1)
 		b.log.Infof("Rejected client request %v\n", request.Token)
-		return nil
 	}
 
 	return nil
@@ -260,41 +257,29 @@ func (b *Binder) sendClientError(errChan chan<- error, err error) {
 }
 
 /*
-processJob - Processes a clients sent transforms, also returns the conditioned transforms to be
-broadcast to other listening clients.
+processTransform - Processes a clients transform submission, and broadcasts the transform out to
+other clients.
 */
-func (b *Binder) processJob(request BinderRequest) {
-	if request.Transform == nil {
-		b.sendClientError(request.ErrorChan, errors.New("received job without a transform"))
-		b.stats.Incr("binder.process_job.skipped", 1)
+func (b *Binder) processTransform(request TransformSubmission) {
+	var dispatch OTransform
+	var err error
+	var version int
+
+	b.log.Debugf("Received transform: %v\n", request.Transform)
+	dispatch, version, err = b.model.PushTransform(request.Transform)
+
+	if err != nil {
+		b.stats.Incr("binder.process_job.error", 1)
+		b.sendClientError(request.ErrorChan, err)
 		return
 	}
-	dispatch := request.Transform
-
-	// When the version chan is nil we assume the transform is a status update.
-	if request.VersionChan != nil {
-		var err error
-		var version int
-
-		b.log.Debugf("Received transform: %v\n", request.Transform)
-		dispatch, version, err = b.model.PushTransform(request.Transform)
-
-		if err != nil {
-			b.stats.Incr("binder.process_job.error", 1)
-			b.sendClientError(request.ErrorChan, err)
-			return
-		}
-		select {
-		case request.VersionChan <- version:
-		default:
-			b.log.Errorln("Send client version was blocked")
-			b.stats.Incr("binder.send_client_version.blocked", 1)
-		}
-		b.stats.Incr("binder.process_job.success", 1)
-	} else {
-		b.sendClientError(request.ErrorChan, nil)
-		b.stats.Incr("binder.process_update.success", 1)
+	select {
+	case request.VersionChan <- version:
+	default:
+		b.log.Errorln("Send client version was blocked")
+		b.stats.Incr("binder.send_client_version.blocked", 1)
 	}
+	b.stats.Incr("binder.process_job.success", 1)
 
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
@@ -304,15 +289,44 @@ func (b *Binder) processJob(request BinderRequest) {
 			continue
 		}
 		select {
-		case c <- dispatch:
+		case c.TransformChan <- dispatch:
 		case <-time.After(clientKickPeriod):
 			/* The client may have stopped listening, or is just being slow.
 			 * Either way, we have a strict policy here of no time wasters.
 			 */
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
+
 			delete(b.clients, key)
-			close(c)
+			close(c.TransformChan)
+			close(c.MessageChan)
+		}
+	}
+}
+
+/*
+processMessage - Sends a clients message out to other clients.
+*/
+func (b *Binder) processMessage(request MessageSubmission) {
+	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
+
+	for key, c := range b.clients {
+		// Skip sends for clients with matching tokens
+		if key == request.Token {
+			continue
+		}
+		select {
+		case c.MessageChan <- request.Message:
+		case <-time.After(clientKickPeriod):
+			/* The client may have stopped listening, or is just being slow.
+			 * Either way, we have a strict policy here of no time wasters.
+			 */
+			b.stats.Decr("binder.subscribed_clients", 1)
+			b.stats.Incr("binder.clients_kicked", 1)
+
+			delete(b.clients, key)
+			close(c.TransformChan)
+			close(c.MessageChan)
 		}
 	}
 }
@@ -375,18 +389,30 @@ func (b *Binder) loop() {
 				b.log.Infoln("Subscribe channel closed, shutting down")
 				running = false
 			}
-		case job, open := <-b.jobChan:
+		case tform, open := <-b.transformChan:
 			if running && open {
-				b.processJob(job)
+				b.processTransform(tform)
 				closeTimer.Reset(closePeriod)
 			} else {
-				b.log.Infoln("Jobs channel closed, shutting down")
+				b.log.Infoln("Transforms channel closed, shutting down")
+				running = false
+			}
+		case message, open := <-b.messageChan:
+			if running && open {
+				b.processMessage(message)
+				closeTimer.Reset(closePeriod)
+			} else {
+				b.log.Infoln("Messages channel closed, shutting down")
 				running = false
 			}
 		case exitKey, open := <-b.exitChan:
 			if running && open {
 				b.log.Debugf("Received exit request from: %v\n", exitKey)
-				delete(b.clients, exitKey)
+				if c, ok := b.clients[exitKey]; ok {
+					delete(b.clients, exitKey)
+					close(c.TransformChan)
+					close(c.MessageChan)
+				}
 				b.stats.Decr("binder.subscribed_clients", 1)
 			} else {
 				b.log.Infoln("Exit channel closed, shutting down")
@@ -414,9 +440,10 @@ func (b *Binder) loop() {
 			b.stats.Incr("binder.closing", 1)
 			b.log.Infoln("Closing, shutting down client channels")
 			oldClients := b.clients
-			b.clients = make(map[string]chan<- interface{})
+			b.clients = make(map[string]BinderClient)
 			for _, client := range oldClients {
-				close(client)
+				close(client.TransformChan)
+				close(client.MessageChan)
 			}
 			b.log.Infof("Attempting final flush of %v\n", b.ID)
 			if _, err := b.flush(); err != nil {

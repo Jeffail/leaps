@@ -422,9 +422,6 @@ leap_client.prototype._process_message = function(message) {
 		if ( null === message.leap_document ||
 		   "object" !== typeof(message.leap_document) ||
 		   "string" !== typeof(message.leap_document.id) ||
-		   "string" !== typeof(message.leap_document.title) ||
-		   "string" !== typeof(message.leap_document.description) ||
-		   "string" !== typeof(message.leap_document.type) ||
 		   "string" !== typeof(message.leap_document.content) ) {
 			return "message document type contained invalid document object";
 		}
@@ -584,24 +581,16 @@ leap_client.prototype.join_document = function(id, token) {
 	}));
 };
 
-/* create_document will inform the server that a new document should be created with a title,
- * description, and initial content, the client will submit any valid string values for these
- * fields, but it is up to the leaps server to determine whether those values match its own
- * requirements.
+/* create_document submits content to be created into a fresh document and then binds to that
+ * document.
  */
-leap_client.prototype.create_document = function(title, description, content, token) {
+leap_client.prototype.create_document = function(content, token) {
 	"use strict";
 
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
 		return "leap_client is not currently connected";
 	}
 
-	if ( typeof(title) !== "string" ) {
-		return "new document requires a valid title";
-	}
-	if ( typeof(description) !== "string" ) {
-		return "new document requires a valid description (can be empty)";
-	}
 	if ( typeof(content) !== "string" ) {
 		return "new document requires valid content (can be empty)";
 	}
@@ -614,10 +603,7 @@ leap_client.prototype.create_document = function(title, description, content, to
 		command : "create",
 		token : token,
 		leap_document : {
-			title       : title,
-			description : description,
-			type        : "text", // TODO: Generic
-			content     : content
+			content : content
 		}
 	}));
 };

@@ -163,12 +163,12 @@ func (c *Curator) loop() {
 FindDocument - Locates or creates a Binder for an existing document and returns that Binder for
 subscribing to. Returns an error if there was a problem locating the document.
 */
-func (c *Curator) FindDocument(token, id string) (*BinderPortal, error) {
+func (c *Curator) FindDocument(token, id string) (BinderPortal, error) {
 	c.log.Debugf("finding document %v, with token %v\n", id, token)
 
 	if !c.authenticator.AuthoriseJoin(token, id) {
 		c.stats.Incr("curator.find.rejected_client", 1)
-		return nil, fmt.Errorf("failed to authorise join of document id: %v with token: %v\n", id, token)
+		return BinderPortal{}, fmt.Errorf("failed to authorise join of document id: %v with token: %v\n", id, token)
 	}
 	c.stats.Incr("curator.find.accepted_client", 1)
 
@@ -179,11 +179,11 @@ func (c *Curator) FindDocument(token, id string) (*BinderPortal, error) {
 	if binder, ok := c.openBinders[id]; ok {
 		return binder.Subscribe(token), nil
 	}
-	binder, err := BindExisting(id, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
+	binder, err := NewBinder(id, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {
 		c.stats.Incr("curator.bind_existing.failed", 1)
 		c.log.Errorf("Failed to bind to document %v: %v\n", id, err)
-		return nil, err
+		return BinderPortal{}, err
 	}
 	c.openBinders[id] = binder
 
@@ -195,30 +195,28 @@ NewDocument - Creates a fresh Binder for a new document, which is subsequently s
 error if either the document ID is already currently in use, or if there is a problem storing the
 new document. May require authentication, if so a userID is supplied.
 */
-func (c *Curator) NewDocument(token string, userID string, doc *Document) (*BinderPortal, error) {
+func (c *Curator) NewDocument(token string, userID string, doc *Document) (BinderPortal, error) {
 	c.log.Debugf("Creating new document with token %v\n", token)
 
 	if !c.authenticator.AuthoriseCreate(token, userID) {
 		c.stats.Incr("curator.create.rejected_client", 1)
-		return nil, fmt.Errorf("failed to gain permission to create with token: %v\n", token)
+		return BinderPortal{}, fmt.Errorf("failed to gain permission to create with token: %v\n", token)
 	}
 	c.stats.Incr("curator.create.accepted_client", 1)
 
 	// Always generate a fresh ID
-	doc.ID = GenerateID(fmt.Sprintf("%v%v", doc.Title, doc.Description))
+	doc.ID = GenerateID()
 
-	if err := ValidateDocument(doc); err != nil {
-		c.log.Infof("Validate document failed: %v\n", err)
-		c.stats.Incr("curator.validate_document.error", 1)
-		return nil, err
+	if err := c.store.Create(doc.ID, doc); err != nil {
+		c.stats.Incr("curator.create_new.failed", 1)
+		c.log.Errorf("Failed to create new document: %v\n", err)
+		return BinderPortal{}, err
 	}
-	c.stats.Incr("curator.validate_document.success", 1)
-
-	binder, err := BindNew(doc, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
+	binder, err := NewBinder(doc.ID, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {
 		c.stats.Incr("curator.bind_new.failed", 1)
 		c.log.Errorf("Failed to bind to new document: %v\n", err)
-		return nil, err
+		return BinderPortal{}, err
 	}
 	c.binderMutex.Lock()
 	c.openBinders[doc.ID] = binder

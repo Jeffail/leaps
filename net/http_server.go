@@ -161,23 +161,23 @@ func CreateHTTPServer(
 processInitMessage - Process an initial message from a client and, if the format is as expected,
 return a binder that satisfies the request.
 */
-func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (*lib.BinderPortal, error) {
+func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (lib.BinderPortal, error) {
 	switch clientMsg.Command {
 	case "create":
 		if clientMsg.Document != nil {
 			return h.locator.NewDocument(clientMsg.Token, clientMsg.UserID, clientMsg.Document)
 		}
-		return nil, errors.New("create request must contain a valid document structure")
+		return lib.BinderPortal{}, errors.New("create request must contain a valid document structure")
 	case "find":
 		if len(clientMsg.DocID) > 0 {
 			h.logger.Infof("Attempting to bind to document: %v\n", clientMsg.DocID)
 			return h.locator.FindDocument(clientMsg.Token, clientMsg.DocID)
 		}
-		return nil, errors.New("find request must contain a valid document ID")
+		return lib.BinderPortal{}, errors.New("find request must contain a valid document ID")
 	case "ping":
-		return nil, nil
+		return lib.BinderPortal{}, nil
 	}
-	return nil, fmt.Errorf("first message must be an initializer request, client sent: %v", clientMsg.Command)
+	return lib.BinderPortal{}, fmt.Errorf("first message must be init, client sent: %v", clientMsg.Command)
 }
 
 /*
@@ -208,7 +208,7 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 		var launchCmd LeapClientMessage
 		websocket.JSON.Receive(ws, &launchCmd)
 
-		if binder, err := h.processInitMessage(&launchCmd); err == nil && binder != nil {
+		if binder, err := h.processInitMessage(&launchCmd); err == nil {
 			h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
 
 			websocket.JSON.Send(ws, LeapServerMessage{

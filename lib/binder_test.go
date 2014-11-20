@@ -43,13 +43,13 @@ func TestGracefullShutdown(t *testing.T) {
 	logger := util.NewLogger(os.Stdout, logConf)
 	stats := util.NewStats(util.DefaultStatsConfig())
 
-	doc, _ := CreateNewDocument("test", "test1", "text", "hello world")
+	doc, _ := NewDocument("hello world")
 
 	store := MemoryStore{documents: map[string]*Document{
 		"KILL_ME": doc,
 	}}
 
-	binder, err := BindExisting("KILL_ME", &store, DefaultBinderConfig(), errChan, logger, stats)
+	binder, err := NewBinder("KILL_ME", &store, DefaultBinderConfig(), errChan, logger, stats)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -65,7 +65,7 @@ func TestGracefullShutdown(t *testing.T) {
 
 func TestUpdates(t *testing.T) {
 	errChan := make(chan BinderError)
-	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	doc, err := NewDocument("hello world")
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -77,9 +77,9 @@ func TestUpdates(t *testing.T) {
 	logger := util.NewLogger(os.Stdout, logConf)
 	stats := util.NewStats(util.DefaultStatsConfig())
 
-	binder, err := BindNew(
-		doc,
-		&MemoryStore{documents: map[string]*Document{}},
+	binder, err := NewBinder(
+		doc.ID,
+		&MemoryStore{documents: map[string]*Document{doc.ID: doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -98,38 +98,25 @@ func TestUpdates(t *testing.T) {
 
 	portal1, portal2 := binder.Subscribe(""), binder.Subscribe("")
 	for i := 0; i < 100; i++ {
-		if err = portal1.SendUpdate(UserUpdate{
-			Token: portal1.Token,
-		}, time.Second); err != nil {
-			t.Errorf("Updated error: %v", err)
+		portal1.SendMessage(ClientMessage{Token: portal1.Token})
+
+		message := <-portal2.MessageRcvChan
+		if message.Token != portal1.Token {
+			t.Errorf("Received incorrect token: %v", message.Token)
 		}
-		u1 := <-portal2.TransformRcvChan
-		if update, ok := u1.(UserUpdate); ok {
-			if update.Token != portal1.Token {
-				t.Errorf("Received incorrect token: %v", update.Token)
-			}
-		} else {
-			t.Errorf("Received non-update type")
-		}
-		if err = portal2.SendUpdate(UserUpdate{
-			Token: portal2.Token,
-		}, time.Second); err != nil {
-			t.Errorf("Updated error: %v", err)
-		}
-		u2 := <-portal1.TransformRcvChan
-		if update, ok := u2.(UserUpdate); ok {
-			if update.Token != portal2.Token {
-				t.Errorf("Received incorrect token: %v", update.Token)
-			}
-		} else {
-			t.Errorf("Received non-update type")
+
+		portal2.SendMessage(ClientMessage{Token: portal2.Token})
+
+		message2 := <-portal1.MessageRcvChan
+		if message2.Token != portal2.Token {
+			t.Errorf("Received incorrect token: %v", message2.Token)
 		}
 	}
 }
 
 func TestNewBinder(t *testing.T) {
 	errChan := make(chan BinderError)
-	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	doc, err := NewDocument("hello world")
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -141,9 +128,9 @@ func TestNewBinder(t *testing.T) {
 	logger := util.NewLogger(os.Stdout, logConf)
 	stats := util.NewStats(util.DefaultStatsConfig())
 
-	binder, err := BindNew(
-		doc,
-		&MemoryStore{documents: map[string]*Document{}},
+	binder, err := NewBinder(
+		doc.ID,
+		&MemoryStore{documents: map[string]*Document{doc.ID: doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -189,7 +176,7 @@ func TestNewBinder(t *testing.T) {
 	_ = <-portal2.TransformRcvChan
 
 	portal3 := binder.Subscribe("")
-	if exp, rec := "super hello universe", portal3.Document.Content.(string); exp != rec {
+	if exp, rec := "super hello universe", portal3.Document.Content; exp != rec {
 		t.Errorf("Wrong content, expected %v, received %v", exp, rec)
 	}
 }
@@ -207,15 +194,12 @@ func TestNewBinder(t *testing.T) {
 	wg.Done()
 }*/
 
-func goodClient(b *BinderPortal, expecting int, t *testing.T, wg *sync.WaitGroup) {
+func goodClient(b BinderPortal, expecting int, t *testing.T, wg *sync.WaitGroup) {
 	changes := b.Version + 1
 	seen := 0
-	for change := range b.TransformRcvChan {
+	for tform := range b.TransformRcvChan {
 		seen++
-		tform, ok := change.(OTransform)
-		if !ok {
-			t.Errorf("did not receive expected OTransform")
-		} else if tform.Insert != fmt.Sprintf("%v", changes) {
+		if tform.Insert != fmt.Sprintf("%v", changes) {
 			t.Errorf("Wrong order of transforms, expected %v, received %v",
 				changes, tform.Insert)
 		}
@@ -240,15 +224,15 @@ func TestClients(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 
-	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	doc, err := NewDocument("hello world")
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
 	}
 
-	binder, err := BindNew(
-		doc,
-		&MemoryStore{documents: map[string]*Document{}},
+	binder, err := NewBinder(
+		doc.ID,
+		&MemoryStore{documents: map[string]*Document{doc.ID: doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -314,14 +298,11 @@ type binderStoriesContainer struct {
 	Stories []binderStory `json:"binder_stories"`
 }
 
-func goodStoryClient(b *BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t *testing.T) {
+func goodStoryClient(b BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t *testing.T) {
 	tformIndex, lenCorrected := 0, len(bstory.TCorrected)
 	go func() {
-		for ret := range b.TransformRcvChan {
-			tform, ok := ret.(OTransform)
-			if !ok {
-				t.Errorf("did not receive expected OTransform")
-			} else if tform.Version != bstory.TCorrected[tformIndex].Version ||
+		for tform := range b.TransformRcvChan {
+			if tform.Version != bstory.TCorrected[tformIndex].Version ||
 				tform.Insert != bstory.TCorrected[tformIndex].Insert ||
 				tform.Delete != bstory.TCorrected[tformIndex].Delete ||
 				tform.Position != bstory.TCorrected[tformIndex].Position {
@@ -360,8 +341,8 @@ func TestBinderStories(t *testing.T) {
 		return
 	}
 
-	for i, story := range scont.Stories {
-		doc, err := CreateNewDocument(fmt.Sprintf("story%v", i), "testing", "text", story.Content)
+	for _, story := range scont.Stories {
+		doc, err := NewDocument(story.Content)
 		if err != nil {
 			t.Errorf("error: %v", err)
 			continue
@@ -377,7 +358,14 @@ func TestBinderStories(t *testing.T) {
 			}
 		}()
 
-		binder, err := BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan, logger, stats)
+		binder, err := NewBinder(
+			doc.ID,
+			&MemoryStore{documents: map[string]*Document{doc.ID: doc}},
+			config,
+			errChan,
+			logger,
+			stats,
+		)
 		if err != nil {
 			t.Errorf("error: %v", err)
 			continue
@@ -407,7 +395,7 @@ func TestBinderStories(t *testing.T) {
 		wg.Wait()
 
 		newClient := binder.Subscribe("")
-		if got, exp := newClient.Document.Content.(string), story.Result; got != exp {
+		if got, exp := newClient.Document.Content, story.Result; got != exp {
 			t.Errorf("Wrong result, expected: %v, received: %v", exp, got)
 		}
 
@@ -425,7 +413,7 @@ func TestBinderStories(t *testing.T) {
 	logger := util.NewLogger(os.Stdout, logConf)
 	stats := util.NewStats(util.DefaultStatsConfig())
 
-	doc, err := CreateNewDocument("test", "test1", "text", "hello world")
+	doc, err := NewDocument("hello world")
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return

@@ -260,7 +260,7 @@ func TestHttpServer(t *testing.T) {
 	origin := "http://localhost/"
 	url := "ws://localhost:8254/leaps/socket"
 
-	for i, story := range scont.Stories {
+	for _, story := range scont.Stories {
 
 		ws, err := websocket.Dial(url, "", origin)
 		if err != nil {
@@ -271,10 +271,7 @@ func TestHttpServer(t *testing.T) {
 		websocket.JSON.Send(ws, LeapClientMessage{
 			Command: "create",
 			Document: &lib.Document{
-				Title:       fmt.Sprintf("Story%v", i),
-				Description: fmt.Sprintf("Story #%v", i),
-				Type:        "text",
-				Content:     story.Content,
+				Content: story.Content,
 			},
 		})
 

@@ -51,7 +51,7 @@ module.exports = function(test) {
 		test.ok(false, "client error: " + JSON.stringify(err));
 	});
 
-	client.create_document("test", "test document", "random content");
+	client.create_document("random content");
 	// Should now be primed and ready.
 
 	client.on("user", function(user) {

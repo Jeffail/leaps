@@ -22,11 +22,6 @@ THE SOFTWARE.
 
 package lib
 
-import (
-	"errors"
-	"fmt"
-)
-
 /*--------------------------------------------------------------------------------------------------
  */
 
@@ -34,77 +29,22 @@ import (
 Document - A representation of a leap document.
 */
 type Document struct {
-	ID          string      `json:"id"`
-	Title       string      `json:"title"`
-	Description string      `json:"description"`
-	Type        string      `json:"type"`
-	Content     interface{} `json:"content"`
+	ID      string `json:"id"`
+	Content string `json:"content"`
 }
 
 /*--------------------------------------------------------------------------------------------------
  */
 
 /*
-CreateNewDocument - Create a fresh leap document with a title, description, type and the initial
-content. We also validate here that the content type provided matches the type.
+NewDocument - Create a fresh leap document with a title, description, type and the initial content.
 */
-func CreateNewDocument(title, description, doctype string, content interface{}) (*Document, error) {
-
+func NewDocument(content string) (*Document, error) {
 	doc := &Document{
-		ID:          GenerateID(fmt.Sprintf("%v%v", title, description)),
-		Title:       title,
-		Description: description,
-		Type:        doctype,
-		Content:     content,
-	}
-	if err := ValidateDocument(doc); err != nil {
-		return nil, err
+		ID:      GenerateID(),
+		Content: content,
 	}
 	return doc, nil
-}
-
-/*
-ValidateDocument - validates that a given document has content that matches its type. If this
-isn't the case it will attempt to convert the content into the expected type, and failing that
-will return an error message.
-*/
-func ValidateDocument(doc *Document) error {
-	switch doc.Type {
-	case "text":
-		if _, ok := doc.Content.(string); !ok {
-			return errors.New("document content was not expected type (string)")
-		}
-	default:
-		return errors.New("document type was not recognized")
-	}
-	return nil
-}
-
-/*
-SerializeDocumentContent - Serialize the content of a document into a string, based on its type.
-*/
-func SerializeDocumentContent(doctype string, content interface{}) (string, error) {
-	switch doctype {
-	case "text":
-		if str, ok := content.(string); ok {
-			return str, nil
-		}
-	default:
-		return "", errors.New("document type was not recognized")
-	}
-	return "", errors.New("document content was not expected type")
-}
-
-/*
-ParseDocumentContent - Parse a string into a document content based on its type.
-*/
-func ParseDocumentContent(doctype string, content string) (interface{}, error) {
-	switch doctype {
-	case "text":
-		return content, nil
-	default:
-		return nil, errors.New("document type was not recognized")
-	}
 }
 
 /*--------------------------------------------------------------------------------------------------

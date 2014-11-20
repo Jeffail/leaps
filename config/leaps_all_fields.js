@@ -1,4 +1,15 @@
 {
+	"num_processes": 8,
+	"logger": {
+		"prefix": "[leaps]",
+		"log_level": "INFO",
+		"add_timestamp": true
+	},
+	"stats": {
+		"job_buffer": 100,
+		"prefix": "leaps",
+		"retain_internal": true
+	},
 	"curator": {
 		"storage": {
 			"type": "memory",
@@ -9,9 +20,6 @@
 				"db_table": {
 					"table": "leaps_documents",
 					"id_column": "ID",
-					"title_column": "TITLE",
-					"description_column": "DESCRIPTION",
-					"type_column": "TYPE",
 					"content_column": "CONTENT"
 				}
 			}
@@ -26,12 +34,12 @@
 				"max_transform_length": 50000
 			}
 		},
-		"logger": {
-			"level": 2,
-			"output_path": ""
-		},
 		"authenticator": {
-			"type": "none"
+			"type": "none",
+			"allow_creation": true,
+			"redis_config": {
+				"url": ":6379"
+			}
 		}
 	},
 	"http_server": {
@@ -45,7 +53,7 @@
 	},
 	"stats_server": {
 		"static_path": "/",
-		"stats_path": "/leapstats",
+		"stats_path": "/stats",
 		"address": "localhost:4040",
 		"www_dir": "",
 		"stat_timeout_ms": 200,

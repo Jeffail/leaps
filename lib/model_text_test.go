@@ -30,7 +30,7 @@ import (
 )
 
 func TestTextModelSimpleTransforms(t *testing.T) {
-	doc, err := CreateNewDocument("Test", "Doc test", "text", "hello world")
+	doc, err := NewDocument("hello world")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -67,16 +67,15 @@ func TestTextModelSimpleTransforms(t *testing.T) {
 	}
 
 	expected := "hel*012345678 world"
-	received := doc.Content.(string)
-	if expected != received {
-		t.Errorf("Expected %v, received %v", expected, received)
+	if expected != doc.Content {
+		t.Errorf("Expected %v, received %v", expected, doc.Content)
 	}
 }
 
 func TestPushPullTransforms(t *testing.T) {
 	numTransforms := 100
 	arrTransforms := make([]OTransform, numTransforms)
-	doc, err := CreateNewDocument("Test", "Doc test", "text", "hello world")
+	doc, err := NewDocument("hello world")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -134,7 +133,7 @@ func TestTransformStories(t *testing.T) {
 	for _, story := range scont.Stories {
 		stages := []byte("Stages of story:\n")
 
-		doc, err := CreateNewDocument("Test", "Test doc", "text", story.Content)
+		doc, err := NewDocument(story.Content)
 		if err != nil {
 			t.Errorf("Error: %v", err)
 			return
@@ -142,25 +141,20 @@ func TestTransformStories(t *testing.T) {
 		model := CreateTextModel(DefaultModelConfig())
 
 		stages = append(stages,
-			[]byte(fmt.Sprintf("\tInitial : %v\n", doc.Content.(string)))...)
+			[]byte(fmt.Sprintf("\tInitial : %v\n", doc.Content))...)
 
 		for j, change := range story.Transforms {
-			if tsWrap, _, err := model.PushTransform(change); err != nil {
+			if ts, _, err := model.PushTransform(change); err != nil {
 				t.Errorf("Failed to insert: %v", err)
 			} else {
-				ts, ok := tsWrap.(OTransform)
-				if ok {
-					if len(story.TCorrected) > j {
-						if story.TCorrected[j].Position != ts.Position ||
-							story.TCorrected[j].Version != ts.Version ||
-							story.TCorrected[j].Delete != ts.Delete ||
-							story.TCorrected[j].Insert != ts.Insert {
-							t.Errorf("Tform does not match corrected form: %v != %v",
-								story.TCorrected[j], ts)
-						}
+				if len(story.TCorrected) > j {
+					if story.TCorrected[j].Position != ts.Position ||
+						story.TCorrected[j].Version != ts.Version ||
+						story.TCorrected[j].Delete != ts.Delete ||
+						story.TCorrected[j].Insert != ts.Insert {
+						t.Errorf("Tform does not match corrected form: %v != %v",
+							story.TCorrected[j], ts)
 					}
-				} else {
-					t.Errorf("did not receive expected OTransform")
 				}
 			}
 			for _, at := range story.Flushes {
@@ -169,14 +163,14 @@ func TestTransformStories(t *testing.T) {
 						t.Errorf("Failed to flush: %v", err)
 					}
 					stages = append(stages,
-						[]byte(fmt.Sprintf("\tStage %-2v: %v\n", j, doc.Content.(string)))...)
+						[]byte(fmt.Sprintf("\tStage %-2v: %v\n", j, doc.Content))...)
 				}
 			}
 		}
 		if _, err = model.FlushTransforms(&doc.Content, 60); err != nil {
 			t.Errorf("Failed to flush: %v", err)
 		}
-		result := doc.Content.(string)
+		result := doc.Content
 		if result != story.Result {
 			t.Errorf("Failed transform story: %v\nexpected:\n\t%v\nresult:\n\t%v\n%v",
 				story.Name, story.Result, result, string(stages))
@@ -185,7 +179,7 @@ func TestTransformStories(t *testing.T) {
 }
 
 func TestTextModelUnicodeTransforms(t *testing.T) {
-	doc, err := CreateNewDocument("Test", "Doc test", "text", "hello world 我今天要学习")
+	doc, err := NewDocument("hello world 我今天要学习")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -222,14 +216,14 @@ func TestTextModelUnicodeTransforms(t *testing.T) {
 	}
 
 	expected := "hello world 你听说那条新闻了吗? 交通堵塞了"
-	received := doc.Content.(string)
+	received := doc.Content
 	if expected != received {
 		t.Errorf("Expected %v, received %v", expected, received)
 	}
 }
 
 func TestLimits(t *testing.T) {
-	doc, err := CreateNewDocument("Test", "Doc test", "text", "1")
+	doc, err := NewDocument("1")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return

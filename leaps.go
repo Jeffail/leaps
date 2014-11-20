@@ -69,12 +69,13 @@ type LeapsConfig struct {
 
 func main() {
 	var (
-		curator     net.LeapLocator
-		err         error
-		closeChan   = make(chan bool)
-		showVersion = flag.Bool("v", false, "Display version info")
-		configPath  = flag.String("c", "", "Path to a configuration file")
-		leapsMode   = flag.String("m", "curator", "Leaps service mode, supports: curator, curator or curator")
+		curator        net.LeapLocator
+		err            error
+		closeChan      = make(chan bool)
+		showVersion    = flag.Bool("version", false, "Display version info, then exit")
+		showConfigJSON = flag.Bool("print-json", false, "Print loaded configuration as JSON, then exit")
+		configPath     = flag.String("c", "", "Path to a configuration file")
+		leapsMode      = flag.String("m", "curator", "Leaps service mode, supports: curator, curator or curator")
 	)
 
 	flag.Parse()
@@ -109,11 +110,12 @@ func main() {
 	}
 
 	// We have our configuration, time to get started up
-	if configJSON, err := json.MarshalIndent(leapsConfig, "", "	"); err == nil {
-		fmt.Printf("Leaps server initializing, configuration:\n%v\n", string(configJSON))
-		fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
-	} else {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Configuration marshal error: %v", err))
+	if *showConfigJSON {
+		if configJSON, err := json.MarshalIndent(leapsConfig, "", "	"); err == nil {
+			fmt.Println(string(configJSON))
+		} else {
+			fmt.Fprintln(os.Stderr, fmt.Sprintf("Configuration marshal error: %v", err))
+		}
 		return
 	}
 
@@ -121,6 +123,8 @@ func main() {
 
 	logger := util.NewLogger(os.Stdout, leapsConfig.LoggerConfig)
 	stats := util.NewStats(leapsConfig.StatsConfig)
+
+	fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
 
 	switch *leapsMode {
 	case "curator":

@@ -52,13 +52,13 @@ type Model interface {
 	/* PushTransform - Push a single transform to our model, and if successful, return the updated
 	 * transform along with the new version of the document.
 	 */
-	PushTransform(ot interface{}) (interface{}, int, error)
+	PushTransform(ot OTransform) (OTransform, int, error)
 
 	/* FlushTransforms - apply all unapplied transforms to content, and delete old applied
 	 * in accordance with our retention period. Returns a bool indicating whether any changes
 	 * were applied, and an error in case a fatal problem was encountered.
 	 */
-	FlushTransforms(content *interface{}, secondsRetention int64) (bool, error)
+	FlushTransforms(content *string, secondsRetention int64) (bool, error)
 
 	/* GetVersion - returns the current version of the document.
 	 */

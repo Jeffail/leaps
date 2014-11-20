@@ -59,20 +59,7 @@ func (s *FileStore) Store(id string, doc *Document) error {
 	}
 	defer file.Close()
 
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(doc.Title)); err != nil {
-		return err
-	}
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(doc.Description)); err != nil {
-		return err
-	}
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(doc.Type)); err != nil {
-		return err
-	}
-	serialized, err := SerializeDocumentContent(doc.Type, doc.Content)
-	if err != nil {
-		return err
-	}
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(serialized)); err != nil {
+	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(doc.Content)); err != nil {
 		return err
 	}
 
@@ -95,41 +82,11 @@ func (s *FileStore) Fetch(id string) (*Document, error) {
 
 	// Get title
 	if !scanner.Scan() {
-		return nil, errors.New("failed to read title from document file")
-	}
-	doc.Title, err = strconv.Unquote(scanner.Text())
-	if err != nil {
-		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-
-	// Get description
-	if !scanner.Scan() {
-		return nil, errors.New("failed to read description from document file")
-	}
-	doc.Description, err = strconv.Unquote(scanner.Text())
-	if err != nil {
-		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-
-	// Get type
-	if !scanner.Scan() {
-		return nil, errors.New("failed to read type from document file")
-	}
-	doc.Type, err = strconv.Unquote(scanner.Text())
-	if err != nil {
-		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-
-	// Get content
-	if !scanner.Scan() {
 		return nil, errors.New("failed to read content from document file")
 	}
-	unquotedContent, err := strconv.Unquote(scanner.Text())
+	doc.Content, err = strconv.Unquote(scanner.Text())
 	if err != nil {
 		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-	if doc.Content, err = ParseDocumentContent(doc.Type, unquotedContent); err != nil {
-		return nil, err
 	}
 
 	return &doc, nil

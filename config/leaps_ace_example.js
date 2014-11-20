@@ -1,8 +1,7 @@
 {
 	"logger": {
 		"prefix": "[leaps]",
-		"log_level": "DEBUG",
-		"add_timestamp": true
+		"log_level": "DEBUG"
 	},
 	"stats": {
 		"job_buffer": 100,

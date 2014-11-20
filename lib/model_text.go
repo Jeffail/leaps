@@ -26,7 +26,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 )
 
@@ -76,16 +75,12 @@ PushTransform - Inserts a transform onto the unapplied stack and increments the 
 the document. Whilst doing so it fixes the transform in relation to earlier transforms it was
 unaware of, this fixed version gets sent back for distributing across other clients.
 */
-func (m *OModel) PushTransform(otBoxed interface{}) (interface{}, int, error) {
-	ot, ok := otBoxed.(OTransform)
-	if !ok {
-		return nil, 0, errors.New("received unexpected transform, expected OTransform")
-	}
+func (m *OModel) PushTransform(ot OTransform) (OTransform, int, error) {
 	if ot.Delete < 0 {
-		return nil, 0, errors.New("transform contained negative delete")
+		return OTransform{}, 0, errors.New("transform contained negative delete")
 	}
 	if uint64(len(ot.Insert)) > m.config.MaxTransformLength {
-		return nil, 0, errors.New("transform insert length exceeded the limit")
+		return OTransform{}, 0, errors.New("transform insert length exceeded the limit")
 	}
 
 	lenApplied, lenUnapplied := len(m.Applied), len(m.Unapplied)
@@ -93,10 +88,10 @@ func (m *OModel) PushTransform(otBoxed interface{}) (interface{}, int, error) {
 	diff := (m.Version + 1) - ot.Version
 
 	if diff > lenApplied+lenUnapplied {
-		return nil, 0, errors.New("transform diff greater than transform archive")
+		return OTransform{}, 0, errors.New("transform diff greater than transform archive")
 	}
 	if diff < 0 {
-		return nil, 0, fmt.Errorf(
+		return OTransform{}, 0, fmt.Errorf(
 			"transform version %v greater than expected doc version (%v), offender: %v",
 			ot.Version, (m.Version + 1), ot)
 	}
@@ -134,19 +129,13 @@ FlushTransforms - apply all unapplied transforms and append them to the applied 
 old entries from the applied stack. Accepts retention as an indicator for how many seconds applied
 transforms should be retained. Returns a bool indicating whether any changes were applied.
 */
-func (m *OModel) FlushTransforms(contentBoxed *interface{}, secondsRetention int64) (bool, error) {
-	content, ok := (*contentBoxed).(string)
-	if !ok {
-		return false, fmt.Errorf("received unexpected content, expected string, received %v",
-			reflect.TypeOf(*contentBoxed))
-	}
-
+func (m *OModel) FlushTransforms(content *string, secondsRetention int64) (bool, error) {
 	transforms := m.Unapplied[:]
 	m.Unapplied = []OTransform{}
 
-	lenContent := len(content)
+	lenContent := len(*content)
 
-	runeContent := bytes.Runes([]byte(content))
+	runeContent := bytes.Runes([]byte(*content))
 
 	var i, j int
 	var err error
@@ -160,6 +149,8 @@ func (m *OModel) FlushTransforms(contentBoxed *interface{}, secondsRetention int
 		}
 	}
 
+	*content = string(runeContent)
+
 	upto := time.Now().Unix() - secondsRetention
 	for j = 0; j < len(m.Applied); j++ {
 		if m.Applied[j].TReceived > upto {
@@ -172,8 +163,6 @@ func (m *OModel) FlushTransforms(contentBoxed *interface{}, secondsRetention int
 
 	copy(m.Applied[:], applied)
 	copy(m.Applied[len(applied):], transforms)
-
-	*contentBoxed = string(runeContent)
 
 	return i > 0, err
 }
