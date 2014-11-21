@@ -34,15 +34,20 @@ import (
 	"github.com/jeffail/leaps/util"
 )
 
-func TestGracefullShutdown(t *testing.T) {
-	errChan := make(chan BinderError, 10)
-
+func getLoggerAndStats() (*util.Logger, *util.Stats) {
 	logConf := util.DefaultLoggerConfig()
 	logConf.LogLevel = "OFF"
 
 	logger := util.NewLogger(os.Stdout, logConf)
 	stats := util.NewStats(util.DefaultStatsConfig())
 
+	return logger, stats
+}
+
+func TestGracefullShutdown(t *testing.T) {
+	errChan := make(chan BinderError, 10)
+
+	logger, stats := getLoggerAndStats()
 	doc, _ := NewDocument("hello world")
 
 	store := MemoryStore{documents: map[string]*Document{
@@ -65,17 +70,8 @@ func TestGracefullShutdown(t *testing.T) {
 
 func TestUpdates(t *testing.T) {
 	errChan := make(chan BinderError)
-	doc, err := NewDocument("hello world")
-	if err != nil {
-		t.Errorf("error: %v", err)
-		return
-	}
-
-	logConf := util.DefaultLoggerConfig()
-	logConf.LogLevel = "OFF"
-
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
+	doc, _ := NewDocument("hello world")
+	logger, stats := getLoggerAndStats()
 
 	binder, err := NewBinder(
 		doc.ID,
@@ -116,17 +112,8 @@ func TestUpdates(t *testing.T) {
 
 func TestNewBinder(t *testing.T) {
 	errChan := make(chan BinderError)
-	doc, err := NewDocument("hello world")
-	if err != nil {
-		t.Errorf("error: %v", err)
-		return
-	}
-
-	logConf := util.DefaultLoggerConfig()
-	logConf.LogLevel = "OFF"
-
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
+	doc, _ := NewDocument("hello world")
+	logger, stats := getLoggerAndStats()
 
 	binder, err := NewBinder(
 		doc.ID,
@@ -159,7 +146,6 @@ func TestNewBinder(t *testing.T) {
 	); v != 2 || err != nil {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
-
 	if v, err := portal2.SendTransform(
 		OTransform{
 			Position: 0,
@@ -172,8 +158,8 @@ func TestNewBinder(t *testing.T) {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
 
-	_ = <-portal1.TransformRcvChan
-	_ = <-portal2.TransformRcvChan
+	<-portal1.TransformRcvChan
+	<-portal2.TransformRcvChan
 
 	portal3 := binder.Subscribe("")
 	if exp, rec := "super hello universe", portal3.Document.Content; exp != rec {
@@ -213,22 +199,13 @@ func goodClient(b BinderPortal, expecting int, t *testing.T, wg *sync.WaitGroup)
 
 func TestClients(t *testing.T) {
 	errChan := make(chan BinderError)
+	doc, _ := NewDocument("hello world")
+	logger, stats := getLoggerAndStats()
+
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000
 
-	logConf := util.DefaultLoggerConfig()
-	logConf.LogLevel = "OFF"
-
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
-
 	wg := sync.WaitGroup{}
-
-	doc, err := NewDocument("hello world")
-	if err != nil {
-		t.Errorf("error: %v", err)
-		return
-	}
 
 	binder, err := NewBinder(
 		doc.ID,
@@ -322,12 +299,7 @@ func goodStoryClient(b BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t 
 
 func TestBinderStories(t *testing.T) {
 	nClients := 10
-
-	logConf := util.DefaultLoggerConfig()
-	logConf.LogLevel = "OFF"
-
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
+	logger, stats := getLoggerAndStats()
 
 	bytes, err := ioutil.ReadFile("../data/binder_stories.js")
 	if err != nil {

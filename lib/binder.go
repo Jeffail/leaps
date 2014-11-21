@@ -52,7 +52,7 @@ func DefaultBinderConfig() BinderConfig {
 	return BinderConfig{
 		FlushPeriod:           500,
 		RetentionPeriod:       60,
-		ClientKickPeriod:      5,
+		ClientKickPeriod:      200,
 		CloseInactivityPeriod: 300,
 		ModelConfig:           DefaultModelConfig(),
 	}
@@ -297,6 +297,8 @@ func (b *Binder) processTransform(request TransformSubmission) {
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
 
+			b.log.Debugf("Kicking client (%v) for blocked transform send\n", key)
+
 			delete(b.clients, key)
 			close(c.TransformChan)
 			close(c.MessageChan)
@@ -323,6 +325,8 @@ func (b *Binder) processMessage(request MessageSubmission) {
 			 */
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
+
+			b.log.Debugf("Kicking client (%v) for blocked message send\n", key)
 
 			delete(b.clients, key)
 			close(c.TransformChan)
@@ -363,8 +367,14 @@ func (b *Binder) flush() (*Document, error) {
  */
 
 /*
-loop - The internal loop that performs the broker duties of the binder. The period of intermittent
-flushes must be specified.
+loop - The internal loop that performs the broker duties of the binder. Which includes the
+following:
+
+- Enrolling new clients by dispatching a fresh copy of the document
+- Receiving messages and transforms from clients
+- Dispatching received messages and transforms to all other enrolled clients
+- Intermittently flushing changes to the document storage solution
+- Intermittently checking for active clients, and shutting down when unused
 */
 func (b *Binder) loop() {
 	flushPeriod := (time.Duration(b.config.FlushPeriod) * time.Millisecond)

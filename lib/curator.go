@@ -59,6 +59,8 @@ func DefaultCuratorConfig() CuratorConfig {
 /*
 Curator - A structure designed to keep track of a live collection of Binders. Assists prospective
 clients in locating their target Binders, and when necessary creates new Binders.
+
+The curator is fully in control of the binders, and manages their life cycles internally.
 */
 type Curator struct {
 	config        CuratorConfig
@@ -78,8 +80,7 @@ type Curator struct {
 }
 
 /*
-NewCurator - Creates and returns a fresh curator, and launches its internal loop for monitoring
-Binder errors.
+NewCurator - Creates and returns a fresh curator, and launches its internal loop.
 */
 func NewCurator(config CuratorConfig, log *util.Logger, stats *util.Stats) (*Curator, error) {
 	store, err := DocumentStoreFactory(config.StoreConfig)
@@ -110,7 +111,7 @@ func NewCurator(config CuratorConfig, log *util.Logger, stats *util.Stats) (*Cur
 
 /*
 Close - Shut the curator and all subsequent binders down. This call blocks until the shut down is
-finished, and you must ensure that this library cannot be accessed after closing.
+finished, and you must ensure that this curator cannot be accessed after closing.
 */
 func (c *Curator) Close() {
 	c.log.Debugln("Close called")
@@ -119,7 +120,13 @@ func (c *Curator) Close() {
 }
 
 /*
-loop - The main loop of the curator, this loop simply listens to the error and close channels.
+loop - The main loop of the curator. Two channels are listened to:
+
+- Error channel, used by active binders to request a shut down, either due to inactivity or an error
+having occurred. The curator then calls close on it and removes it from the list of binders.
+
+- Close channel, used by the owner of the curator to instigate a clean shut down. The curator then
+forwards to call to all binders and closes itself.
 */
 func (c *Curator) loop() {
 	c.log.Debugln("Loop called")

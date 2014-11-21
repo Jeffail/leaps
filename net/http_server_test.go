@@ -89,7 +89,7 @@ func senderClient(id string, feeds <-chan lib.OTransform, t *testing.T) {
 	crctChan := make(chan bool)
 	go func() {
 		for {
-			var serverMsg LeapTextServerMessage
+			var serverMsg LeapSocketServerMessage
 			if err := websocket.JSON.Receive(ws, &serverMsg); err == nil {
 				switch serverMsg.Type {
 				case "correction":
@@ -115,11 +115,11 @@ func senderClient(id string, feeds <-chan lib.OTransform, t *testing.T) {
 			if !open {
 				return
 			}
-			websocket.JSON.Send(ws, LeapTextClientMessage{
+			websocket.JSON.Send(ws, LeapSocketClientMessage{
 				Command:   "submit",
 				Transform: &feed,
 			})
-			websocket.JSON.Send(ws, LeapTextClientMessage{
+			websocket.JSON.Send(ws, LeapSocketClientMessage{
 				Command: "ping",
 			})
 			select {
@@ -159,7 +159,7 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 	rcvChan := make(chan []lib.OTransform, 5)
 	go func() {
 		for {
-			var serverMsg LeapTextServerMessage
+			var serverMsg LeapSocketServerMessage
 			if err := websocket.JSON.Receive(ws, &serverMsg); err == nil {
 				switch serverMsg.Type {
 				case "correction":
