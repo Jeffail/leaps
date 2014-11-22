@@ -112,7 +112,7 @@ field.
 */
 func DefaultLoggerConfig() LoggerConfig {
 	return LoggerConfig{
-		Prefix:       "[leaps]",
+		Prefix:       "[service]",
 		LogLevel:     "INFO",
 		AddTimeStamp: true,
 	}
@@ -169,7 +169,7 @@ func (l *Logger) printf(message, level string, other ...interface{}) {
 		prepend = fmt.Sprintf("%v %v", time.Now().Format(time.RFC3339), prepend)
 	}
 
-	fmt.Fprintf(l.stream, fmt.Sprintf("%v [%v] %v", prepend, level, message), other...)
+	fmt.Fprintf(l.stream, fmt.Sprintf("%v <%v> %v", prepend, level, message), other...)
 }
 
 /*
@@ -181,7 +181,7 @@ func (l *Logger) printLine(message, level string) {
 		prepend = fmt.Sprintf("%v %v", time.Now().Format(time.RFC3339), prepend)
 	}
 
-	fmt.Fprintf(l.stream, fmt.Sprintf("%v [%v] %v\n", prepend, level, message))
+	fmt.Fprintf(l.stream, fmt.Sprintf("%v <%v> %v\n", prepend, level, message))
 }
 
 /*--------------------------------------------------------------------------------------------------

@@ -41,7 +41,7 @@ type StatsConfig struct {
 	JobBuffer      int64  `json:"job_buffer"`
 	RootPath       string `json:"prefix"`
 	RetainInternal bool   `json:"retain_internal"`
-	StatsDAddress  string `json:"statsd_address,omitempty"`
+	StatsDAddress  string `json:"statsd_address"`
 }
 
 /*
@@ -51,7 +51,7 @@ field.
 func DefaultStatsConfig() StatsConfig {
 	return StatsConfig{
 		JobBuffer:      100,
-		RootPath:       "leaps",
+		RootPath:       "service",
 		RetainInternal: true,
 		StatsDAddress:  "",
 	}

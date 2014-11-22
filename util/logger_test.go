@@ -56,10 +56,10 @@ func TestModules(t *testing.T) {
 	logger4 := logger2.NewModule(".bar")
 	logger4.Warnln("Warning message root.foo.bar module")
 
-	expected := "root [WARN] Warning message root module\n" +
-		"root.foo [WARN] Warning message root.foo module\n" +
-		"root.foo2 [WARN] Warning message root.foo2 module\n" +
-		"root.foo.bar [WARN] Warning message root.foo.bar module\n"
+	expected := "root <WARN> Warning message root module\n" +
+		"root.foo <WARN> Warning message root.foo module\n" +
+		"root.foo2 <WARN> Warning message root.foo2 module\n" +
+		"root.foo.bar <WARN> Warning message root.foo.bar module\n"
 
 	if expected != buf.data {
 		t.Errorf("%v != %v", expected, buf.data)
@@ -82,7 +82,7 @@ func TestFormattedLogging(t *testing.T) {
 	logger.Debugf("info test %v\n", 5)
 	logger.Tracef("trace test %v\n", 6)
 
-	expected := "test [FATAL] fatal test 1\ntest [ERROR] error test 2\ntest [WARN] warn test 3\n"
+	expected := "test <FATAL> fatal test 1\ntest <ERROR> error test 2\ntest <WARN> warn test 3\n"
 
 	if expected != buf.data {
 		t.Errorf("%v != %v", expected, buf.data)
@@ -105,7 +105,7 @@ func TestLineLogging(t *testing.T) {
 	logger.Debugln("info test")
 	logger.Traceln("trace test")
 
-	expected := "test [FATAL] fatal test\ntest [ERROR] error test\ntest [WARN] warn test\n"
+	expected := "test <FATAL> fatal test\ntest <ERROR> error test\ntest <WARN> warn test\n"
 
 	if expected != buf.data {
 		t.Errorf("%v != %v", expected, buf.data)
