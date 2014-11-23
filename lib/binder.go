@@ -129,8 +129,8 @@ func NewBinder(
  */
 
 /*
- ClientMessage - A struct containing various updates to a clients' state and an optional message to
- be distributed out to all other clients of a binder.
+ClientMessage - A struct containing various updates to a clients' state and an optional message to
+be distributed out to all other clients of a binder.
 */
 type ClientMessage struct {
 	Message  string `json:"message,omitempty"`

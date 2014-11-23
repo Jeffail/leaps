@@ -217,14 +217,12 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 		})
 		socketRouter := NewWebsocketServer(h.config.Binder, ws, binder, h.closeChan, h.logger, h.stats)
 		socketRouter.Launch()
-		return
 	} else {
 		h.logger.Infof("Client failed to init: %v\n", err)
 		websocket.JSON.Send(ws, LeapServerMessage{
 			Type:  "error",
 			Error: fmt.Sprintf("socket initialization failed: %v", err),
 		})
-		return
 	}
 }
 

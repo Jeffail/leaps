@@ -101,9 +101,9 @@ func NewStats(config StatsConfig) *Stats {
 Close - Stops the stats object from accepting stats and pushing stats to a configured statsd
 service.
 */
-func (l *Stats) Close() {
-	jChan := l.jobChan
-	l.jobChan = nil
+func (s *Stats) Close() {
+	jChan := s.jobChan
+	s.jobChan = nil
 	close(jChan)
 }
 
@@ -145,8 +145,9 @@ func (s *Stats) GetStats(timeout time.Duration) (string, error) {
 /*--------------------------------------------------------------------------------------------------
  */
 
-/* Incr - Increment a stat by a value.
- */
+/*
+Incr - Increment a stat by a value.
+*/
 func (s *Stats) Incr(stat string, value int64) {
 	s.jobChan <- func() {
 		if nil != s.json {
@@ -159,8 +160,9 @@ func (s *Stats) Incr(stat string, value int64) {
 	}
 }
 
-/* Decr - Decrement a stat by a value.
- */
+/*
+Decr - Decrement a stat by a value.
+*/
 func (s *Stats) Decr(stat string, value int64) {
 	s.jobChan <- func() {
 		if nil != s.json {
@@ -173,8 +175,9 @@ func (s *Stats) Decr(stat string, value int64) {
 	}
 }
 
-/* Timing - Set a stat representing a duration.
- */
+/*
+Timing - Set a stat representing a duration.
+*/
 func (s *Stats) Timing(stat string, delta int64) {
 	s.jobChan <- func() {
 		if nil != s.json {
@@ -183,8 +186,9 @@ func (s *Stats) Timing(stat string, delta int64) {
 	}
 }
 
-/* Gauge - Set a stat as a gauge value.
- */
+/*
+Gauge - Set a stat as a gauge value.
+*/
 func (s *Stats) Gauge(stat string, value int64) {
 	s.jobChan <- func() {
 		if nil != s.json {
