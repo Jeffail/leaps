@@ -131,9 +131,17 @@ func (w *WebsocketServer) Launch() {
 	case <-incomingClosedChan:
 		close(outgoingCloseChan)
 		<-outgoingClosedChan
+		w.binder.SendMessage(lib.ClientMessage{
+			Active: false,
+			Token:  w.binder.Token,
+		})
 	case <-outgoingClosedChan:
 		close(incomingCloseChan)
 		<-incomingClosedChan
+		w.binder.SendMessage(lib.ClientMessage{
+			Active: false,
+			Token:  w.binder.Token,
+		})
 	case <-w.closeChan:
 		close(incomingCloseChan)
 		close(outgoingCloseChan)
@@ -167,10 +175,6 @@ func (w *WebsocketServer) loopIncoming(closeSignalChan chan<- struct{}, closeCmd
 						Error: "submit error: transform was nil",
 					})
 					w.logger.Debugln("Closing websocket due to nil transform")
-					w.binder.SendMessage(lib.ClientMessage{
-						Active: false,
-						Token:  w.binder.Token,
-					})
 					closeSignalChan <- struct{}{}
 					return
 				}
@@ -187,10 +191,6 @@ func (w *WebsocketServer) loopIncoming(closeSignalChan chan<- struct{}, closeCmd
 						Error: fmt.Sprintf("submit error: %v", err),
 					})
 					w.logger.Debugln("Closing websocket due to failed transform send")
-					w.binder.SendMessage(lib.ClientMessage{
-						Active: false,
-						Token:  w.binder.Token,
-					})
 					closeSignalChan <- struct{}{}
 					return
 				}

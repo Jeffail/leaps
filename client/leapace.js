@@ -32,6 +32,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 
 	var marker = {};
 
+	marker.draw_handler = null;
 	marker.cursors = [];
 
 	marker.update = function(html, markerLayer, session, config) {
@@ -47,12 +48,16 @@ var _create_leaps_ace_marker = function(ace_editor) {
 
 			var stretch = 4;
 
-			html.push(
-				"<div class='LeapsAceCursor' style='",
-				"height:", (height + stretch), "px;",
-				"top:", (top - (stretch/2)), "px;",
-				"left:", left, "px; width:", width, "px'></div>"
-			);
+			if ( typeof marker.draw_handler === 'function' ) {
+				var content = (marker.draw_handler(cursors[i].user_id, height, top, left) || '') + '';
+				html.push(content);
+			} else {
+				html.push(
+					"<div class='LeapsAceCursor' style='",
+					"height:", (height + stretch), "px;",
+					"top:", (top - (stretch/2)), "px;",
+					"left:", left, "px; width:", width, "px'></div>");
+			}
 		}
 	};
 
@@ -167,6 +172,20 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 	this._leap_client.subscribe_event("user", function(user) {
 		binder._marker.updateCursor.apply(binder._marker, [ user ]);
 	});
+
+	this._leap_client.ACE_set_cursor_handler = function(handler) {
+		binder.set_cursor_handler(handler);
+	};
+};
+
+/* set_cursor_handler, sets the method call that returns a cursor marker.
+ */
+leap_bind_ace_editor.prototype.set_cursor_handler = function(handler) {
+	"use strict";
+
+	if ( 'function' === typeof handler ) {
+		this._marker.draw_handler = handler;
+	}
 };
 
 /* apply_transform, applies a single transform to the ace document.
