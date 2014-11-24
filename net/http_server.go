@@ -39,18 +39,18 @@ import (
 HTTPBinderConfig - Options for individual binders (one for each socket connection)
 */
 type HTTPBinderConfig struct {
-	BindSendTimeout int `json:"bind_send_timeout_ms"`
+	BindSendTimeout int `json:"bind_send_timeout_ms" yaml:"bind_send_timeout_ms"`
 }
 
 /*
 HTTPServerConfig - Holds configuration options for the HTTPServer.
 */
 type HTTPServerConfig struct {
-	StaticPath     string           `json:"static_path"`
-	Path           string           `json:"socket_path"`
-	Address        string           `json:"address"`
-	StaticFilePath string           `json:"www_dir"`
-	Binder         HTTPBinderConfig `json:"binder"`
+	StaticPath     string           `json:"static_path" yaml:"static_path"`
+	Path           string           `json:"socket_path" yaml:"socket_path"`
+	Address        string           `json:"address" yaml:"address"`
+	StaticFilePath string           `json:"www_dir" yaml:"www_dir"`
+	Binder         HTTPBinderConfig `json:"binder" yaml:"binder"`
 }
 
 /*
@@ -77,11 +77,11 @@ LeapClientMessage - A structure that defines a message format to expect from cli
 be 'create' (init with new document) or 'find' (init with existing document).
 */
 type LeapClientMessage struct {
-	Command  string        `json:"command"`
-	Token    string        `json:"token"`
-	DocID    string        `json:"document_id,omitempty"`
-	UserID   string        `json:"user_id,omitempty"`
-	Document *lib.Document `json:"leap_document,omitempty"`
+	Command  string        `json:"command" yaml:"command"`
+	Token    string        `json:"token" yaml:"token"`
+	DocID    string        `json:"document_id,omitempty" yaml:"document_id,omitempty"`
+	UserID   string        `json:"user_id,omitempty" yaml:"user_id,omitempty"`
+	Document *lib.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
 }
 
 /*
@@ -89,10 +89,10 @@ LeapServerMessage - A structure that defines a response message from the server 
 can be 'document' (init response) or 'error' (an error message to display to the client).
 */
 type LeapServerMessage struct {
-	Type     string        `json:"response_type"`
-	Document *lib.Document `json:"leap_document,omitempty"`
-	Version  *int          `json:"version,omitempty"`
-	Error    string        `json:"error,omitempty"`
+	Type     string        `json:"response_type" yaml:"response_type"`
+	Document *lib.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
+	Version  *int          `json:"version,omitempty" yaml:"version,omitempty"`
+	Error    string        `json:"error,omitempty" yaml:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------

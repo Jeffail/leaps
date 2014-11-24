@@ -35,12 +35,12 @@ import (
 StatsServerConfig - Holds configuration options for the StatsServer
 */
 type StatsServerConfig struct {
-	StaticPath     string `json:"static_path"`
-	Path           string `json:"stats_path"`
-	Address        string `json:"address"`
-	StaticFilePath string `json:"www_dir"`
-	StatsTimeout   int    `json:"stat_timeout_ms"`
-	RequestTimeout int    `json:"request_timeout_s"`
+	StaticPath     string `json:"static_path" yaml:"static_path"`
+	Path           string `json:"stats_path" yaml:"stats_path"`
+	Address        string `json:"address" yaml:"address"`
+	StaticFilePath string `json:"www_dir" yaml:"www_dir"`
+	StatsTimeout   int    `json:"stat_timeout_ms" yaml:"stat_timeout_ms"`
+	RequestTimeout int    `json:"request_timeout_s" yaml:"request_timeout_s"`
 }
 
 /*

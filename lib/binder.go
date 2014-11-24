@@ -37,11 +37,11 @@ import (
 BinderConfig - Holds configuration options for a binder.
 */
 type BinderConfig struct {
-	FlushPeriod           int64       `json:"flush_period_ms"`
-	RetentionPeriod       int64       `json:"retention_period_s"`
-	ClientKickPeriod      int64       `json:"kick_period_ms"`
-	CloseInactivityPeriod int64       `json:"close_inactivity_period_s"`
-	ModelConfig           ModelConfig `json:"transform_model"`
+	FlushPeriod           int64       `json:"flush_period_ms" yaml:"flush_period_ms"`
+	RetentionPeriod       int64       `json:"retention_period_s" yaml:"retention_period_s"`
+	ClientKickPeriod      int64       `json:"kick_period_ms" yaml:"kick_period_ms"`
+	CloseInactivityPeriod int64       `json:"close_inactivity_period_s" yaml:"close_inactivity_period_s"`
+	ModelConfig           ModelConfig `json:"transform_model" yaml:"transform_model"`
 }
 
 /*
@@ -133,10 +133,10 @@ ClientMessage - A struct containing various updates to a clients' state and an o
 be distributed out to all other clients of a binder.
 */
 type ClientMessage struct {
-	Message  string `json:"message,omitempty"`
-	Position *int64 `json:"position,omitempty"`
-	Active   bool   `json:"active"`
-	Token    string `json:"user_id"`
+	Message  string `json:"message,omitempty" yaml:"message,omitempty"`
+	Position *int64 `json:"position,omitempty" yaml:"position,omitempty"`
+	Active   bool   `json:"active" yaml:"active"`
+	Token    string `json:"user_id" yaml:"user_id"`
 }
 
 /*

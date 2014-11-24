@@ -37,14 +37,14 @@ import (
 )
 
 type binderStory struct {
-	Content    string           `json:"content"`
-	Transforms []lib.OTransform `json:"transforms"`
-	TCorrected []lib.OTransform `json:"corrected_transforms"`
-	Result     string           `json:"result"`
+	Content    string           `json:"content" yaml:"content"`
+	Transforms []lib.OTransform `json:"transforms" yaml:"transforms"`
+	TCorrected []lib.OTransform `json:"corrected_transforms" yaml:"corrected_transforms"`
+	Result     string           `json:"result" yaml:"result"`
 }
 
 type binderStoriesContainer struct {
-	Stories []binderStory `json:"binder_stories"`
+	Stories []binderStory `json:"binder_stories" yaml:"binder_stories"`
 }
 
 func findDocument(id string, ws *websocket.Conn) error {

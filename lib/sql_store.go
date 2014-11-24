@@ -38,9 +38,9 @@ import (
 TableConfig - The configuration fields for specifying the table labels of the SQL database target.
 */
 type TableConfig struct {
-	Name       string `json:"table"`
-	IDCol      string `json:"id_column"`
-	ContentCol string `json:"content_column"`
+	Name       string `json:"table" yaml:"table"`
+	IDCol      string `json:"id_column" yaml:"id_column"`
+	ContentCol string `json:"content_column" yaml:"content_column"`
 }
 
 /*
@@ -58,8 +58,8 @@ func DefaultTableConfig() TableConfig {
 SQLConfig - The configuration fields for an SQL document store solution.
 */
 type SQLConfig struct {
-	DSN         string      `json:"dsn"`
-	TableConfig TableConfig `json:"db_table"`
+	DSN         string      `json:"dsn" yaml:"dsn"`
+	TableConfig TableConfig `json:"db_table" yaml:"db_table"`
 }
 
 /*

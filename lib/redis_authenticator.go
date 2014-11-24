@@ -16,7 +16,7 @@ import (
 RedisAuthenticatorConfig - A config object for the redis authentication object.
 */
 type RedisAuthenticatorConfig struct {
-	URL string `json:"url"`
+	URL string `json:"url" yaml:"url"`
 }
 
 /*

@@ -40,10 +40,10 @@ to a text model. Commands can currently be 'submit' (submit a transform to a bou
 'update' (submit an update to the users cursor position).
 */
 type LeapSocketClientMessage struct {
-	Command   string          `json:"command"`
-	Transform *lib.OTransform `json:"transform,omitempty"`
-	Position  *int64          `json:"position,omitempty"`
-	Message   string          `json:"message,omitempty"`
+	Command   string          `json:"command" yaml:"command"`
+	Transform *lib.OTransform `json:"transform,omitempty" yaml:"transform,omitempty"`
+	Position  *int64          `json:"position,omitempty" yaml:"position,omitempty"`
+	Message   string          `json:"message,omitempty" yaml:"message,omitempty"`
 }
 
 /*
@@ -53,11 +53,11 @@ transform), 'update' (an update to a users status) or 'error' (an error message 
 client).
 */
 type LeapSocketServerMessage struct {
-	Type       string              `json:"response_type"`
-	Transforms []lib.OTransform    `json:"transforms,omitempty"`
-	Updates    []lib.ClientMessage `json:"user_updates,omitempty"`
-	Version    int                 `json:"version,omitempty"`
-	Error      string              `json:"error,omitempty"`
+	Type       string              `json:"response_type" yaml:"response_type"`
+	Transforms []lib.OTransform    `json:"transforms,omitempty" yaml:"transforms,omitempty"`
+	Updates    []lib.ClientMessage `json:"user_updates,omitempty" yaml:"user_updates,omitempty"`
+	Version    int                 `json:"version,omitempty" yaml:"version,omitempty"`
+	Error      string              `json:"error,omitempty" yaml:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------

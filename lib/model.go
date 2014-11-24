@@ -29,8 +29,8 @@ package lib
 ModelConfig - Holds configuration options for a transform model.
 */
 type ModelConfig struct {
-	MaxDocumentSize    uint64 `json:"max_document_size"`
-	MaxTransformLength uint64 `json:"max_transform_length"`
+	MaxDocumentSize    uint64 `json:"max_document_size" yaml:"max_document_size"`
+	MaxTransformLength uint64 `json:"max_transform_length" yaml:"max_transform_length"`
 }
 
 /*

@@ -13,9 +13,6 @@
 			"type": "mock",
 			"name": "test_document"
 		},
-		"logger": {
-			"level": "DEBUG"
-		},
 		"binder": {
 			"transform_model": {
 				"max_document_size": 5000,

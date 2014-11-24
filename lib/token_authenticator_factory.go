@@ -36,9 +36,9 @@ TokenAuthenticatorConfig - Holds generic configuration options for a token based
 solution.
 */
 type TokenAuthenticatorConfig struct {
-	Type        string                   `json:"type"`
-	AllowCreate bool                     `json:"allow_creation"`
-	RedisConfig RedisAuthenticatorConfig `json:"redis_config"`
+	Type        string                   `json:"type" yaml:"type"`
+	AllowCreate bool                     `json:"allow_creation" yaml:"allow_creation"`
+	RedisConfig RedisAuthenticatorConfig `json:"redis_config" yaml:"redis_config"`
 }
 
 /*

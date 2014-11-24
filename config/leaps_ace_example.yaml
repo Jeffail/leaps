@@ -1,0 +1,48 @@
+num_processes: 8
+logger:
+  prefix: '[leaps]'
+  log_level: DEBUG
+  add_timestamp: true
+stats:
+  job_buffer: 100
+  prefix: leaps
+  retain_internal: true
+  statsd_address: ""
+curator:
+  storage:
+    type: mock
+    name: test_document
+    store_directory: ""
+    sql:
+      dsn: ""
+      db_table:
+        table: leaps_documents
+        id_column: ID
+        content_column: CONTENT
+  binder:
+    flush_period_ms: 500
+    retention_period_s: 60
+    kick_period_ms: 200
+    close_inactivity_period_s: 300
+    transform_model:
+      max_document_size: 5000
+      max_transform_length: 500
+  authenticator:
+    type: none
+    allow_creation: true
+    redis_config:
+      url: :6379
+http_server:
+  static_path: /
+  socket_path: /socket
+  address: :8080
+  www_dir: ./static/example_ace
+  binder:
+    bind_send_timeout_ms: 10
+stats_server:
+  static_path: /
+  stats_path: /stats
+  address: :4040
+  www_dir: ./static/stats
+  stat_timeout_ms: 200
+  request_timeout_s: 10

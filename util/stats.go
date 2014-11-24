@@ -38,10 +38,10 @@ import (
 StatsConfig - Holds configuration options for a stats object.
 */
 type StatsConfig struct {
-	JobBuffer      int64  `json:"job_buffer"`
-	RootPath       string `json:"prefix"`
-	RetainInternal bool   `json:"retain_internal"`
-	StatsDAddress  string `json:"statsd_address"`
+	JobBuffer      int64  `json:"job_buffer" yaml:"job_buffer"`
+	RootPath       string `json:"prefix" yaml:"prefix"`
+	RetainInternal bool   `json:"retain_internal" yaml:"retain_internal"`
+	StatsDAddress  string `json:"statsd_address" yaml:"statsd_address"`
 }
 
 /*

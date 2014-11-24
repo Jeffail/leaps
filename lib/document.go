@@ -29,8 +29,8 @@ package lib
 Document - A representation of a leap document.
 */
 type Document struct {
-	ID      string `json:"id"`
-	Content string `json:"content"`
+	ID      string `json:"id" yaml:"id"`
+	Content string `json:"content" yaml:"content"`
 }
 
 /*--------------------------------------------------------------------------------------------------

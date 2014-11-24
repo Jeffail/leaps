@@ -20,6 +20,16 @@ and then visit: http://localhost:8080 to play with an example server.
 
 A leaps service by default will run and host a statistics page to view event counts and uptime, for the example this is hosted at: http://localhost:4040.
 
+To generate a configuration file of all default values:
+
+```bash
+# for a JSON file
+./leaps --print-json
+
+# for a YAML file
+./leaps --print-yaml
+```
+
 ##Your own service
 
 To learn how to customize your leaps service read here:

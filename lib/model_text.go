@@ -37,11 +37,11 @@ OTransform - A representation of a transformation relating to a leap document. T
 text addition, a text deletion, or both.
 */
 type OTransform struct {
-	Position  int    `json:"position"`
-	Delete    int    `json:"num_delete"`
-	Insert    string `json:"insert"`
-	Version   int    `json:"version"`
-	TReceived int64  `json:"received,omitempty"`
+	Position  int    `json:"position" yaml:"position"`
+	Delete    int    `json:"num_delete" yaml:"num_delete"`
+	Insert    string `json:"insert" yaml:"insert"`
+	Version   int    `json:"version" yaml:"version"`
+	TReceived int64  `json:"received,omitempty" yaml:"received,omitempty"`
 }
 
 /*

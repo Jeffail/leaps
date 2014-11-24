@@ -265,14 +265,14 @@ func TestClients(t *testing.T) {
 }
 
 type binderStory struct {
-	Content    string       `json:"content"`
-	Transforms []OTransform `json:"transforms"`
-	TCorrected []OTransform `json:"corrected_transforms"`
-	Result     string       `json:"result"`
+	Content    string       `json:"content" yaml:"content"`
+	Transforms []OTransform `json:"transforms" yaml:"transforms"`
+	TCorrected []OTransform `json:"corrected_transforms" yaml:"corrected_transforms"`
+	Result     string       `json:"result" yaml:"result"`
 }
 
 type binderStoriesContainer struct {
-	Stories []binderStory `json:"binder_stories"`
+	Stories []binderStory `json:"binder_stories" yaml:"binder_stories"`
 }
 
 func goodStoryClient(b BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t *testing.T) {

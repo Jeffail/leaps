@@ -23,16 +23,12 @@ THE SOFTWARE.
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
-	"math/rand"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
-	"time"
 
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/leaps/net"
@@ -43,9 +39,12 @@ import (
  */
 
 var (
-	leapsVersion string
-	dateBuilt    string
+	leapsMode *string
 )
+
+func init() {
+	leapsMode = flag.String("m", "curator", "Leaps service mode, supports: curator, curator or curator")
+}
 
 /*--------------------------------------------------------------------------------------------------
  */
@@ -56,12 +55,12 @@ components, which determine the role of this leaps instance. Currently a stand a
 the only supported role.
 */
 type LeapsConfig struct {
-	NumProcesses      int                    `json:"num_processes"`
-	LoggerConfig      util.LoggerConfig      `json:"logger"`
-	StatsConfig       util.StatsConfig       `json:"stats"`
-	CuratorConfig     lib.CuratorConfig      `json:"curator"`
-	HTTPServerConfig  net.HTTPServerConfig   `json:"http_server"`
-	StatsServerConfig util.StatsServerConfig `json:"stats_server"`
+	NumProcesses      int                    `json:"num_processes" yaml:"num_processes"`
+	LoggerConfig      util.LoggerConfig      `json:"logger" yaml:"logger"`
+	StatsConfig       util.StatsConfig       `json:"stats" yaml:"stats"`
+	CuratorConfig     lib.CuratorConfig      `json:"curator" yaml:"curator"`
+	HTTPServerConfig  net.HTTPServerConfig   `json:"http_server" yaml:"http_server"`
+	StatsServerConfig util.StatsServerConfig `json:"stats_server" yaml:"stats_server"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -69,23 +68,10 @@ type LeapsConfig struct {
 
 func main() {
 	var (
-		curator        net.LeapLocator
-		err            error
-		closeChan      = make(chan bool)
-		showVersion    = flag.Bool("version", false, "Display version info, then exit")
-		showConfigJSON = flag.Bool("print-json", false, "Print loaded configuration as JSON, then exit")
-		configPath     = flag.String("c", "", "Path to a configuration file")
-		leapsMode      = flag.String("m", "curator", "Leaps service mode, supports: curator, curator or curator")
+		curator   net.LeapLocator
+		err       error
+		closeChan = make(chan bool)
 	)
-
-	flag.Parse()
-
-	if *showVersion {
-		fmt.Printf("Leaps version: %v\nDate: %v\n", leapsVersion, dateBuilt)
-		return
-	}
-
-	rand.Seed(time.Now().Unix())
 
 	leapsConfig := LeapsConfig{
 		NumProcesses:      runtime.NumCPU(),
@@ -96,26 +82,8 @@ func main() {
 		StatsServerConfig: util.DefaultStatsServerConfig(),
 	}
 
-	if len(*configPath) > 0 {
-		// Read config file
-		configBytes, err := ioutil.ReadFile(*configPath)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("Error reading config file: %v", err))
-			return
-		}
-		if err = json.Unmarshal(configBytes, &leapsConfig); err != nil {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("Error parsing config file: %v", err))
-			return
-		}
-	}
-
-	// We have our configuration, time to get started up
-	if *showConfigJSON {
-		if configJSON, err := json.MarshalIndent(leapsConfig, "", "	"); err == nil {
-			fmt.Println(string(configJSON))
-		} else {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("Configuration marshal error: %v", err))
-		}
+	// Load configuration etc
+	if !util.Bootstrap(&leapsConfig) {
 		return
 	}
 

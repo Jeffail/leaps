@@ -36,9 +36,9 @@ import (
 CuratorConfig - Holds configuration options for a curator.
 */
 type CuratorConfig struct {
-	StoreConfig         DocumentStoreConfig      `json:"storage"`
-	BinderConfig        BinderConfig             `json:"binder"`
-	AuthenticatorConfig TokenAuthenticatorConfig `json:"authenticator"`
+	StoreConfig         DocumentStoreConfig      `json:"storage" yaml:"storage"`
+	BinderConfig        BinderConfig             `json:"binder" yaml:"binder"`
+	AuthenticatorConfig TokenAuthenticatorConfig `json:"authenticator" yaml:"authenticator"`
 }
 
 /*

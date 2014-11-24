@@ -34,10 +34,10 @@ import (
 DocumentStoreConfig - Holds generic configuration options for a document storage solution.
 */
 type DocumentStoreConfig struct {
-	Type           string    `json:"type"`
-	Name           string    `json:"name"`
-	StoreDirectory string    `json:"store_directory"`
-	SQLConfig      SQLConfig `json:"sql"`
+	Type           string    `json:"type" yaml:"type"`
+	Name           string    `json:"name" yaml:"name"`
+	StoreDirectory string    `json:"store_directory" yaml:"store_directory"`
+	SQLConfig      SQLConfig `json:"sql" yaml:"sql"`
 }
 
 /*

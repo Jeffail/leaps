@@ -32,7 +32,8 @@ JS_BIN_FILES = $(shell ls $(JS_BIN))
 VERSION := $(shell git describe --tags || echo "v0.0.0")
 DATE := $(shell date +"%c" | tr ' :' '__')
 
-GOFLAGS := -ldflags "-X main.leapsVersion $(VERSION) -X main.dateBuilt $(DATE)"
+GOFLAGS := -ldflags "-X github.com/jeffail/leaps/util.version $(VERSION) \
+	-X github.com/jeffail/leaps/util.dateBuilt $(DATE)"
 
 all: build
 

@@ -104,9 +104,9 @@ func logLevelToInt(level string) int {
 LoggerConfig - Holds configuration options for a logger object.
 */
 type LoggerConfig struct {
-	Prefix       string `json:"prefix"`
-	LogLevel     string `json:"log_level"`
-	AddTimeStamp bool   `json:"add_timestamp"`
+	Prefix       string `json:"prefix" yaml:"prefix"`
+	LogLevel     string `json:"log_level" yaml:"log_level"`
+	AddTimeStamp bool   `json:"add_timestamp" yaml:"add_timestamp"`
 }
 
 /*

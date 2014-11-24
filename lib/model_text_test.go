@@ -105,16 +105,16 @@ func TestPushPullTransforms(t *testing.T) {
 }
 
 type tformStory struct {
-	Name       string       `json:"name"`
-	Content    string       `json:"content"`
-	Transforms []OTransform `json:"transforms"`
-	TCorrected []OTransform `json:"corrected_transforms"`
-	Result     string       `json:"result"`
-	Flushes    []int        `json:"flushes"`
+	Name       string       `json:"name" yaml:"name"`
+	Content    string       `json:"content" yaml:"content"`
+	Transforms []OTransform `json:"transforms" yaml:"transforms"`
+	TCorrected []OTransform `json:"corrected_transforms" yaml:"corrected_transforms"`
+	Result     string       `json:"result" yaml:"result"`
+	Flushes    []int        `json:"flushes" yaml:"flushes"`
 }
 
 type storiesContainer struct {
-	Stories []tformStory `json:"stories"`
+	Stories []tformStory `json:"stories" yaml:"stories"`
 }
 
 func TestTransformStories(t *testing.T) {
