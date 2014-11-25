@@ -13,11 +13,10 @@ Just download a release package and do the following:
 ```bash
 tar -xvf ./leaps-linux_amd64-v0.0.2.tar.gz
 cd leaps
-./leaps -c ./config/leaps_example.js
+./leaps -c ./config/leaps_example.yaml
 ```
 
 and then visit: http://localhost:8080 to play with an example server.
-
 A leaps service by default will run and host a statistics page to view event counts and uptime, for the example this is hosted at: http://localhost:4040.
 
 To generate a configuration file of all default values:
@@ -71,7 +70,7 @@ To build and then start up an example server do the following:
 go get github.com/jeffail/leaps
 cd $GOPATH/src/github.com/jeffail/leaps
 make
-./bin/leaps -c ./config/leaps_example.js
+./bin/leaps -c ./config/leaps_example.yaml
 ```
 
 ##Contributing and customizing

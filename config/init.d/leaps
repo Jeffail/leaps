@@ -12,7 +12,7 @@ DAEMON=/usr/sbin/leaps
 NAME=leaps
 
 RUNAS=leaps
-CONFIG=/etc/leaps.js
+CONFIG=/etc/leaps.yaml
 
 PID=/var/run/leaps.pid
 LOG=/var/log/leaps.log

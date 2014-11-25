@@ -4,8 +4,9 @@ id -u leaps &>/dev/null || (useradd -s /bin/bash leaps && echo leaps:leaps | chp
 cp ./leaps /usr/sbin/leaps
 cp ./config/init.d/leaps /etc/init.d/leaps
 
-if [ ! -f /etc/leaps.js ]; then
-	./leaps --print-json > /etc/leaps.js
+if [ ! -f /etc/leaps.yaml ]; then
+	echo "Installing config file at /etc/leaps.yaml..."
+	./leaps --print-yaml > /etc/leaps.yaml
 fi
 
 chmod 755 /etc/init.d/leaps

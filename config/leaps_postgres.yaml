@@ -1,23 +1,28 @@
 num_processes: 1
 logger:
   prefix: '[leaps]'
-  log_level: DEBUG
+  log_level: INFO
   add_timestamp: true
 stats:
   prefix: leaps
   retain_internal: true
 curator:
   storage:
-    type: mock
-    name: test_document
+    type: postgres
+    sql:
+      dsn: postgres://leaps:leaps123@localhost:5432/leaps?sslmode=disable
+      db_table:
+        table: leaps_documents
+        id_column: id
+        content_column: content
   binder:
     flush_period_ms: 500
     retention_period_s: 60
     kick_period_ms: 200
     close_inactivity_period_s: 300
     transform_model:
-      max_document_size: 5000
-      max_transform_length: 500
+      max_document_size: 50000000
+      max_transform_length: 50000
   authenticator:
     type: none
     allow_creation: true
@@ -25,7 +30,7 @@ http_server:
   static_path: /
   socket_path: /socket
   address: :8080
-  www_dir: ./static/example_ace
+  www_dir: ./static/example
   binder:
     bind_send_timeout_ms: 10
 stats_server:
