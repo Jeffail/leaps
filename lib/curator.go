@@ -146,6 +146,7 @@ func (c *Curator) loop() {
 				delete(c.openBinders, err.ID)
 				c.log.Infof("Binder (%v) was closed\n", err.ID)
 				c.stats.Incr("curator.binder_shutdown.success", 1)
+				c.stats.Decr("curator.open_binders", 1)
 			} else {
 				c.log.Errorf("Binder (%v) was not located in map\n", err.ID)
 				c.stats.Incr("curator.binder_shutdown.error", 1)
@@ -156,6 +157,7 @@ func (c *Curator) loop() {
 			c.binderMutex.Lock()
 			for _, b := range c.openBinders {
 				b.Close()
+				c.stats.Decr("curator.open_binders", 1)
 			}
 			c.binderMutex.Unlock()
 			close(c.closedChan)
@@ -194,6 +196,7 @@ func (c *Curator) FindDocument(token, id string) (BinderPortal, error) {
 		return BinderPortal{}, err
 	}
 	c.openBinders[id] = binder
+	c.stats.Incr("curator.open_binders", 1)
 
 	return binder.Subscribe(token), nil
 }
@@ -228,6 +231,7 @@ func (c *Curator) NewDocument(token string, userID string, doc *Document) (Binde
 	}
 	c.binderMutex.Lock()
 	c.openBinders[doc.ID] = binder
+	c.stats.Incr("curator.open_binders", 1)
 	c.binderMutex.Unlock()
 
 	return binder.Subscribe(token), nil

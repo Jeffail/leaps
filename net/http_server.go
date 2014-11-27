@@ -188,9 +188,11 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 		if err := ws.Close(); err != nil {
 			h.logger.Errorf("Failed to close socket: %v\n", err)
 		}
+		h.stats.Decr("http.open_websockets", 1)
 	}()
 
 	h.stats.Incr("http.websocket.opened", 1)
+	h.stats.Incr("http.open_websockets", 1)
 
 	select {
 	case <-h.closeChan:
