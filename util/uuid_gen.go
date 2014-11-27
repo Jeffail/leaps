@@ -34,7 +34,7 @@ import (
  */
 
 /*
-GenerateStampedGUID - Generates a UUID and prepends a timestamp to it.
+GenerateStampedUUID - Generates a UUID and prepends a timestamp to it.
 */
 func GenerateStampedUUID() string {
 	tstamp := time.Now().Unix()
