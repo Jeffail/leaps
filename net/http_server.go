@@ -29,7 +29,7 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/jeffail/leaps/lib"
-	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -104,8 +104,8 @@ leap documents) and bind it to http clients.
 */
 type HTTPServer struct {
 	config    HTTPServerConfig
-	logger    *util.Logger
-	stats     *util.Stats
+	logger    *log.Logger
+	stats     *log.Stats
 	locator   LeapLocator
 	closeChan chan bool
 }
@@ -117,8 +117,8 @@ set this to nil to use the default http mux (recommended).
 func CreateHTTPServer(
 	locator LeapLocator,
 	config HTTPServerConfig,
-	logger *util.Logger,
-	stats *util.Stats,
+	logger *log.Logger,
+	stats *log.Stats,
 	mux *http.ServeMux,
 ) (*HTTPServer, error) {
 

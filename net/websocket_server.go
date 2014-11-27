@@ -28,7 +28,7 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/jeffail/leaps/lib"
-	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -68,8 +68,8 @@ WebsocketServer - A websocket client that connects a binder of a document to a w
 */
 type WebsocketServer struct {
 	config    HTTPBinderConfig
-	logger    *util.Logger
-	stats     *util.Stats
+	logger    *log.Logger
+	stats     *log.Stats
 	socket    *websocket.Conn
 	binder    lib.BinderPortal
 	closeChan <-chan bool
@@ -83,8 +83,8 @@ func NewWebsocketServer(
 	socket *websocket.Conn,
 	binder lib.BinderPortal,
 	closeChan <-chan bool,
-	logger *util.Logger,
-	stats *util.Stats,
+	logger *log.Logger,
+	stats *log.Stats,
 ) *WebsocketServer {
 	return &WebsocketServer{
 		config:    config,

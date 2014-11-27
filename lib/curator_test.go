@@ -29,15 +29,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
-func loggerAndStats() (*util.Logger, *util.Stats) {
-	logConf := util.DefaultLoggerConfig()
+func loggerAndStats() (*log.Logger, *log.Stats) {
+	logConf := log.DefaultLoggerConfig()
 	logConf.LogLevel = "OFF"
 
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
+	logger := log.NewLogger(os.Stdout, logConf)
+	stats := log.NewStats(log.DefaultStatsConfig())
 
 	return logger, stats
 }

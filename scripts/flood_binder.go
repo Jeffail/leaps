@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib"
-	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
 func main() {
-	logConf := util.DefaultLoggerConfig()
+	logConf := log.DefaultLoggerConfig()
 	logConf.LogLevel = "INFO"
 
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
+	logger := log.NewLogger(os.Stdout, logConf)
+	stats := log.NewStats(log.DefaultStatsConfig())
 
 	errChan := make(chan lib.BinderError)
 	doc, err := lib.NewDocument("helibo world 123")

@@ -31,15 +31,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
-func getLoggerAndStats() (*util.Logger, *util.Stats) {
-	logConf := util.DefaultLoggerConfig()
+func getLoggerAndStats() (*log.Logger, *log.Stats) {
+	logConf := log.DefaultLoggerConfig()
 	logConf.LogLevel = "OFF"
 
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
+	logger := log.NewLogger(os.Stdout, logConf)
+	stats := log.NewStats(log.DefaultStatsConfig())
 
 	return logger, stats
 }
@@ -374,36 +374,3 @@ func TestBinderStories(t *testing.T) {
 		binder.Close()
 	}
 }
-
-/*func TestShutdown(t *testing.T) {
-	config := DefaultBinderConfig()
-	config.CloseInactivityPeriod = 1
-
-	logConf := util.DefaultLoggerConfig()
-	logConf.LogLevel = "OFF"
-
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
-
-	doc, err := NewDocument("hello world")
-	if err != nil {
-		t.Errorf("error: %v", err)
-		return
-	}
-
-	errChan := make(chan BinderError)
-	_, err = BindNew(doc, &MemoryStore{documents: map[string]*Document{}}, config, errChan, logger, stats)
-	if err != nil {
-		t.Errorf("Error: %v", err)
-		return
-	}
-
-	select {
-	case e := <-errChan:
-		if e.Err != nil {
-			t.Errorf("Error: %v", err)
-		}
-	case <-time.After(1500 * time.Millisecond):
-		t.Errorf("No request for close")
-	}
-}*/

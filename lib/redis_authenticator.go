@@ -5,8 +5,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/jeffail/leaps/util"
-	"github.com/youtube/vitess/go/pools"
+	"github.com/jeffail/leaps/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -16,7 +15,10 @@ import (
 RedisAuthenticatorConfig - A config object for the redis authentication object.
 */
 type RedisAuthenticatorConfig struct {
-	URL string `json:"url" yaml:"url"`
+	URL          string `json:"url" yaml:"url"`
+	Password     string `json:"password" yaml:"password"`
+	PoolIdleTOut int64  `json:"pool_idle_s" yaml:"pool_idle_s"`
+	PoolMaxIdle  int    `json:"pool_max_idle" yaml:"pool_max_idle"`
 }
 
 /*
@@ -24,25 +26,38 @@ DefaultRedisAuthenticatorConfig - Returns a default config object for a RedisAut
 */
 func DefaultRedisAuthenticatorConfig() RedisAuthenticatorConfig {
 	return RedisAuthenticatorConfig{
-		URL: ":6379",
+		URL:          ":6379",
+		Password:     "",
+		PoolIdleTOut: 240,
+		PoolMaxIdle:  3,
 	}
 }
 
 /*--------------------------------------------------------------------------------------------------
  */
 
-/*
-resourceConn - adapts a Redigo connection to a Vitess Resource.
-*/
-type resourceConn struct {
-	conn redis.Conn
-}
-
-/*
-resourceConn - adapts a Redigo connection to a Vitess Resource.
-*/
-func (r resourceConn) Close() {
-	r.conn.Close()
+func newPool(config RedisAuthenticatorConfig) *redis.Pool {
+	return &redis.Pool{
+		MaxIdle:     config.PoolMaxIdle,
+		IdleTimeout: time.Duration(config.PoolIdleTOut) * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", config.URL)
+			if err != nil {
+				return nil, err
+			}
+			if 0 != len(config.Password) {
+				if _, err := c.Do("AUTH", config.Password); err != nil {
+					c.Close()
+					return nil, err
+				}
+			}
+			return c, err
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -52,24 +67,19 @@ func (r resourceConn) Close() {
 RedisAuthenticator - A wrapper around the Redis client that acts as an authenticator.
 */
 type RedisAuthenticator struct {
-	logger *util.Logger
+	logger *log.Logger
 	config TokenAuthenticatorConfig
-	pool   *pools.ResourcePool
+	pool   *redis.Pool
 }
 
 /*
 CreateRedisAuthenticator - Creates a RedisAuthenticator using the provided configuration.
 */
-func CreateRedisAuthenticator(config TokenAuthenticatorConfig, logger *util.Logger) *RedisAuthenticator {
-	p := pools.NewResourcePool(func() (pools.Resource, error) {
-		c, err := redis.Dial("tcp", config.RedisConfig.URL)
-		return resourceConn{c}, err
-	}, 10, 200, time.Minute)
-
+func CreateRedisAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *RedisAuthenticator {
 	return &RedisAuthenticator{
 		logger: logger.NewModule("[redis_auth]"),
 		config: config,
-		pool:   p,
+		pool:   newPool(config.RedisConfig),
 	}
 }
 
@@ -125,14 +135,10 @@ func (s *RedisAuthenticator) AuthoriseJoin(token, documentID string) bool {
 ReadKey - Simply return the value of a particular key, or an error.
 */
 func (s *RedisAuthenticator) ReadKey(key string) (string, error) {
-	pItem, err := s.pool.Get()
-	if err != nil {
-		return "", err
-	}
-	defer s.pool.Put(pItem)
-	redisConn := pItem.(resourceConn)
+	conn := s.pool.Get()
+	defer conn.Close()
 
-	reply, err := redis.String(redisConn.conn.Do("GET", key))
+	reply, err := redis.String(conn.Do("GET", key))
 	if err != nil {
 		return "", err
 	}
@@ -143,14 +149,10 @@ func (s *RedisAuthenticator) ReadKey(key string) (string, error) {
 DeleteKey - Deletes an existing key.
 */
 func (s *RedisAuthenticator) DeleteKey(key string) error {
-	pItem, err := s.pool.Get()
-	if err != nil {
-		return err
-	}
-	defer s.pool.Put(pItem)
-	redisConn := pItem.(resourceConn)
+	conn := s.pool.Get()
+	defer conn.Close()
 
-	reply, err := redis.Int(redisConn.conn.Do("DEL", key))
+	reply, err := redis.Int(conn.Do("DEL", key))
 	if err != nil {
 		return err
 	}

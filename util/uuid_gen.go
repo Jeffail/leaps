@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+package util
 
 import (
 	"encoding/hex"
@@ -34,13 +34,19 @@ import (
  */
 
 /*
-GenerateID - Generates a unique identifier.
+GenerateStampedGUID - Generates a UUID and prepends a timestamp to it.
 */
-func GenerateID() string {
+func GenerateStampedUUID() string {
 	tstamp := time.Now().Unix()
-	stamp := uuid.NewRandom()
 
-	return fmt.Sprintf("%v%v", hex.EncodeToString(stamp), tstamp)
+	return fmt.Sprintf("%v%v", tstamp, GenerateUUID())
+}
+
+/*
+GenerateUUID - Generates a UUID and returns it as a hex encoded string.
+*/
+func GenerateUUID() string {
+	return hex.EncodeToString(uuid.NewRandom())
 }
 
 /*--------------------------------------------------------------------------------------------------

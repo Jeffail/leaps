@@ -27,6 +27,7 @@ import (
 	"sync"
 
 	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -65,8 +66,8 @@ The curator is fully in control of the binders, and manages their life cycles in
 type Curator struct {
 	config        CuratorConfig
 	store         DocumentStore
-	log           *util.Logger
-	stats         *util.Stats
+	log           *log.Logger
+	stats         *log.Stats
 	authenticator TokenAuthenticator
 
 	// Binders
@@ -82,7 +83,7 @@ type Curator struct {
 /*
 NewCurator - Creates and returns a fresh curator, and launches its internal loop.
 */
-func NewCurator(config CuratorConfig, log *util.Logger, stats *util.Stats) (*Curator, error) {
+func NewCurator(config CuratorConfig, log *log.Logger, stats *log.Stats) (*Curator, error) {
 	store, err := DocumentStoreFactory(config.StoreConfig)
 	if err != nil {
 		return nil, err
@@ -212,7 +213,7 @@ func (c *Curator) NewDocument(token string, userID string, doc *Document) (Binde
 	c.stats.Incr("curator.create.accepted_client", 1)
 
 	// Always generate a fresh ID
-	doc.ID = GenerateID()
+	doc.ID = util.GenerateStampedUUID()
 
 	if err := c.store.Create(doc.ID, doc); err != nil {
 		c.stats.Incr("curator.create_new.failed", 1)

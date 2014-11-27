@@ -33,6 +33,7 @@ import (
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/leaps/net"
 	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -55,12 +56,12 @@ components, which determine the role of this leaps instance. Currently a stand a
 the only supported role.
 */
 type LeapsConfig struct {
-	NumProcesses      int                    `json:"num_processes" yaml:"num_processes"`
-	LoggerConfig      util.LoggerConfig      `json:"logger" yaml:"logger"`
-	StatsConfig       util.StatsConfig       `json:"stats" yaml:"stats"`
-	CuratorConfig     lib.CuratorConfig      `json:"curator" yaml:"curator"`
-	HTTPServerConfig  net.HTTPServerConfig   `json:"http_server" yaml:"http_server"`
-	StatsServerConfig util.StatsServerConfig `json:"stats_server" yaml:"stats_server"`
+	NumProcesses      int                   `json:"num_processes" yaml:"num_processes"`
+	LoggerConfig      log.LoggerConfig      `json:"logger" yaml:"logger"`
+	StatsConfig       log.StatsConfig       `json:"stats" yaml:"stats"`
+	CuratorConfig     lib.CuratorConfig     `json:"curator" yaml:"curator"`
+	HTTPServerConfig  net.HTTPServerConfig  `json:"http_server" yaml:"http_server"`
+	StatsServerConfig log.StatsServerConfig `json:"stats_server" yaml:"stats_server"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -75,11 +76,11 @@ func main() {
 
 	leapsConfig := LeapsConfig{
 		NumProcesses:      runtime.NumCPU(),
-		LoggerConfig:      util.DefaultLoggerConfig(),
-		StatsConfig:       util.DefaultStatsConfig(),
+		LoggerConfig:      log.DefaultLoggerConfig(),
+		StatsConfig:       log.DefaultStatsConfig(),
 		CuratorConfig:     lib.DefaultCuratorConfig(),
 		HTTPServerConfig:  net.DefaultHTTPServerConfig(),
-		StatsServerConfig: util.DefaultStatsServerConfig(),
+		StatsServerConfig: log.DefaultStatsServerConfig(),
 	}
 
 	// Load configuration etc
@@ -89,8 +90,8 @@ func main() {
 
 	runtime.GOMAXPROCS(leapsConfig.NumProcesses)
 
-	logger := util.NewLogger(os.Stdout, leapsConfig.LoggerConfig)
-	stats := util.NewStats(leapsConfig.StatsConfig)
+	logger := log.NewLogger(os.Stdout, leapsConfig.LoggerConfig)
+	stats := log.NewStats(leapsConfig.StatsConfig)
 
 	fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
 
@@ -119,7 +120,7 @@ func main() {
 	}
 
 	// Run a stats service in the background.
-	statsServer, err := util.NewStatsServer(leapsConfig.StatsServerConfig, logger, stats)
+	statsServer, err := log.NewStatsServer(leapsConfig.StatsServerConfig, logger, stats)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Stats error: %v\n", err))
 		return

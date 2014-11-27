@@ -26,6 +26,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	// Blank because SQL driver
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"

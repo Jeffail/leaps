@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -70,8 +71,8 @@ type Binder struct {
 	config BinderConfig
 	model  Model
 	block  DocumentStore
-	log    *util.Logger
-	stats  *util.Stats
+	log    *log.Logger
+	stats  *log.Stats
 
 	// Clients
 	clients       map[string]BinderClient
@@ -94,8 +95,8 @@ func NewBinder(
 	block DocumentStore,
 	config BinderConfig,
 	errorChan chan<- BinderError,
-	log *util.Logger,
-	stats *util.Stats,
+	log *log.Logger,
+	stats *log.Stats,
 ) (*Binder, error) {
 
 	binder := Binder{
@@ -169,7 +170,7 @@ the subscription was unsuccessful the BinderPortal will contain an error.
 */
 func (b *Binder) Subscribe(token string) BinderPortal {
 	if len(token) == 0 {
-		token = GenerateID()
+		token = util.GenerateStampedUUID()
 	}
 	retChan := make(chan BinderPortal, 1)
 	bundle := BinderSubscribeBundle{

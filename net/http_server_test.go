@@ -33,7 +33,7 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/jeffail/leaps/lib"
-	"github.com/jeffail/leaps/util"
+	"github.com/jeffail/leaps/util/log"
 )
 
 type binderStory struct {
@@ -211,12 +211,12 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 	}
 }
 
-func loggerAndStats() (*util.Logger, *util.Stats) {
-	logConf := util.DefaultLoggerConfig()
+func loggerAndStats() (*log.Logger, *log.Stats) {
+	logConf := log.DefaultLoggerConfig()
 	logConf.LogLevel = "OFF"
 
-	logger := util.NewLogger(os.Stdout, logConf)
-	stats := util.NewStats(util.DefaultStatsConfig())
+	logger := log.NewLogger(os.Stdout, logConf)
+	stats := log.NewStats(log.DefaultStatsConfig())
 
 	return logger, stats
 }

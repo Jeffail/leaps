@@ -97,12 +97,12 @@ func Bootstrap(configPtr interface{}) bool {
 		}
 
 		ext := filepath.Ext(*configPath)
-		if ext == ".js" || ext == ".json" {
+		if ".js" == ext || ".json" == ext {
 			if err = json.Unmarshal(configBytes, configPtr); err != nil {
 				fmt.Fprintln(os.Stderr, fmt.Sprintf("Error parsing config file: %v", err))
 				return false
 			}
-		} else if ext == ".yaml" {
+		} else if ".yml" == ext || ".yaml" == ext {
 			if err = yaml.Unmarshal(configBytes, configPtr); err != nil {
 				fmt.Fprintln(os.Stderr, fmt.Sprintf("Error parsing config file: %v", err))
 				return false
