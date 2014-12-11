@@ -76,7 +76,7 @@ type Binder struct {
 
 	// Clients
 	clients       map[string]BinderClient
-	SubscribeChan chan BinderSubscribeBundle
+	subscribeChan chan BinderSubscribeBundle
 
 	// Control channels
 	transformChan chan TransformSubmission
@@ -107,7 +107,7 @@ func NewBinder(
 		log:           log.NewModule("[binder]"),
 		stats:         stats,
 		clients:       make(map[string]BinderClient),
-		SubscribeChan: make(chan BinderSubscribeBundle),
+		subscribeChan: make(chan BinderSubscribeBundle),
 		transformChan: make(chan TransformSubmission),
 		messageChan:   make(chan MessageSubmission),
 		exitChan:      make(chan string),
@@ -177,7 +177,7 @@ func (b *Binder) Subscribe(token string) BinderPortal {
 		PortalRcvChan: retChan,
 		Token:         token,
 	}
-	b.SubscribeChan <- bundle
+	b.subscribeChan <- bundle
 
 	return <-retChan
 }
@@ -187,7 +187,7 @@ Close - Close the binder, before closing the client channels the binder will flu
 store the document.
 */
 func (b *Binder) Close() {
-	close(b.SubscribeChan)
+	close(b.subscribeChan)
 	<-b.closedChan
 }
 
@@ -386,7 +386,7 @@ func (b *Binder) loop() {
 	for {
 		running := true
 		select {
-		case clientBundle, open := <-b.SubscribeChan:
+		case clientBundle, open := <-b.subscribeChan:
 			if running && open {
 				if err := b.processSubscriber(clientBundle); err != nil {
 					b.errorChan <- BinderError{ID: b.ID, Err: err}

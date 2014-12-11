@@ -1,4 +1,4 @@
-![Leaps](http://jeffail.uk/images/leaps_logo.png "Leaps")
+![Leaps](leaps_logo.png "Leaps")
 
 Leaps is a service for hosting collaborative, live web editors for text documents that can be shared by multiple users. The library uses a method called operational transforms to allow multiple people to contribute and view each others changes simultaneously in real time whilst ensuring that each user also has the same content.
 
@@ -11,7 +11,7 @@ To read more, check out the wiki: [leaps wiki](https://github.com/Jeffail/leaps/
 Just download a release package and do the following:
 
 ```bash
-tar -xvf ./leaps-linux_amd64-v0.0.2.tar.gz
+tar -xvf ./leaps-linux_amd64-v0.1.1.tar.gz
 cd leaps
 ./leaps -c ./config/leaps_example.yaml
 ```
@@ -63,6 +63,13 @@ client.close();
 If you bound leaps to a textarea or ace document then the document becomes readonly when the connection is lost/closed.
 
 ##How to build:
+
+Dependencies:
+
+- Golang 1.2+
+- [golint](https://github.com/golang/lint "golint")
+- nodejs
+- npm (uglifyjs, jshint, nodeunit)
 
 To build and then start up an example server do the following:
 
