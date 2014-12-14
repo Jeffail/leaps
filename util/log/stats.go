@@ -79,7 +79,7 @@ func NewStats(config StatsConfig) *Stats {
 	var jsonRoot, json *gabs.Container
 
 	if config.RetainInternal {
-		jsonRoot, _ = gabs.Consume(map[string]interface{}{})
+		jsonRoot = gabs.New()
 		if len(config.RootPath) > 0 {
 			json, _ = jsonRoot.SetP(map[string]interface{}{}, config.RootPath)
 		} else {

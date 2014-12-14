@@ -165,7 +165,7 @@ func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (lib.Binde
 	switch clientMsg.Command {
 	case "create":
 		if clientMsg.Document != nil {
-			return h.locator.NewDocument(clientMsg.Token, clientMsg.UserID, clientMsg.Document)
+			return h.locator.CreateDocument(clientMsg.Token, clientMsg.UserID, clientMsg.Document)
 		}
 		return lib.BinderPortal{}, errors.New("create request must contain a valid document structure")
 	case "find":

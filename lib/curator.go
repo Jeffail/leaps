@@ -183,30 +183,34 @@ func (c *Curator) FindDocument(token, id string) (BinderPortal, error) {
 	c.stats.Incr("curator.find.accepted_client", 1)
 
 	c.binderMutex.Lock()
-	defer c.binderMutex.Unlock()
 
 	// Check for existing binder
 	if binder, ok := c.openBinders[id]; ok {
+		c.binderMutex.Unlock()
+
 		return binder.Subscribe(token), nil
 	}
 	binder, err := NewBinder(id, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {
+		c.binderMutex.Unlock()
+
 		c.stats.Incr("curator.bind_existing.failed", 1)
 		c.log.Errorf("Failed to bind to document %v: %v\n", id, err)
 		return BinderPortal{}, err
 	}
 	c.openBinders[id] = binder
-	c.stats.Incr("curator.open_binders", 1)
+	c.binderMutex.Unlock()
 
+	c.stats.Incr("curator.open_binders", 1)
 	return binder.Subscribe(token), nil
 }
 
 /*
-NewDocument - Creates a fresh Binder for a new document, which is subsequently stored, returns an
+CreateDocument - Creates a fresh Binder for a new document, which is subsequently stored, returns an
 error if either the document ID is already currently in use, or if there is a problem storing the
 new document. May require authentication, if so a userID is supplied.
 */
-func (c *Curator) NewDocument(token string, userID string, doc *Document) (BinderPortal, error) {
+func (c *Curator) CreateDocument(token string, userID string, doc *Document) (BinderPortal, error) {
 	c.log.Debugf("Creating new document with token %v\n", token)
 
 	if !c.authenticator.AuthoriseCreate(token, userID) {
@@ -231,8 +235,8 @@ func (c *Curator) NewDocument(token string, userID string, doc *Document) (Binde
 	}
 	c.binderMutex.Lock()
 	c.openBinders[doc.ID] = binder
-	c.stats.Incr("curator.open_binders", 1)
 	c.binderMutex.Unlock()
+	c.stats.Incr("curator.open_binders", 1)
 
 	return binder.Subscribe(token), nil
 }
