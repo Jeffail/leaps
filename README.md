@@ -6,6 +6,8 @@ Leaps is ready to be deployed as a service, or alternatively you can use it as a
 
 To read more, check out the wiki: [leaps wiki](https://github.com/Jeffail/leaps/wiki)
 
+I have an MVP collab code editor demo at: [https://megrim.uk](https://megrim.uk "Megrim"), it's hosted on a potato in my flat in Reading, UK, so go easy on it.
+
 ##How to run:
 
 Just download a release package and do the following:
