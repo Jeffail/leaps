@@ -8,9 +8,9 @@ To read more, check out the wiki: [leaps wiki](https://github.com/Jeffail/leaps/
 
 I have an MVP collab code editor demo at: [https://megrim.uk](https://megrim.uk "Megrim"), it's hosted on a potato in my flat in Reading, UK, so go easy on it.
 
-##How to run:
+##How to run
 
-Just download a release package and do the following:
+Leaps is a single binary, with no runtime dependencies. Just download a release package for your OS and do the following:
 
 ```bash
 tar -xvf ./leaps-linux_amd64-v0.1.1.tar.gz
@@ -31,7 +31,7 @@ To generate a configuration file of all default values:
 ./leaps --print-yaml
 ```
 
-##Your own service
+##Customizing your service
 
 To learn how to customize your leaps service read here:
 [leaps service wiki](https://github.com/Jeffail/leaps/wiki/Service)
@@ -64,7 +64,18 @@ client.close();
 
 If you bound leaps to a textarea or ace document then the document becomes readonly when the connection is lost/closed.
 
-##How to build:
+##System compatibility
+OS               | Status
+---------------- | ------
+OSX x86_64       | Supported, tested
+Linux x86        | Supported, tested
+Linux x86_64     | Supported, tested
+Linux ARMv5      | Supported, tested
+Linux ARMv7      | Supported, tested
+Windows x86      | Supported
+Windows x86_64   | Supported
+
+##How to build
 
 Dependencies:
 
@@ -84,6 +95,15 @@ make
 
 ##Contributing and customizing
 
+Contributions are very welcome, just fork and submit a pull request.
+
 Documentation for the main service library can be found here, for those interested in writing custom servers look at the Curator structure:
 
 https://godoc.org/github.com/Jeffail/leaps/lib
+
+##Contact
+
+Ashley Jeffs
+* Web: [http://jeffs.eu](http://jeffs.eu)
+* Twitter: [@Jeffail](https://twitter.com/Jeffail "@jeffail")
+* Email: [ash@jeffs.eu](mailto:ash@jeffs.eu)
