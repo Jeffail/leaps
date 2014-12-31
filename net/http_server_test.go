@@ -33,7 +33,7 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"github.com/jeffail/leaps/lib"
-	"github.com/jeffail/leaps/util/log"
+	"github.com/jeffail/util/log"
 )
 
 type binderStory struct {

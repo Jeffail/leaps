@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeffail/leaps/util/log"
+	"github.com/jeffail/util/log"
 )
 
 func getLoggerAndStats() (*log.Logger, *log.Stats) {

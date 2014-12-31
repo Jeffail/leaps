@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib"
-	"github.com/jeffail/leaps/util/log"
+	"github.com/jeffail/util/log"
 )
 
 func main() {

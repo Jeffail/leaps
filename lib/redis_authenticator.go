@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/jeffail/leaps/util/log"
+	"github.com/jeffail/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------

@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeffail/leaps/util/log"
+	"github.com/jeffail/util/log"
 )
 
 func loggerAndStats() (*log.Logger, *log.Stats) {

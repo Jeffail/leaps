@@ -25,7 +25,7 @@ package lib
 import (
 	"errors"
 
-	"github.com/jeffail/leaps/util/log"
+	"github.com/jeffail/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------

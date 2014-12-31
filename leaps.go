@@ -32,8 +32,8 @@ import (
 
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/leaps/net"
-	"github.com/jeffail/leaps/util"
-	"github.com/jeffail/leaps/util/log"
+	"github.com/jeffail/util"
+	"github.com/jeffail/util/log"
 )
 
 /*--------------------------------------------------------------------------------------------------
