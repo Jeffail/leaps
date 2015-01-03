@@ -2,7 +2,7 @@
 
 Leaps is a service for hosting collaboratively edited documents. It uses operational transforms to ensure that any number of editing clients and the server are kept in sync.
 
-Learn how to set up your own server: [leaps howto](https://leaps.github.io/)
+Learn how to set up your own server: [leaps how-to](https://jeffail.github.io/leaps/)
 
 To read more, check out the wiki: [leaps wiki](https://github.com/Jeffail/leaps/wiki)
 
