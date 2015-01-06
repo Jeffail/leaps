@@ -1,12 +1,12 @@
 ![Leaps](leaps_logo.png "Leaps")
 
-Leaps is a service for hosting collaboratively edited documents. It uses operational transforms to ensure that any number of editing clients and the server are kept in sync.
+Leaps is a service for hosting collaboratively edited documents using operational transforms to ensure zero-collision synchronization across any number of editing clients.
 
 Learn how to set up your own server: [leaps how-to](https://jeffail.github.io/leaps/)
 
 To read more, check out the wiki: [leaps wiki](https://github.com/Jeffail/leaps/wiki)
 
-I have an MVP collab code editor demo at: [https://megrim.uk](https://megrim.uk "Megrim"), it's hosted on a potato in my flat in Reading, UK, so go easy on it.
+Proof of concept code editor: [https://megrim.uk](https://megrim.uk "Megrim"), it's hosted on a potato in my flat in Reading, UK, so go easy on it. Currently supports account based authorization and session token authorization (sharing your documents based on URL).
 
 ##How to run
 
