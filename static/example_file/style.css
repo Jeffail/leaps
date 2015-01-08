@@ -1,0 +1,24 @@
+body {
+	background-color: #f0f0f0;
+	color: #3c3c3c;
+	text-align: center;
+	padding: 20px;
+	font-family: sans-serif;
+}
+
+textarea {
+	box-shadow: inset 0px 0px 4px #7c7c7c;
+	font-family: sans-serif;
+	background-color: #fcfcfc;
+	color: #3c3c3c;
+
+	padding: 20px;
+	margin: 20px;
+
+	border: 0px;
+	border-radius: 1em 4em 1em 4em;
+}
+
+textarea:disabled {
+	color: #9c9c9c;
+}

@@ -23,20 +23,23 @@ THE SOFTWARE.
 package lib
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
-	"strconv"
 )
 
 /*--------------------------------------------------------------------------------------------------
  */
 
 /*
-FileStore - Most basic persistent implementation of DocumentStore. Simple stores each document into
-a file within a configured directory.
+FileStore - Most basic persistent implementation of DocumentStore. Simply stores each document into
+a file within a configured directory. The ID represents the filepath relative to the configured
+directory.
+
+For example, with StoreDirectory set to /var/www, a document can be given the ID css/main.css to
+create and edit the file /var/www/css/main.css
 */
 type FileStore struct {
 	config DocumentStoreConfig
@@ -53,43 +56,29 @@ func (s *FileStore) Create(id string, doc *Document) error {
 Store - Store document in its file location.
 */
 func (s *FileStore) Store(id string, doc *Document) error {
-	file, err := os.Create(path.Join(s.config.StoreDirectory, id))
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	filePath := path.Join(s.config.StoreDirectory, id)
+	fileDir := path.Dir(filePath)
 
-	if _, err = fmt.Fprintln(file, strconv.QuoteToASCII(doc.Content)); err != nil {
-		return err
+	if _, err := os.Stat(fileDir); os.IsNotExist(err) {
+		if err = os.MkdirAll(fileDir, os.ModePerm); err != nil {
+			return fmt.Errorf("cannot create file path for document: %v, err: %v", id, err)
+		}
 	}
-
-	return nil
+	return ioutil.WriteFile(filePath, []byte(doc.Content), 0666)
 }
 
 /*
 Fetch - Fetch document from its file location.
 */
 func (s *FileStore) Fetch(id string) (*Document, error) {
-	file, err := os.Open(path.Join(s.config.StoreDirectory, id))
+	bytes, err := ioutil.ReadFile(path.Join(s.config.StoreDirectory, id))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read content from document file: %v", err)
 	}
-	defer file.Close()
-
-	doc := Document{ID: id}
-
-	scanner := bufio.NewScanner(file)
-
-	// Get title
-	if !scanner.Scan() {
-		return nil, errors.New("failed to read content from document file")
-	}
-	doc.Content, err = strconv.Unquote(scanner.Text())
-	if err != nil {
-		return nil, fmt.Errorf("unquote error: %v", err)
-	}
-
-	return &doc, nil
+	return &Document{
+		Content: string(bytes),
+		ID:      id,
+	}, nil
 }
 
 /*
