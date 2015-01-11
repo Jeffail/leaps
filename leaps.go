@@ -23,7 +23,6 @@ THE SOFTWARE.
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -35,17 +34,6 @@ import (
 	"github.com/jeffail/util"
 	"github.com/jeffail/util/log"
 )
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-var (
-	leapsMode *string
-)
-
-func init() {
-	leapsMode = flag.String("m", "curator", "Leaps service mode, supports: curator, curator or curator")
-}
 
 /*--------------------------------------------------------------------------------------------------
  */
@@ -84,7 +72,7 @@ func main() {
 	}
 
 	// Load configuration etc
-	if !util.Bootstrap(&leapsConfig) {
+	if !util.Bootstrap(&leapsConfig, "./leaps.yaml", "/etc/leaps.yaml") {
 		return
 	}
 
@@ -95,29 +83,22 @@ func main() {
 
 	fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
 
-	switch *leapsMode {
-	case "curator":
-		// We are running in curator node.
-		curator, err = lib.NewCurator(leapsConfig.CuratorConfig, logger, stats)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
-			return
-		}
-		leapHTTP, err := net.CreateHTTPServer(curator, leapsConfig.HTTPServerConfig, logger, stats, nil)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("HTTP error: %v\n", err))
-			return
-		}
-		go func() {
-			if httperr := leapHTTP.Listen(); httperr != nil {
-				fmt.Fprintln(os.Stderr, fmt.Sprintf("Http listen error: %v\n", httperr))
-			}
-			closeChan <- true
-		}()
-	default:
-		fmt.Fprintln(os.Stderr, "Unrecognized mode, try --help (-h)")
+	curator, err = lib.NewCurator(leapsConfig.CuratorConfig, logger, stats)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
 		return
 	}
+	leapHTTP, err := net.CreateHTTPServer(curator, leapsConfig.HTTPServerConfig, logger, stats)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("HTTP error: %v\n", err))
+		return
+	}
+	go func() {
+		if httperr := leapHTTP.Listen(); httperr != nil {
+			fmt.Fprintln(os.Stderr, fmt.Sprintf("Http listen error: %v\n", httperr))
+		}
+		closeChan <- true
+	}()
 
 	// Run a stats service in the background.
 	statsServer, err := log.NewStatsServer(leapsConfig.StatsServerConfig, logger, stats)
@@ -139,6 +120,7 @@ func main() {
 	case <-closeChan:
 	}
 
+	leapHTTP.Stop()
 	curator.Close()
 }
 

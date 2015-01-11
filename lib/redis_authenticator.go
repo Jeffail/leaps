@@ -73,9 +73,9 @@ type RedisAuthenticator struct {
 }
 
 /*
-CreateRedisAuthenticator - Creates a RedisAuthenticator using the provided configuration.
+NewRedisAuthenticator - Creates a RedisAuthenticator using the provided configuration.
 */
-func CreateRedisAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *RedisAuthenticator {
+func NewRedisAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *RedisAuthenticator {
 	return &RedisAuthenticator{
 		logger: logger.NewModule("[redis_auth]"),
 		config: config,

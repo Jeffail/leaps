@@ -39,6 +39,7 @@ type TokenAuthenticatorConfig struct {
 	Type        string                   `json:"type" yaml:"type"`
 	AllowCreate bool                     `json:"allow_creation" yaml:"allow_creation"`
 	RedisConfig RedisAuthenticatorConfig `json:"redis_config" yaml:"redis_config"`
+	FileConfig  FileAuthenticatorConfig  `json:"file_config" yaml:"file_config"`
 }
 
 /*
@@ -49,6 +50,7 @@ func DefaultTokenAuthenticatorConfig() TokenAuthenticatorConfig {
 		Type:        "none",
 		AllowCreate: true,
 		RedisConfig: DefaultRedisAuthenticatorConfig(),
+		FileConfig:  DefaultFileAuthenticatorConfig(),
 	}
 }
 
@@ -74,8 +76,10 @@ func TokenAuthenticatorFactory(config TokenAuthenticatorConfig, logger *log.Logg
 	switch config.Type {
 	case "none":
 		return GetAnarchy(config), nil
+	case "file":
+		return NewFileAuthenticator(config, logger), nil
 	case "redis":
-		return CreateRedisAuthenticator(config, logger), nil
+		return NewRedisAuthenticator(config, logger), nil
 	}
 	return nil, errors.New("configuration provided invalid token authenticator type")
 }

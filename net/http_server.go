@@ -111,15 +111,13 @@ type HTTPServer struct {
 }
 
 /*
-CreateHTTPServer - Create a new leaps HTTPServer, optionally registers to a custom http.ServeMux, or
-set this to nil to use the default http mux (recommended).
+CreateHTTPServer - Create a new leaps HTTPServer.
 */
 func CreateHTTPServer(
 	locator LeapLocator,
 	config HTTPServerConfig,
 	logger *log.Logger,
 	stats *log.Stats,
-	mux *http.ServeMux,
 ) (*HTTPServer, error) {
 
 	httpServer := HTTPServer{
@@ -130,26 +128,16 @@ func CreateHTTPServer(
 		closeChan: make(chan bool),
 	}
 	if len(httpServer.config.Path) == 0 {
-		return nil, errors.New("invalid config value for url.socket_path")
+		return nil, errors.New("invalid config value for socket path")
 	}
-	if mux != nil {
-		mux.Handle(httpServer.config.Path, websocket.Handler(httpServer.websocketHandler))
-	} else {
-		http.Handle(httpServer.config.Path, websocket.Handler(httpServer.websocketHandler))
-	}
+	http.Handle(httpServer.config.Path, websocket.Handler(httpServer.websocketHandler))
 	if len(httpServer.config.StaticFilePath) > 0 {
 		if len(httpServer.config.StaticPath) == 0 {
-			return nil, errors.New("invalid config value for url.static_path")
+			return nil, errors.New("invalid config value for static path")
 		}
-		if mux != nil {
-			mux.Handle(httpServer.config.StaticPath,
-				http.StripPrefix(httpServer.config.StaticPath,
-					http.FileServer(http.Dir(httpServer.config.StaticFilePath))))
-		} else {
-			http.Handle(httpServer.config.StaticPath,
-				http.StripPrefix(httpServer.config.StaticPath,
-					http.FileServer(http.Dir(httpServer.config.StaticFilePath))))
-		}
+		http.Handle(httpServer.config.StaticPath,
+			http.StripPrefix(httpServer.config.StaticPath,
+				http.FileServer(http.Dir(httpServer.config.StaticFilePath))))
 	}
 	return &httpServer, nil
 }
