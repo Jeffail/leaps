@@ -1,0 +1,281 @@
+/* GLOBAL */
+
+*, *:after, *:before {
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+}
+
+body, html {
+	background: #f0f0f0;
+	color: #3c3c3c;
+	word-wrap: break-word;
+	word-break: break-word;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	height: 100vh;
+}
+
+::selection {
+	color: #E0E0E0;
+	background-color: #5C5C5C;
+}
+
+::-moz-selection {
+	color: #E0E0E0;
+	background-color: #5C5C5C;
+}
+
+a {
+	color: #3c3c3c;
+}
+
+hr {
+	margin: 0;
+	padding: 0;
+	height: 5px;
+	border: 0;
+}
+
+pre {
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	padding: 1em;
+}
+
+img {
+	max-width: 100%;
+}
+
+/* FONTS */
+
+body, html, a {
+	font-family: "Open Sans", sans-serif;
+	font-weight: 300;
+}
+
+h1, h2, h3, h4, h5, button, strong, .button, .round-button {
+	font-family: "Open Sans", sans-serif;
+	font-weight: 300;
+}
+
+/* COLOURS */
+
+.white {
+	color: #5c5c5c;
+	background-color: #fcfcfc;
+}
+
+.blue {
+	color: #f0f0f0;
+	background-color: #4E81B4;
+}
+
+.light-blue {
+	color: #fcfcfc;
+	background-color: #42A7CA;
+}
+
+.red {
+	color: #f0f0f0;
+	background-color: #bf5661;
+}
+
+.cream {
+	color: #5c5c5c;
+	background-color: #E9DCCB;
+}
+
+.dark-grey {
+	background-color: #3E3E3E;
+	color: #f0f0f0;
+}
+
+.light-grey {
+	color: #3c3c3c;
+	background-color: #E0E0E0;
+}
+
+.ash {
+	color: #4c4c4c;
+	background-color: #F6F6F6;
+}
+
+.box {
+	box-shadow: 2px 2px 3px rgba(20, 20, 20, 0.3);
+}
+
+.light-box {
+	box-shadow: 1px 1px 2px rgba(20, 20, 20, 0.3);
+}
+
+.light-url {
+	color: #f0f0f0;
+}
+
+/* CLASSES */
+
+.round-button {
+	border-radius: 30px;
+	width: 60px;
+	height: 60px;
+
+	text-align: center;
+	vertical-align: middle;
+
+	text-decoration: none;
+	cursor: pointer;
+
+    box-shadow: 0px 10px 8px -4px rgba(38, 38, 38, 0.4);
+    border: 0px none;
+}
+
+.round-button:hover, .round-button:focus, .round-button:active {
+    box-shadow: 0px 14px 12px -4px rgba(38, 38, 38, 0.4);
+    position: relative;
+    top: -3px;
+}
+
+.round-button > span {
+    position: relative;
+    top: 37%;
+}
+
+.selected {
+	font-weight: bold;
+	color: #f0f0f0;
+	background-color: #bf5661;
+}
+
+.logo {
+	padding: 0px;
+	margin: 2px 10px;
+	font-size: 30px;
+}
+
+/* UNIQUE */
+
+#editor {
+	position: absolute;
+	top: 50px;
+	right: 0px;
+
+	bottom: 170px;
+	bottom: 24vh;
+
+	left: 310px;
+	left: 20vw;
+}
+
+#menu-bar {
+	position: absolute;
+	top: 0px;
+	right: 0px;
+	height: 50px;
+
+	left: 310px;
+	left: 20vw;
+}
+
+#info-window {
+	overflow: auto;
+
+	position: absolute;
+	right: 0px;
+	bottom: 0px;
+
+	height: 170px;
+	height: 24vh;
+
+	left: 310px;
+	left: 20vw;
+}
+
+#chat-bar {
+	z-index: 40;
+	font-size: 16px;
+	border: 0px;
+	padding: 8px;
+
+	width: 300px;
+	width: 50vw;
+
+	position: absolute;
+
+	bottom: 10px;
+
+	left: 315px;
+	left: 21vw;
+}
+
+#file-list-container {
+	overflow: auto;
+	/*white-space: nowrap;*/
+
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	bottom: 0px;
+
+	width: 310px;
+	width: 20vw;
+}
+
+#refresh-container {
+	z-index: 40;
+	position: absolute;
+
+	left: 15px;
+	bottom: 15px;
+}
+
+#clear-container {
+	z-index: 40;
+	position: absolute;
+
+	right: 15px;
+	bottom: 15px;
+}
+
+#file-list {
+	list-style-type: none;
+	padding: 0px;
+	margin: 0px;
+	padding-bottom: 100px;
+}
+
+#file-list > li {
+	padding-left: 1em;
+	cursor: hand; cursor: pointer;
+	font-size: 15px;
+}
+
+#file-list > li:hover, #file-list > li:focus, #file-list > li:active {
+	color: #f0f0f0;
+	background-color: #bf5661;
+}
+
+#info-messages {
+	padding-bottom: 65px;
+}
+
+#info-messages div {
+	font-size: 14px;
+	padding: 4px;
+	padding-left: 1em;
+}
+
+#logo {
+	float: left;
+}
+
+#username-bar {
+	float: right;
+	font-size: 16px;
+	border: 0px;
+	padding: 8px;
+	margin: 8px;
+}

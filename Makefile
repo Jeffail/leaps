@@ -45,16 +45,16 @@ build: check
 	@cp $(JS_CLIENT) $(JS_BIN)/leaps.js; \
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-min.js"; \
 		uglifyjs "$(JS_BIN)/leaps.js" >> "$(JS_BIN)/leaps-min.js";
-	@cat $(JS_PATH)/leap*.js > $(JS_BIN)/leaps-all.js; \
+	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-*.js > $(JS_BIN)/leaps-all.js; \
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-all-min.js"; \
 		uglifyjs "$(JS_BIN)/leaps-all.js" >> "$(JS_BIN)/leaps-all-min.js";
-	@cat $(JS_CLIENT) $(JS_PATH)/leapace.js > $(JS_BIN)/leaps-ace.js; \
+	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-ace.js > $(JS_BIN)/leaps-ace.js; \
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-ace-min.js"; \
 		uglifyjs "$(JS_BIN)/leaps-ace.js" >> "$(JS_BIN)/leaps-ace-min.js";
-	@cat $(JS_CLIENT) $(JS_PATH)/leapcodemirror.js > $(JS_BIN)/leaps-codemirror.js; \
+	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-codemirror.js > $(JS_BIN)/leaps-codemirror.js; \
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-codemirror-min.js"; \
 		uglifyjs "$(JS_BIN)/leaps-codemirror.js" >> "$(JS_BIN)/leaps-codemirror-min.js";
-	@cat $(JS_CLIENT) $(JS_PATH)/leaptextarea.js > $(JS_BIN)/leaps-textarea.js; \
+	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-textarea.js > $(JS_BIN)/leaps-textarea.js; \
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-textarea-min.js"; \
 		uglifyjs "$(JS_BIN)/leaps-textarea.js" >> "$(JS_BIN)/leaps-textarea-min.js";
 

@@ -2,6 +2,7 @@ package lib
 
 import (
 	"encoding/json"
+	"flag"
 	"net/http"
 	"os"
 	"path"
@@ -16,11 +17,22 @@ import (
 /*--------------------------------------------------------------------------------------------------
  */
 
+var (
+	sharePathOverride *string
+)
+
+func init() {
+	sharePathOverride = flag.String("share-path", "", "Override config curator.authenticator.file_config.share_path")
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 /*
 FileAuthenticatorConfig - A config object for the file system authentication object.
 */
 type FileAuthenticatorConfig struct {
-	Directory     string `json:"share_directory" yaml:"share_directory"`
+	SharePath     string `json:"share_directory" yaml:"share_path"`
 	Path          string `json:"path" yaml:"path"`
 	ShowHidden    bool   `json:"show_hidden" yaml:"show_hidden"`
 	RefreshPeriod int64  `json:"refresh_period_s" yaml:"refresh_period_s"`
@@ -31,7 +43,7 @@ DefaultFileAuthenticatorConfig - Returns a default config object for a FileAuthe
 */
 func DefaultFileAuthenticatorConfig() FileAuthenticatorConfig {
 	return FileAuthenticatorConfig{
-		Directory:     "",
+		SharePath:     "",
 		Path:          "",
 		ShowHidden:    false,
 		RefreshPeriod: 10,
@@ -43,10 +55,17 @@ func DefaultFileAuthenticatorConfig() FileAuthenticatorConfig {
 
 func (f *FileAuthenticator) getPaths() ([]string, error) {
 	paths := []string{}
-	if len(f.config.FileConfig.Directory) == 0 {
+	if len(f.config.FileConfig.SharePath) == 0 {
 		return paths, nil
 	}
-	if err := filepath.Walk(f.config.FileConfig.Directory, func(p string, info os.FileInfo, err error) error {
+	if info, err := os.Stat(f.config.FileConfig.SharePath); err == nil {
+		if info.Mode().IsRegular() {
+			return []string{path.Clean(f.config.FileConfig.SharePath)}, nil
+		}
+	} else {
+		return paths, err
+	}
+	if err := filepath.Walk(f.config.FileConfig.SharePath, func(p string, info os.FileInfo, err error) error {
 		if !f.config.FileConfig.ShowHidden {
 			// If not showing hidden files then skip when prefix is "."
 			if len(info.Name()) > 1 && strings.HasPrefix(info.Name(), ".") {
@@ -58,7 +77,7 @@ func (f *FileAuthenticator) getPaths() ([]string, error) {
 			}
 		}
 		if info.Mode().IsRegular() {
-			if relPath, err := filepath.Rel(f.config.FileConfig.Directory, p); err == nil {
+			if relPath, err := filepath.Rel(f.config.FileConfig.SharePath, p); err == nil {
 				paths = append(paths, relPath)
 			} else {
 				f.logger.Errorf("Relative path conversion error: %v\n", err)
@@ -117,6 +136,10 @@ type FileAuthenticator struct {
 NewFileAuthenticator - Creates an FileAuthenticator using the provided configuration.
 */
 func NewFileAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *FileAuthenticator {
+	// Do any overrides.
+	if len(*sharePathOverride) > 0 {
+		config.FileConfig.SharePath = *sharePathOverride
+	}
 	fa := FileAuthenticator{
 		logger: logger.NewModule("[fs_auth]"),
 		config: config,

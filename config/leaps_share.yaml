@@ -1,0 +1,37 @@
+logger:
+  prefix: '[leaps]'
+stats:
+  prefix: leaps
+  retain_internal: true
+curator:
+  storage:
+    type: file
+    store_directory: .
+  binder:
+    flush_period_ms: 500
+    retention_period_s: 60
+    kick_period_ms: 200
+    close_inactivity_period_s: 300
+    transform_model:
+      max_document_size: 50000000
+      max_transform_length: 50000
+  authenticator:
+    type: file
+    file_config:
+      share_path: .
+      path: /files
+      show_hidden: false
+http_server:
+  static_path: /
+  socket_path: /socket
+  address: :8001
+  www_dir: ./static/share_dir
+  binder:
+    bind_send_timeout_ms: 10
+stats_server:
+  static_path: /
+  stats_path: /stats
+  address: :4040
+  www_dir: ./static/stats
+  stat_timeout_ms: 200
+  request_timeout_s: 10
