@@ -180,6 +180,8 @@ var ace_editor = null;
 var leaps_client = null;
 var username = "anon";
 
+var users = {};
+
 var configure_ace_editor = function() {
 	if ( ace_editor === null ) {
 		return;
@@ -254,6 +256,11 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left) {
 		vis_height = (ace_editor.getLastVisibleRow() - ace_editor.getFirstVisibleRow()) * lineHeight;
 	}
 
+	var user_tag = user_id;
+	if ( 'string' === typeof users[user_id] ) {
+		user_tag = users[user_id];
+	}
+
 	var positionStyle = "";
 	var nameBar = "";
 	if ( ( top + lineHeight ) < height ) {
@@ -264,7 +271,7 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left) {
 		positionStyle = "position: absolute; top: " + top + "px; left: " + left + "px;";
 		nameBar = "<div style='position: absolute; top: " + (top + (height - 18) ) +
 			"px; left: " + left + "px; background-color: " + colorStyle +
-			"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_id + "</div>";
+			"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_tag + "</div>";
 	} else {
 		if ( top > vis_height ) {
 			top = vis_height - lineHeight;
@@ -272,7 +279,7 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left) {
 		}
 		positionStyle = "position: absolute; top: " + ( top - height + lineHeight ) + "px; left: " + left + "px;";
 		nameBar = "<div style='" + positionStyle + " background-color: " + colorStyle +
-			"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_id + "</div>";
+			"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_tag + "</div>";
 	}
 
 	var markerLine = "<div style='" + positionStyle + " height: " + height + "px; border-left: " + width +
@@ -316,7 +323,7 @@ var join_new_document = function(document_id) {
 	leaps_client.on("error", function(err) {
 		if ( leaps_client !== null ) {
 			console.error(err);
-			append_message("Connection to document closed, document is now READ ONLY", "red");
+			system_message("Connection to document closed, document is now READ ONLY", "red");
 			leaps_client.close();
 			leaps_client = null;
 		}
@@ -324,7 +331,7 @@ var join_new_document = function(document_id) {
 
 	leaps_client.on("disconnect", function(err) {
 		if ( leaps_client !== null ) {
-			append_message(document_id + " closed", "red");
+			system_message(document_id + " closed", "red");
 		}
 	});
 
@@ -333,7 +340,7 @@ var join_new_document = function(document_id) {
 	});
 
 	leaps_client.on("document", function() {
-		append_message("Opened document " + document_id, "dark-grey");
+		system_message("Opened document " + document_id, "dark-grey");
 	});
 
 	leaps_client.on("user", function(user_update) {
@@ -341,7 +348,10 @@ var join_new_document = function(document_id) {
 		if ( 'string' === typeof metadata ) {
 			var data = JSON.parse(metadata);
 			if ( 'string' === typeof data.text ) {
-				append_message((data.username || "anon") + ": " + data.text, "blue");
+				chat_message(user_update.user_id, data.username, data.text);
+			}
+			if ( 'string' === typeof data.username ) {
+				users[user_update.user_id] = data.username;
 			}
 		}
 	});
@@ -443,8 +453,54 @@ var get_paths = function() {
 	});
 };
 
-var append_message = function(text, style) {
-	var msg_window = document.getElementById("info-window");
+var chat_message = function(user_id, username, message) {
+	var container = document.getElementById("info-window");
+	var messages = document.getElementById("info-messages");
+	var div = document.createElement("div");
+
+	var colorStyle = "rgba(0,0,0,0)";
+	if ( 'string' === typeof user_id ) {
+		var id_hash = hash(user_id);
+		if ( id_hash < 0 ) {
+			id_hash = id_hash * -1;
+		}
+
+		var hue = ( id_hash % 10000 ) / 10000;
+		var rgb = HSVtoRGB(hue, 1, 0.8);
+
+		colorStyle = "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 1)";
+	}
+
+	div.className = "blue";
+
+	var ts_span = document.createElement('span');
+	var name_span = document.createElement('span');
+	var text_span = document.createElement('span');
+
+	name_span.style.backgroundColor = colorStyle;
+	name_span.style.fontWeight = "700";
+	name_span.style.paddingLeft = "4px";
+	name_span.style.paddingRight = "4px";
+
+	var date_txt = document.createTextNode((new Date()).toTimeString().substr(0, 8) + " ");
+	var user_txt = document.createTextNode(username);
+	var msg_txt = document.createTextNode(" " + message);
+
+	ts_span.appendChild(date_txt);
+	div.appendChild(ts_span);
+
+	name_span.appendChild(user_txt);
+	div.appendChild(name_span);
+
+	text_span.appendChild(msg_txt);
+	div.appendChild(text_span);
+
+	messages.appendChild(div);
+	container.scrollTop = container.scrollHeight;
+};
+
+var system_message = function(text, style) {
+	var container = document.getElementById("info-window");
 	var messages = document.getElementById("info-messages");
 	var div = document.createElement("div");
 	if ( typeof style === 'string' ) {
@@ -453,7 +509,8 @@ var append_message = function(text, style) {
 	var text = document.createTextNode((new Date()).toTimeString().substr(0, 8) + " " + text);
 
 	div.appendChild(text);
-	messages.insertBefore(div, messages.firstChild);
+	messages.appendChild(div);
+	container.scrollTop = container.scrollHeight;
 };
 
 window.onload = function() {
@@ -477,9 +534,49 @@ window.onload = function() {
 	};
 
 	if ( docCookies.hasItem("username") ) {
-		username_bar.value = docCookies.getItem("username");
+		username = docCookies.getItem("username");
 	}
-	username = username_bar.value || "anon";
+	username_bar.value = username;
+
+	var input_select = document.getElementById("input-select");
+	for ( var prop in keymaps ) {
+		if ( keymaps.hasOwnProperty(prop) ) {
+			input_select.innerHTML += '<option value="' + prop + '">' + keymaps[prop] + "</option>";
+		}
+	}
+	if ( docCookies.hasItem("input") ) {
+		binding = docCookies.getItem("input");
+	}
+	input_select.value = binding;
+	input_select.onchange = function() {
+		binding = input_select.value;
+		docCookies.setItem("input", binding);
+		if ( ace_editor !== null ) {
+			var map = "";
+			if ( binding !== "none" ) {
+				map = "ace/keyboard/" + binding;
+			}
+			ace_editor.setKeyboardHandler(map);
+		}
+	};
+
+	var theme_select = document.getElementById("theme-select");
+	for ( var prop in themes ) {
+		if ( themes.hasOwnProperty(prop) ) {
+			theme_select.innerHTML += '<option value="' + prop + '">' + themes[prop] + "</option>";
+		}
+	}
+	if ( docCookies.hasItem("theme") ) {
+		theme = docCookies.getItem("theme");
+	}
+	theme_select.value = theme;
+	theme_select.onchange = function() {
+		theme = theme_select.value;
+		docCookies.setItem("theme", theme);
+		if ( ace_editor !== null ) {
+			ace_editor.setTheme("ace/theme/" + theme);
+		}
+	};
 
 	var chat_bar = document.getElementById("chat-bar");
 	chat_bar.onkeypress = function(e) {
@@ -493,11 +590,11 @@ window.onload = function() {
 					username: username,
 					text: chat_bar.value
 				}));
-				append_message(username + ": " + chat_bar.value, "blue");
+				chat_message(null, username, chat_bar.value);
 				chat_bar.value = "";
 				return false;
 			} else {
-				append_message(
+				system_message(
 					"You must open a document in order to send messages, " +
 					"they will be readable by other users editing that document", "red"
 				);
@@ -512,6 +609,7 @@ window.onload = function() {
 				username: username
 			}));
 		}
+		// get_paths();
 	}, 1000);
 };
 

@@ -71,8 +71,18 @@ func main() {
 		StatsServerConfig: log.DefaultStatsServerConfig(),
 	}
 
+	// A list of default config paths to check for if not explicitly defined
+	defaultPaths := []string{
+		"./leaps.yaml",
+		"./leaps.json",
+		"/etc/leaps.yaml",
+		"/etc/leaps.json",
+		"/etc/leaps/config.yaml",
+		"/etc/leaps/config.json",
+	}
+
 	// Load configuration etc
-	if !util.Bootstrap(&leapsConfig, "./leaps.yaml", "/etc/leaps.yaml") {
+	if !util.Bootstrap(&leapsConfig, defaultPaths...) {
 		return
 	}
 

@@ -200,16 +200,23 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	border: 0px;
 	padding: 8px;
 
-	width: 300px;
-	width: 50vw;
-
 	position: absolute;
 
 	bottom: 10px;
 
-	left: 315px;
-	left: 21vw;
+	width: 80px;
+	width: 10vw;
+
+	right: 10px;
+
+	transition: width 0.1s ease-in-out;
 }
+
+#chat-bar:focus, #chat-bar:active {
+	width: 300px;
+	width: 50vw;
+}
+
 
 #file-list-container {
 	overflow: auto;
@@ -245,6 +252,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	padding: 0px;
 	margin: 0px;
 	padding-bottom: 100px;
+	padding-top: 1em;
 }
 
 #file-list > li {
@@ -259,7 +267,8 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 #info-messages {
-	padding-bottom: 65px;
+	padding-top: 5px;
+	padding-bottom: 5px;
 }
 
 #info-messages div {
@@ -272,7 +281,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	float: left;
 }
 
-#username-bar {
+#username-bar, #input-select, #theme-select {
 	float: right;
 	font-size: 16px;
 	border: 0px;

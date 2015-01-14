@@ -2,11 +2,17 @@
 
 if [ -f /etc/init.d/leaps ]; then
 	/etc/init.d/leaps stop
+
+	rm /etc/init.d/leaps
+	update-rc.d -f leaps remove
 fi
 
 userdel leaps
+rm -f /usr/sbin/leaps
 
-rm /usr/sbin/leaps
-rm /etc/init.d/leaps
+echo "Do you wish to keep the /etc/leaps directory? [y]/n"
+read answer
 
-update-rc.d -f leaps remove
+if [[ "$answer" != "n" && "$answer" != "N" ]]; then
+	rm -rf /etc/leaps
+fi
