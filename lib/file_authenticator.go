@@ -22,7 +22,7 @@ var (
 )
 
 func init() {
-	sharePathOverride = flag.String("share-path", "", "Override config curator.authenticator.file_config.share_path")
+	sharePathOverride = flag.String("share", "", "Override config curator.authenticator.file_config.share_path")
 }
 
 /*--------------------------------------------------------------------------------------------------

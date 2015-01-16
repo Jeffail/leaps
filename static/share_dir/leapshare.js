@@ -347,7 +347,7 @@ var join_new_document = function(document_id) {
 				chat_message(user_update.user_id, data.username, data.text);
 			}
 			if ( 'string' === typeof data.username ) {
-
+				users[user_update.user_id] = data.username;
 			}
 		}
 	});

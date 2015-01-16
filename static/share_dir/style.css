@@ -158,40 +158,12 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 /* UNIQUE */
 
-#editor {
+#file-list-container, #info-window, #editor, #menu-bar {
 	position: absolute;
-	top: 50px;
-	right: 0px;
-
-	bottom: 170px;
-	bottom: 24vh;
-
-	left: 310px;
-	left: 20vw;
 }
 
-#menu-bar {
-	position: absolute;
-	top: 0px;
-	right: 0px;
-	height: 50px;
-
-	left: 310px;
-	left: 20vw;
-}
-
-#info-window {
+#file-list-container, #info-window {
 	overflow: auto;
-
-	position: absolute;
-	right: 0px;
-	bottom: 0px;
-
-	height: 170px;
-	height: 24vh;
-
-	left: 310px;
-	left: 20vw;
 }
 
 #chat-bar {
@@ -199,36 +171,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	font-size: 16px;
 	border: 0px;
 	padding: 8px;
-
 	position: absolute;
-
-	bottom: 10px;
-
-	width: 80px;
-	width: 10vw;
-
-	right: 10px;
-
-	transition: width 0.2s ease-in-out;
-}
-
-#chat-bar:focus, #chat-bar:active {
-	width: 300px;
-	width: 50vw;
-}
-
-
-#file-list-container {
-	overflow: auto;
-	/*white-space: nowrap;*/
-
-	position: absolute;
-	top: 0px;
-	left: 0px;
-	bottom: 0px;
-
-	width: 310px;
-	width: 20vw;
 }
 
 #refresh-container {
@@ -258,7 +201,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 #file-list > li {
 	padding-left: 1em;
 	cursor: hand; cursor: pointer;
-	font-size: 15px;
+	font-size: 13px;
 }
 
 #file-list > li:hover, #file-list > li:focus, #file-list > li:active {
@@ -275,6 +218,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	font-size: 14px;
 	padding: 4px;
 	padding-left: 1em;
+	padding-right: 1em;
 }
 
 #logo {
@@ -289,4 +233,82 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	padding-left: 8px;
 	padding-right: 8px;
 	margin: 8px;
+}
+
+/* FIXED SIZES :( */
+
+#editor {
+	top: 50px;
+	right: 0px;
+	bottom: 150px;
+	bottom: 20vh;
+	left: 250px;
+	left: 16vw;
+}
+
+#menu-bar {
+	top: 0px;
+	right: 0px;
+	height: 50px;
+	left: 250px;
+	left: 16vw;
+}
+
+#info-window {
+	right: 0px;
+	bottom: 0px;
+}
+
+#chat-bar {
+	width: 80px;
+	width: 10vw;
+	right: 10px;
+}
+
+#chat-bar:focus, #chat-bar:active {
+	width: 300px;
+	width: 50vw;
+}
+
+#file-list-container {
+	top: 0px;
+	left: 0px;
+	bottom: 0px;
+	width: 250px;
+	width: 16vw;
+}
+
+@media (max-width: 760px) {
+	#info-window {
+		height: 150px;
+		height: 20vh;
+		left: 250px;
+		left: 16vw;
+	}
+
+	#chat-bar {
+		bottom: 10px;
+		transition: width 0.2s ease-in-out;
+	}
+}
+
+@media (min-width: 760px) {
+	#editor {
+		right: 25vw; /* 100 - width of info window */
+		bottom: 0px;
+		bottom: 0px;
+	}
+
+	#info-window {
+		top: 50px;
+		right: 0px;
+		bottom: 35px;
+		width: 25vw;
+	}
+
+	#chat-bar, #chat-bar:focus, #chat-bar:active {
+		right: 0px;
+		bottom: 0px;
+		width: 25vw;
+	}
 }
