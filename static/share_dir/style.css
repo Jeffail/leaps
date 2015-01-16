@@ -209,7 +209,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 	right: 10px;
 
-	transition: width 0.1s ease-in-out;
+	transition: width 0.2s ease-in-out;
 }
 
 #chat-bar:focus, #chat-bar:active {
@@ -283,8 +283,10 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 #username-bar, #input-select, #theme-select {
 	float: right;
+	height: 30px;
 	font-size: 16px;
 	border: 0px;
-	padding: 8px;
+	padding-left: 8px;
+	padding-right: 8px;
 	margin: 8px;
 }

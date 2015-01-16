@@ -196,8 +196,6 @@ var configure_ace_editor = function() {
 };
 
 var HSVtoRGB = function(h, s, v) {
-	"use strict";
-
 	var r, g, b, i, f, p, q, t;
 	if (h && s === undefined && v === undefined) {
 		s = h.s, v = h.v, h = h.h;
@@ -223,10 +221,8 @@ var HSVtoRGB = function(h, s, v) {
 };
 
 var hash = function(str) {
-	"use strict";
-
 	var hash = 0, i, chr, len;
-	if ('string' !== typeof str || str.length == 0) {
+	if ('string' !== typeof str || str.length === 0) {
 		return hash;
 	}
 	for (i = 0, len = str.length; i < len; i++) {
@@ -340,7 +336,7 @@ var join_new_document = function(document_id) {
 	});
 
 	leaps_client.on("document", function() {
-		system_message("Opened document " + document_id, "dark-grey");
+		system_message("Opened document " + document_id, "blue");
 	});
 
 	leaps_client.on("user", function(user_update) {
@@ -351,7 +347,7 @@ var join_new_document = function(document_id) {
 				chat_message(user_update.user_id, data.username, data.text);
 			}
 			if ( 'string' === typeof data.username ) {
-				users[user_update.user_id] = data.username;
+
 			}
 		}
 	});
@@ -471,7 +467,7 @@ var chat_message = function(user_id, username, message) {
 		colorStyle = "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 1)";
 	}
 
-	div.className = "blue";
+	div.className = "dark-grey";
 
 	var ts_span = document.createElement('span');
 	var name_span = document.createElement('span');
@@ -506,9 +502,9 @@ var system_message = function(text, style) {
 	if ( typeof style === 'string' ) {
 		div.className = style;
 	}
-	var text = document.createTextNode((new Date()).toTimeString().substr(0, 8) + " " + text);
+	var textNode = document.createTextNode((new Date()).toTimeString().substr(0, 8) + " " + text);
 
-	div.appendChild(text);
+	div.appendChild(textNode);
 	messages.appendChild(div);
 	container.scrollTop = container.scrollHeight;
 };
@@ -532,11 +528,10 @@ window.onload = function() {
 		username = username_bar.value || "anon";
 		docCookies.setItem("username", username_bar.value);
 	};
-
 	if ( docCookies.hasItem("username") ) {
-		username = docCookies.getItem("username");
+		username_bar.value = docCookies.getItem("username");
 	}
-	username_bar.value = username;
+	username = username_bar.value || "anon";
 
 	var input_select = document.getElementById("input-select");
 	for ( var prop in keymaps ) {
@@ -609,7 +604,6 @@ window.onload = function() {
 				username: username
 			}));
 		}
-		// get_paths();
 	}, 1000);
 };
 
