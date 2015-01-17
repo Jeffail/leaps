@@ -10,7 +10,6 @@ body, html {
 	background: #f0f0f0;
 	color: #3c3c3c;
 	word-wrap: break-word;
-	word-break: break-word;
 	margin: 0;
 	padding: 0;
 }
@@ -129,12 +128,12 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	text-decoration: none;
 	cursor: pointer;
 
-    box-shadow: 0px 10px 8px -4px rgba(38, 38, 38, 0.4);
-    border: 0px none;
+    box-shadow: 0 10px 8px -4px rgba(38, 38, 38, 0.4);
+    border: 0 none;
 }
 
 .round-button:hover, .round-button:focus, .round-button:active {
-    box-shadow: 0px 14px 12px -4px rgba(38, 38, 38, 0.4);
+    box-shadow: 0 14px 12px -4px rgba(38, 38, 38, 0.4);
     position: relative;
     top: -3px;
 }
@@ -156,6 +155,25 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	font-size: 30px;
 }
 
+.file-path {
+	color: #FFC1CE;
+}
+
+.file-path:hover, .file-path:focus, .file-path:active {
+	color: #f0f0f0;
+	background-color: #bf5661;
+}
+
+.narrow-list {
+	list-style-type: none;
+	padding-left: 4px;
+	margin-left: 0px;
+}
+
+.narrow-list > text {
+	color: #8c8c8c;
+}
+
 /* UNIQUE */
 
 #file-list-container, #info-window, #editor, #menu-bar {
@@ -169,7 +187,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 #chat-bar {
 	z-index: 40;
 	font-size: 16px;
-	border: 0px;
+	border: 0;
 	padding: 8px;
 	position: absolute;
 }
@@ -191,9 +209,10 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 #file-list {
+	white-space: nowrap;
 	list-style-type: none;
-	padding: 0px;
-	margin: 0px;
+	padding: 0;
+	margin: 0;
 	padding-bottom: 100px;
 	padding-top: 1em;
 }
@@ -202,11 +221,6 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	padding-left: 1em;
 	cursor: hand; cursor: pointer;
 	font-size: 13px;
-}
-
-#file-list > li:hover, #file-list > li:focus, #file-list > li:active {
-	color: #f0f0f0;
-	background-color: #bf5661;
 }
 
 #info-messages {
@@ -229,7 +243,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	float: right;
 	height: 30px;
 	font-size: 16px;
-	border: 0px;
+	border: 0;
 	padding-left: 8px;
 	padding-right: 8px;
 	margin: 8px;
@@ -239,7 +253,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 #editor {
 	top: 50px;
-	right: 0px;
+	right: 0;
 	bottom: 150px;
 	bottom: 20vh;
 	left: 250px;
@@ -247,16 +261,16 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 #menu-bar {
-	top: 0px;
-	right: 0px;
+	top: 0;
+	right: 0;
 	height: 50px;
 	left: 250px;
 	left: 16vw;
 }
 
 #info-window {
-	right: 0px;
-	bottom: 0px;
+	right: 0;
+	bottom: 0;
 }
 
 #chat-bar {
@@ -271,9 +285,9 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 #file-list-container {
-	top: 0px;
-	left: 0px;
-	bottom: 0px;
+	top: 0;
+	left: 0;
+	bottom: 0;
 	width: 250px;
 	width: 16vw;
 }
@@ -295,20 +309,19 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 @media (min-width: 760px) {
 	#editor {
 		right: 25vw; /* 100 - width of info window */
-		bottom: 0px;
-		bottom: 0px;
+		bottom: 0;
 	}
 
 	#info-window {
 		top: 50px;
-		right: 0px;
+		right: 0;
 		bottom: 35px;
 		width: 25vw;
 	}
 
 	#chat-bar, #chat-bar:focus, #chat-bar:active {
-		right: 0px;
-		bottom: 0px;
+		right: 0;
+		bottom: 0;
 		width: 25vw;
 	}
 }

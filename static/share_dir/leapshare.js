@@ -367,10 +367,79 @@ var get_selected_li = function() {
 	return null;
 };
 
+var draw_path_object = function(path_object, parent, selected_id) {
+	var className = "file-path";
+
+	if ( "object" === typeof path_object ) {
+		for ( var prop in path_object ) {
+			if ( path_object.hasOwnProperty(prop) ) {
+				if ( "object" === typeof path_object[prop] ) {
+					var li = document.createElement("li");
+					var text = document.createTextNode(prop);
+					var list = document.createElement("ul");
+					list.className = "narrow-list";
+
+					li.appendChild(text);
+					li.appendChild(list);
+
+					draw_path_object(path_object[prop], list, selected_id);
+					parent.appendChild(li);
+				} else if ( "string" === typeof path_object[prop] ) {
+					var li = document.createElement("li");
+					var text = document.createTextNode(prop);
+
+					li.id = path_object[prop];
+
+					li.onclick = function(ele, id) {
+						return function() {
+							if ( ele.className === className + ' selected' ) {
+								// Nothing
+							} else {
+								var current_ele = get_selected_li();
+								if ( current_ele !== null ) {
+									current_ele.className = className;
+								}
+								ele.className = className + ' selected';
+								join_new_document(id);
+							}
+						};
+					}(li, li.id);
+
+					if ( selected_id === li.id ) {
+						li.className = className + ' selected';
+					} else {
+						li.className = className;
+					}
+					li.appendChild(text);
+
+					parent.appendChild(li);
+				} else {
+					console.error("path object wrong type", typeof path_object[prop]);
+				}
+			}
+		}
+	}
+};
+
 var show_paths = function(paths_list) {
+	var i = 0, l = 0, j = 0, k = 0;
+
 	if ( typeof paths_list !== 'object' ) {
 		console.error("paths list wrong type", typeof paths_list);
 		return
+	}
+
+	var paths_hierarchy = {};
+	for ( i = 0, l = paths_list.length; i < l; i++ ) {
+		var split_path = paths_list[i].split('/');
+		var ptr = paths_hierarchy;
+		for ( j = 0, k = split_path.length - 1; j < k; j++ ) {
+			if ( 'object' !== typeof ptr[split_path[j]] ) {
+				ptr[split_path[j]] = {};
+			}
+			ptr = ptr[split_path[j]];
+		}
+		ptr[split_path[split_path.length - 1]] = paths_list[i];
 	}
 
 	var selected_path = "";
@@ -382,34 +451,7 @@ var show_paths = function(paths_list) {
 	var paths_ele = document.getElementById("file-list");
 	paths_ele.innerHTML = "";
 
-	for ( var i = 0, l = paths_list.length; i < l; i++ ) {
-		var li = document.createElement("li");
-		var text = document.createTextNode(paths_list[i]);
-
-		li.id = paths_list[i];
-
-		li.onclick = function(ele, id) {
-			return function() {
-				if ( ele.className === 'selected' ) {
-					// Nothing
-				} else {
-					var current_ele = get_selected_li();
-					if ( current_ele !== null ) {
-						current_ele.className = '';
-					}
-
-					ele.className = 'selected';
-					join_new_document(id);
-				}
-			};
-		}(li, li.id);
-
-		if ( selected_path === li.id ) {
-			li.className = 'selected';
-		}
-		li.appendChild(text);
-		paths_ele.appendChild(li);
-	}
+	draw_path_object(paths_hierarchy, paths_ele, selected_path);
 };
 
 var AJAX_GET = function(path, onsuccess, onerror) {
@@ -526,7 +568,11 @@ window.onload = function() {
 	var username_bar = document.getElementById("username-bar");
 	username_bar.onkeyup = function() {
 		username = username_bar.value || "anon";
-		docCookies.setItem("username", username_bar.value);
+
+		var expiresDate = new Date();
+		expiresDate.setDate(expiresDate().getDate() + 30);
+
+		docCookies.setItem("username", username_bar.value, expiresDate);
 	};
 	if ( docCookies.hasItem("username") ) {
 		username_bar.value = docCookies.getItem("username");
@@ -545,7 +591,11 @@ window.onload = function() {
 	input_select.value = binding;
 	input_select.onchange = function() {
 		binding = input_select.value;
-		docCookies.setItem("input", binding);
+
+		var expiresDate = new Date();
+		expiresDate.setDate(expiresDate().getDate() + 30);
+
+		docCookies.setItem("input", binding, expiresDate);
 		if ( ace_editor !== null ) {
 			var map = "";
 			if ( binding !== "none" ) {
@@ -567,7 +617,11 @@ window.onload = function() {
 	theme_select.value = theme;
 	theme_select.onchange = function() {
 		theme = theme_select.value;
-		docCookies.setItem("theme", theme);
+
+		var expiresDate = new Date();
+		expiresDate.setDate(expiresDate().getDate() + 30);
+
+		docCookies.setItem("theme", theme, expiresDate);
 		if ( ace_editor !== null ) {
 			ace_editor.setTheme("ace/theme/" + theme);
 		}
