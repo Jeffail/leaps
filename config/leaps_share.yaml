@@ -15,8 +15,6 @@
 # There are three important set up steps:                                      #
 # - Install leaps using the ./install.sh script                                #
 # - Copy this configuration into /etc/leaps/config.yaml                        #
-# - Download the ACE editor files with:                                        #
-#   ( cd /etc/leaps/www/share_dir && ./dl_ace.sh )                             #
 #                                                                              #
 # Then use it like this:                                                       #
 #  ( cd /dir/that/i/want/to/share && leaps )                                   #

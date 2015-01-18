@@ -1,6 +1,11 @@
 <html>
 	<head>
 		<script type="text/javascript" src="/ace/ace.js"></script>
+		<script>
+			if (!window.ace) {
+				document.write('<script src="//cdn.jsdelivr.net/ace/1.1.8/min/ace.js"><\/script>');
+			}
+		</script>
 		<script type="text/javascript" src="/leaps-all-min.js"></script>
 		<script type="text/javascript" src="/leapshare.js"></script>
 		<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
@@ -22,6 +27,10 @@
 			</select>
 			<select class="box white" id="input-select">
 			</select>
+			<div id="tab-input-container" class="white box">
+				<span>Use tabs</span>
+				<input type="checkbox" id="input-use-tabs" checked=true>
+			</div>
 		</div>
 		<div id="editor" class="light-grey">
 		</div>

@@ -173,14 +173,15 @@ var keymaps = {
 	emacs : "Emacs"
 };
 
-var theme = "dawn";
-var binding = "none";
-
 var ace_editor = null;
 var leaps_client = null;
 var username = "anon";
 
 var users = {};
+
+var theme = "dawn";
+var binding = "none";
+var useTabs = true;
 
 var configure_ace_editor = function() {
 	if ( ace_editor === null ) {
@@ -193,6 +194,7 @@ var configure_ace_editor = function() {
 		map = "ace/keyboard/" + binding;
 	}
 	ace_editor.setKeyboardHandler(map);
+	ace_editor.getSession().setUseSoftTabs(!useTabs);
 };
 
 var HSVtoRGB = function(h, s, v) {
@@ -357,10 +359,12 @@ var join_new_document = function(document_id) {
 	leaps_client.connect("ws://" + window.location.host + "/socket");
 };
 
+var fileItemClass = "file-path";
+
 var get_selected_li = function() {
 	var li_eles = document.getElementsByTagName('li');
 	for ( var i = 0, l = li_eles.length; i < l; i++ ) {
-		if ( li_eles[i].className === 'selected' ) {
+		if ( li_eles[i].className === fileItemClass + ' selected' ) {
 			return li_eles[i];
 		}
 	}
@@ -368,18 +372,20 @@ var get_selected_li = function() {
 };
 
 var draw_path_object = function(path_object, parent, selected_id) {
-	var className = "file-path";
-
 	if ( "object" === typeof path_object ) {
 		for ( var prop in path_object ) {
 			if ( path_object.hasOwnProperty(prop) ) {
 				if ( "object" === typeof path_object[prop] ) {
 					var li = document.createElement("li");
 					var text = document.createTextNode(prop);
+					var span = document.createElement("span");
 					var list = document.createElement("ul");
-					list.className = "narrow-list";
 
-					li.appendChild(text);
+					list.className = "narrow-list";
+					span.className = "directory-name";
+
+					span.appendChild(text);
+					li.appendChild(span);
 					li.appendChild(list);
 
 					draw_path_object(path_object[prop], list, selected_id);
@@ -392,23 +398,23 @@ var draw_path_object = function(path_object, parent, selected_id) {
 
 					li.onclick = function(ele, id) {
 						return function() {
-							if ( ele.className === className + ' selected' ) {
+							if ( ele.className === fileItemClass + ' selected' ) {
 								// Nothing
 							} else {
 								var current_ele = get_selected_li();
 								if ( current_ele !== null ) {
-									current_ele.className = className;
+									current_ele.className = fileItemClass;
 								}
-								ele.className = className + ' selected';
+								ele.className = fileItemClass + ' selected';
 								join_new_document(id);
 							}
 						};
 					}(li, li.id);
 
 					if ( selected_id === li.id ) {
-						li.className = className + ' selected';
+						li.className = fileItemClass + ' selected';
 					} else {
-						li.className = className;
+						li.className = fileItemClass;
 					}
 					li.appendChild(text);
 
@@ -551,6 +557,13 @@ var system_message = function(text, style) {
 	container.scrollTop = container.scrollHeight;
 };
 
+var set_cookie_option = function(key, value) {
+	var expiresDate = new Date();
+	expiresDate.setDate(expiresDate.getDate() + 30);
+
+	docCookies.setItem(key, value, expiresDate);
+}
+
 window.onload = function() {
 	get_paths();
 
@@ -565,20 +578,33 @@ window.onload = function() {
 		messages.innerHTML = "";
 	};
 
+	// Username option
 	var username_bar = document.getElementById("username-bar");
-	username_bar.onkeyup = function() {
-		username = username_bar.value || "anon";
-
-		var expiresDate = new Date();
-		expiresDate.setDate(expiresDate().getDate() + 30);
-
-		docCookies.setItem("username", username_bar.value, expiresDate);
-	};
 	if ( docCookies.hasItem("username") ) {
 		username_bar.value = docCookies.getItem("username");
 	}
 	username = username_bar.value || "anon";
+	username_bar.onkeyup = function() {
+		username = username_bar.value || "anon";
+		set_cookie_option("username", username_bar.value);
+	};
 
+	// Use tabs option
+	var input_use_tabs = document.getElementById("input-use-tabs");
+	if ( docCookies.hasItem("useTabs") ) {
+		useTabs = docCookies.getItem("useTabs") === "true";
+	}
+	input_use_tabs.checked = useTabs;
+	input_use_tabs.onchange = function() {
+		useTabs = input_use_tabs.checked;
+
+		set_cookie_option("useTabs", useTabs ? "true" : "false");
+		if ( ace_editor !== null ) {
+			ace_editor.getSession().setUseSoftTabs(!useTabs);
+		}
+	};
+
+	// Key map option
 	var input_select = document.getElementById("input-select");
 	for ( var prop in keymaps ) {
 		if ( keymaps.hasOwnProperty(prop) ) {
@@ -591,11 +617,8 @@ window.onload = function() {
 	input_select.value = binding;
 	input_select.onchange = function() {
 		binding = input_select.value;
+		set_cookie_option("input", binding);
 
-		var expiresDate = new Date();
-		expiresDate.setDate(expiresDate().getDate() + 30);
-
-		docCookies.setItem("input", binding, expiresDate);
 		if ( ace_editor !== null ) {
 			var map = "";
 			if ( binding !== "none" ) {
@@ -605,6 +628,7 @@ window.onload = function() {
 		}
 	};
 
+	// Theme option
 	var theme_select = document.getElementById("theme-select");
 	for ( var prop in themes ) {
 		if ( themes.hasOwnProperty(prop) ) {
@@ -617,16 +641,14 @@ window.onload = function() {
 	theme_select.value = theme;
 	theme_select.onchange = function() {
 		theme = theme_select.value;
+		set_cookie_option("theme", theme);
 
-		var expiresDate = new Date();
-		expiresDate.setDate(expiresDate().getDate() + 30);
-
-		docCookies.setItem("theme", theme, expiresDate);
 		if ( ace_editor !== null ) {
 			ace_editor.setTheme("ace/theme/" + theme);
 		}
 	};
 
+	// Chat bar
 	var chat_bar = document.getElementById("chat-bar");
 	chat_bar.onkeypress = function(e) {
 		if ( typeof e !== 'object' ) {
