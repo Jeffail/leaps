@@ -10,9 +10,9 @@ fi
 userdel leaps
 rm -f /usr/sbin/leaps
 
-echo "Do you wish to keep the /etc/leaps directory? [y]/n"
+echo "Do you wish to keep the /etc/leaps directory? Y/n"
 read answer
 
-if [[ "$answer" != "n" && "$answer" != "N" ]]; then
+if [[ "$answer" == "n" || "$answer" == "N" ]]; then
 	rm -rf /etc/leaps
 fi
