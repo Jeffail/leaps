@@ -293,13 +293,13 @@ var join_new_document = function(document_id) {
 	}
 
 	if ( ace_editor !== null ) {
-		var oldDiv = ace_editor.container
-		var newDiv = oldDiv.cloneNode(false)
+		var oldDiv = ace_editor.container;
+		var newDiv = oldDiv.cloneNode(false);
 
 		ace_editor.destroy();
 		ace_editor = null;
 
-		oldDiv.parentNode.replaceChild(newDiv, oldDiv)
+		oldDiv.parentNode.replaceChild(newDiv, oldDiv);
 	}
 
 	ace_editor = ace.edit("editor");
@@ -371,13 +371,29 @@ var get_selected_li = function() {
 	return null;
 };
 
+var create_path_click = function(ele, id) {
+	return function() {
+		if ( ele.className === fileItemClass + ' selected' ) {
+			// Nothing
+		} else {
+			var current_ele = get_selected_li();
+			if ( current_ele !== null ) {
+				current_ele.className = fileItemClass;
+			}
+			ele.className = fileItemClass + ' selected';
+			join_new_document(id);
+		}
+	};
+};
+
 var draw_path_object = function(path_object, parent, selected_id) {
 	if ( "object" === typeof path_object ) {
 		for ( var prop in path_object ) {
 			if ( path_object.hasOwnProperty(prop) ) {
+				var li = document.createElement("li");
+				var text = document.createTextNode(prop);
+
 				if ( "object" === typeof path_object[prop] ) {
-					var li = document.createElement("li");
-					var text = document.createTextNode(prop);
 					var span = document.createElement("span");
 					var list = document.createElement("ul");
 
@@ -391,25 +407,8 @@ var draw_path_object = function(path_object, parent, selected_id) {
 					draw_path_object(path_object[prop], list, selected_id);
 					parent.appendChild(li);
 				} else if ( "string" === typeof path_object[prop] ) {
-					var li = document.createElement("li");
-					var text = document.createTextNode(prop);
-
 					li.id = path_object[prop];
-
-					li.onclick = function(ele, id) {
-						return function() {
-							if ( ele.className === fileItemClass + ' selected' ) {
-								// Nothing
-							} else {
-								var current_ele = get_selected_li();
-								if ( current_ele !== null ) {
-									current_ele.className = fileItemClass;
-								}
-								ele.className = fileItemClass + ' selected';
-								join_new_document(id);
-							}
-						};
-					}(li, li.id);
+					li.onclick = create_path_click(li, li.id);
 
 					if ( selected_id === li.id ) {
 						li.className = fileItemClass + ' selected';
@@ -432,7 +431,7 @@ var show_paths = function(paths_list) {
 
 	if ( typeof paths_list !== 'object' ) {
 		console.error("paths list wrong type", typeof paths_list);
-		return
+		return;
 	}
 
 	var paths_hierarchy = {};
@@ -562,7 +561,7 @@ var set_cookie_option = function(key, value) {
 	expiresDate.setDate(expiresDate.getDate() + 30);
 
 	docCookies.setItem(key, value, expiresDate);
-}
+};
 
 window.onload = function() {
 	get_paths();
@@ -606,9 +605,9 @@ window.onload = function() {
 
 	// Key map option
 	var input_select = document.getElementById("input-select");
-	for ( var prop in keymaps ) {
-		if ( keymaps.hasOwnProperty(prop) ) {
-			input_select.innerHTML += '<option value="' + prop + '">' + keymaps[prop] + "</option>";
+	for ( var keymap in keymaps ) {
+		if ( keymaps.hasOwnProperty(keymap) ) {
+			input_select.innerHTML += '<option value="' + keymap + '">' + keymaps[keymap] + "</option>";
 		}
 	}
 	if ( docCookies.hasItem("input") ) {
