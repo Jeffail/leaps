@@ -2,15 +2,11 @@
 
 Leaps is a service for hosting collaboratively edited documents using operational transforms to ensure zero-collision synchronization across any number of editing clients.
 
-Learn how to set up your own server: [leaps how-to](https://jeffail.github.io/leaps/)
-
-To read more, check out the wiki: [leaps wiki](https://github.com/Jeffail/leaps/wiki)
-
-Proof of concept code editor: [https://megrim.uk](https://megrim.uk "Megrim"), it's hosted on a potato in my flat in Reading, UK, so go easy on it. Currently supports account based authorization and session token authorization (sharing your documents based on URL).
+To read more and find examples check out the wiki: [leaps wiki](https://github.com/Jeffail/leaps/wiki)
 
 ##How to run
 
-Leaps is a single binary, with no runtime dependencies. Just download a release package for your OS and do the following:
+Leaps is a single binary, with no runtime dependencies, everything is set through a single config file. Just download a release package for your OS and do the following to set up an example:
 
 ```bash
 tar -xvf ./leaps-linux_amd64-v0.1.1.tar.gz
@@ -62,8 +58,6 @@ Then at some point you might want to close it:
 client.close();
 ```
 
-If you bound leaps to a textarea or ace document then the document becomes readonly when the connection is lost/closed.
-
 ##System compatibility
 OS               | Status
 ---------------- | ------
@@ -81,6 +75,9 @@ Dependencies:
 
 - Golang 1.2+
 - [golint](https://github.com/golang/lint "golint")
+
+To build clients:
+
 - nodejs
 - npm (uglifyjs, jshint, nodeunit)
 
@@ -89,15 +86,20 @@ To build and then start up an example server do the following:
 ```bash
 go get github.com/jeffail/leaps
 cd $GOPATH/src/github.com/jeffail/leaps
+
+# To build the binary and client libraries:
 make
 ./bin/leaps -c ./config/leaps_example.yaml
+
+# Or, to build only the service binary:
+go build
 ```
 
 ##Contributing and customizing
 
 Contributions are very welcome, just fork and submit a pull request.
 
-Documentation for the main service library can be found here, for those interested in writing custom servers look at the Curator structure check out the [godocs](https://godoc.org/github.com/Jeffail/leaps/lib).
+Godocs for the service library can be found [here](https://godoc.org/github.com/Jeffail/leaps/lib).
 
 ##Contact
 
