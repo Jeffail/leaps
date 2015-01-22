@@ -1,10 +1,4 @@
-##package lib
+package lib
+===========
 
-Implements resources for creating and maintaining leaps documents, this includes the logic behind operational transforms and asynchronous document operations.
-
-STATUS: INCOMPLETE
-
-TODO:
-
-- Implementation of LeapLocator (curator) that maps a cluster of curators and acts as a network bridge.
-- More document storage solutions
+The core internal functionality behind leaps. Various implementations of DocumentStore and TokenAuthenticator exist to offer different solutions for document access and user authentication.
