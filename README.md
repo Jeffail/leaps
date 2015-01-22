@@ -9,7 +9,7 @@ To read more and find examples check out the wiki: [leaps wiki](https://github.c
 Leaps is a single binary, with no runtime dependencies, everything is set through a single config file. Just download a release package for your OS and do the following to set up an example:
 
 ```bash
-tar -xvf ./leaps-linux_amd64-v0.1.1.tar.gz
+tar -xvf ./leaps-linux_amd64-v0.1.2.tar.gz
 cd leaps
 ./leaps -c ./config/leaps_example.yaml
 ```
