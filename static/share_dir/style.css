@@ -242,7 +242,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	float: left;
 }
 
-#username-bar, #input-select, #theme-select, #tab-input-container {
+#username-bar, #input-select, #theme-select, #tab-input-container, #wrap-input-container {
 	float: right;
 	height: 30px;
 	font-size: 16px;
@@ -252,7 +252,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	margin: 8px;
 }
 
-#tab-input-container > * {
+#tab-input-container > *, #wrap-input-container * {
 	margin: 4px;
 	margin-top: 10px;
 }

@@ -49,7 +49,9 @@ var _create_leaps_ace_marker = function(ace_editor) {
 			var stretch = 4;
 
 			if ( typeof marker.draw_handler === 'function' ) {
-				var content = (marker.draw_handler(cursors[i].user_id, height, top, left) || '') + '';
+				var content = (marker.draw_handler(
+					cursors[i].user_id, height, top, left, screenPos.row, screenPos.column
+				) || '') + '';
 				html.push(content);
 			} else {
 				html.push(
@@ -62,7 +64,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 	};
 
 	marker.redraw = function() {
-	   marker.session._signal("changeFrontMarker");
+		marker.session._signal("changeFrontMarker");
 	};
 
 	marker.updateCursor = function(user) {

@@ -182,6 +182,7 @@ var users = {};
 var theme = "dawn";
 var binding = "none";
 var useTabs = true;
+var wrapLines = true;
 
 var configure_ace_editor = function() {
 	if ( ace_editor === null ) {
@@ -195,6 +196,7 @@ var configure_ace_editor = function() {
 	}
 	ace_editor.setKeyboardHandler(map);
 	ace_editor.getSession().setUseSoftTabs(!useTabs);
+	ace_editor.getSession().setUseWrapMode(wrapLines);
 };
 
 var HSVtoRGB = function(h, s, v) {
@@ -235,10 +237,9 @@ var hash = function(str) {
 	return hash;
 };
 
-var ACE_cursor_handler = function(user_id, lineHeight, top, left) {
-	var height = 40;
-	var width = 3;
+var oob_elements = {};
 
+var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
 	var id_hash = hash(user_id);
 	if ( id_hash < 0 ) {
 		id_hash = id_hash * -1;
@@ -249,41 +250,69 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left) {
 
 	var colorStyle = "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 1)";
 
-	var vis_height = 0;
-	if ( ace_editor !== null ) {
-		vis_height = (ace_editor.getLastVisibleRow() - ace_editor.getFirstVisibleRow()) * lineHeight;
-	}
+	// Needs IE9
+	var editor_bounds = ace_editor.container.getBoundingClientRect();
+
+	var first_vis_row = ace_editor.getFirstVisibleRow();
+	var last_vis_row = ace_editor.getLastVisibleRow();
 
 	var user_tag = user_id;
 	if ( 'string' === typeof users[user_id] ) {
 		user_tag = users[user_id];
 	}
 
-	var positionStyle = "";
-	var nameBar = "";
-	if ( ( top + lineHeight ) < height ) {
-		if ( top < 0 ) {
-			top = 0;
-			colorStyle += "; opacity: 0.5";
-		}
-		positionStyle = "position: absolute; top: " + top + "px; left: " + left + "px;";
-		nameBar = "<div style='position: absolute; top: " + (top + (height - 18) ) +
-			"px; left: " + left + "px; background-color: " + colorStyle +
-			"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_tag + "</div>";
-	} else {
-		if ( top > vis_height ) {
-			top = vis_height - lineHeight;
-			colorStyle += "; opacity: 0.5";
-		}
-		positionStyle = "position: absolute; top: " + ( top - height + lineHeight ) + "px; left: " + left + "px;";
-		nameBar = "<div style='" + positionStyle + " background-color: " + colorStyle +
-			"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_tag + "</div>";
+	var triangle_height = 20;
+	var triangle_opacity = 0.5;
+	var ball_width = 8;
+
+	var height = lineHeight;
+	var extra_height = 6;
+	var width = 2;
+
+	if ( typeof oob_elements[user_id] !== 'undefined' ) {
+		document.body.removeChild(oob_elements[user_id]);
+		oob_elements[user_id] = undefined;
 	}
 
-	var markerLine = "<div style='" + positionStyle + " height: " + height + "px; border-left: " + width +
-		"px solid " + colorStyle + ";'></div>";
+	var create_ptr_ele = function() {
+		var top_ptr_ele = document.createElement('div');
+		top_ptr_ele.style.opacity = 0.7 + '';
+		top_ptr_ele.style.position = 'absolute';
+		top_ptr_ele.style.borderLeft = (triangle_height/2) + 'px solid transparent';
+		top_ptr_ele.style.borderRight = (triangle_height/2) + 'px solid transparent';
+		top_ptr_ele.style.width = '0';
+		top_ptr_ele.style.height = '0';
+		top_ptr_ele.style.zIndex = '99';
 
-	return markerLine + nameBar;
+		return top_ptr_ele;
+	}
+
+	if ( row < first_vis_row ) {
+		var top_ptr_ele = create_ptr_ele();
+		top_ptr_ele.style.top = editor_bounds.top + 'px';
+		top_ptr_ele.style.left = (editor_bounds.left + triangle_height) + 'px';
+		top_ptr_ele.style.borderBottom = triangle_height + 'px solid ' + colorStyle;
+
+		document.body.appendChild(top_ptr_ele);
+		oob_elements[user_id] = top_ptr_ele;
+	}
+	if ( row > last_vis_row ) {
+		var bottom_ptr_ele = create_ptr_ele();
+
+		bottom_ptr_ele.style.top = (editor_bounds.top + editor_bounds.height - triangle_height) + 'px';
+		bottom_ptr_ele.style.left = (editor_bounds.left + triangle_height) + 'px';
+		bottom_ptr_ele.style.borderTop = triangle_height + 'px solid ' + colorStyle;
+
+		document.body.appendChild(bottom_ptr_ele);
+		oob_elements[user_id] = bottom_ptr_ele;
+	}
+	return '<div style="position: absolute; top: ' + (top - extra_height) + 'px; left: ' + left + 'px; color: ' +
+		colorStyle + '; height: ' + (height + extra_height) + 'px; border-left: ' + width + 'px solid ' +
+		colorStyle + '; ">' +
+			'<div style="position: relative; height: ' + ball_width + 'px; width: ' +
+			ball_width + 'px; border-radius: ' + (ball_width/2) + 'px; top: -' + (ball_width) +
+			'px; left: -' + (ball_width/2 + width/2) + 'px; background-color: ' + colorStyle + '"></div>' +
+		'</div>';
 };
 
 var join_new_document = function(document_id) {
@@ -600,6 +629,21 @@ window.onload = function() {
 		set_cookie_option("useTabs", useTabs ? "true" : "false");
 		if ( ace_editor !== null ) {
 			ace_editor.getSession().setUseSoftTabs(!useTabs);
+		}
+	};
+
+	// Wrap lines option
+	var input_wrap_lines = document.getElementById("input-wrap-lines");
+	if ( docCookies.hasItem("wrapLines") ) {
+		wrapLines = docCookies.getItem("wrapLines") === "true";
+	}
+	input_wrap_lines.checked = wrapLines;
+	input_wrap_lines.onchange = function() {
+		wrapLines = input_wrap_lines.checked;
+
+		set_cookie_option("wrapLines", wrapLines ? "true" : "false");
+		if ( ace_editor !== null ) {
+			ace_editor.getSession().setUseWrapMode(wrapLines);
 		}
 	};
 
