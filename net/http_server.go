@@ -146,29 +146,6 @@ func CreateHTTPServer(
  */
 
 /*
-processInitMessage - Process an initial message from a client and, if the format is as expected,
-return a binder that satisfies the request.
-*/
-func (h *HTTPServer) processInitMessage(clientMsg *LeapClientMessage) (lib.BinderPortal, error) {
-	switch clientMsg.Command {
-	case "create":
-		if clientMsg.Document != nil {
-			return h.locator.CreateDocument(clientMsg.Token, clientMsg.UserID, clientMsg.Document)
-		}
-		return lib.BinderPortal{}, errors.New("create request must contain a valid document structure")
-	case "find":
-		if len(clientMsg.DocID) > 0 {
-			h.logger.Infof("Attempting to bind to document: %v\n", clientMsg.DocID)
-			return h.locator.FindDocument(clientMsg.Token, clientMsg.DocID)
-		}
-		return lib.BinderPortal{}, errors.New("find request must contain a valid document ID")
-	case "ping":
-		return lib.BinderPortal{}, nil
-	}
-	return lib.BinderPortal{}, fmt.Errorf("first message must be init, client sent: %v", clientMsg.Command)
-}
-
-/*
 websocketHandler - The method for creating fresh websocket clients.
 */
 func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
@@ -194,25 +171,66 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 
 	h.logger.Infoln("Fresh client connected via websocket")
 
-	var launchCmd LeapClientMessage
-	websocket.JSON.Receive(ws, &launchCmd)
-
-	if binder, err := h.processInitMessage(&launchCmd); err == nil {
-		h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
-
-		websocket.JSON.Send(ws, LeapServerMessage{
-			Type:     "document",
-			Document: binder.Document,
-			Version:  &binder.Version,
-		})
-		socketRouter := NewWebsocketServer(h.config.Binder, ws, binder, h.closeChan, h.logger, h.stats)
-		socketRouter.Launch()
-	} else {
+	handleInitError := func(err error) {
 		h.logger.Infof("Client failed to init: %v\n", err)
 		websocket.JSON.Send(ws, LeapServerMessage{
 			Type:  "error",
 			Error: fmt.Sprintf("socket initialization failed: %v", err),
 		})
+	}
+
+	for {
+		var clientMsg LeapClientMessage
+		websocket.JSON.Receive(ws, &clientMsg)
+
+		switch clientMsg.Command {
+		case "create":
+			if clientMsg.Document == nil {
+				handleInitError(errors.New("create request must contain a valid document structure"))
+				return
+			}
+			h.logger.Infoln("Attempting to create document")
+			if binder, err := h.locator.CreateDocument(
+				clientMsg.Token, clientMsg.UserID, clientMsg.Document); err == nil {
+				h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
+
+				websocket.JSON.Send(ws, LeapServerMessage{
+					Type:     "document",
+					Document: binder.Document,
+					Version:  &binder.Version,
+				})
+				socketRouter := NewWebsocketServer(h.config.Binder, ws, binder, h.closeChan, h.logger, h.stats)
+				socketRouter.Launch()
+			} else {
+				handleInitError(err)
+			}
+			return
+		case "find":
+			if len(clientMsg.DocID) <= 0 {
+				handleInitError(errors.New("find request must contain a valid document ID"))
+				return
+			}
+			h.logger.Infof("Attempting to bind to document: %v\n", clientMsg.DocID)
+			if binder, err := h.locator.FindDocument(clientMsg.Token, clientMsg.DocID); err == nil {
+				h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
+
+				websocket.JSON.Send(ws, LeapServerMessage{
+					Type:     "document",
+					Document: binder.Document,
+					Version:  &binder.Version,
+				})
+				socketRouter := NewWebsocketServer(h.config.Binder, ws, binder, h.closeChan, h.logger, h.stats)
+				socketRouter.Launch()
+			} else {
+				handleInitError(err)
+			}
+			return
+		case "ping":
+			// Ignore
+		default:
+			handleInitError(fmt.Errorf("first message must be init, client sent: %v", clientMsg.Command))
+			return
+		}
 	}
 }
 

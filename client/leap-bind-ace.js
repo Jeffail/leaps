@@ -33,9 +33,13 @@ var _create_leaps_ace_marker = function(ace_editor) {
 	var marker = {};
 
 	marker.draw_handler = null;
+	marker.clear_handler = null;
 	marker.cursors = [];
 
 	marker.update = function(html, markerLayer, session, config) {
+		if ( typeof marker.clear_handler === 'function' ) {
+			marker.clear_handler();
+		}
 		var cursors = marker.cursors;
 		for (var i = 0; i < cursors.length; i++) {
 			var pos = cursors[i].position;
@@ -175,18 +179,23 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		binder._marker.updateCursor.apply(binder._marker, [ user ]);
 	});
 
-	this._leap_client.ACE_set_cursor_handler = function(handler) {
-		binder.set_cursor_handler(handler);
+	this._leap_client.ACE_set_cursor_handler = function(handler, clear_handler) {
+		binder.set_cursor_handler(handler, clear_handler);
 	};
 };
 
-/* set_cursor_handler, sets the method call that returns a cursor marker.
+/* set_cursor_handler, sets the method call that returns a cursor marker. Also adds an optional
+ * clear_handler which is called before each individual cursor is drawn (use it to clear all outside
+ * markers before redrawing).
  */
-leap_bind_ace_editor.prototype.set_cursor_handler = function(handler) {
+leap_bind_ace_editor.prototype.set_cursor_handler = function(handler, clear_handler) {
 	"use strict";
 
 	if ( 'function' === typeof handler ) {
 		this._marker.draw_handler = handler;
+	}
+	if ( 'function' === typeof clear_handler ) {
+		this._marker.clear_handler = clear_handler;
 	}
 };
 

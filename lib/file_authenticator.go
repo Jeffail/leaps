@@ -147,7 +147,7 @@ func NewFileAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *
 		mutex:  &sync.RWMutex{},
 	}
 	if len(config.FileConfig.Path) > 0 {
-		logger.Infof("Serving file search API at path: %v\n", config.FileConfig.Path)
+		fa.logger.Infof("Serving file search API at path: %v\n", config.FileConfig.Path)
 		http.HandleFunc(config.FileConfig.Path, fa.servePaths)
 	}
 	go fa.loop()
