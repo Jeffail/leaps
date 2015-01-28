@@ -276,6 +276,8 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
 	var extra_height = 6;
 	var width = 2;
 
+	var tag_height = 30;
+
 	var create_ptr_ele = function() {
 		var top_ptr_ele = document.createElement('div');
 		top_ptr_ele.style.opacity = 0.7 + '';
@@ -285,7 +287,7 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
 		top_ptr_ele.style.zIndex = '99';
 
 		return top_ptr_ele;
-	}
+	};
 	if ( top < 0 ) {
 		var top_ptr_ele = create_ptr_ele();
 		top_ptr_ele.style.top = editor_bounds.top + 'px';
@@ -307,19 +309,21 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
 		document.body.appendChild(bottom_ptr_ele);
 		oob_elements.push(bottom_ptr_ele);
 	}
-	var left_ptr_obj = '<div style="' +
-		'position: absolute; ' +
-		'width: 0; height: 0; z-index: 99; ' +
-		'top: ' + top + 'px; ' +
-		'left: 0; border-top: ' + (triangle_height/2) + 'px solid transparent; ' +
-		'border-left: ' + (triangle_height/3) + 'px solid ' + colorStyle + '; ' +
-		'border-bottom: ' + (triangle_height/2) + 'px solid transparent; ' +
-		'opacity: 0.7; ' +
-		'"></div>';
-
-	var tag_obj = '<div class="name-tag" style="z-index: 99; color:#f0f0f0; ' +
-		'position: absolute; top: ' + (top - extra_height - ball_width) + 'px; left: ' + left + 'px; ' +
-		'background-color:' + colorStyle + ';">' + user_tag + '</div>';
+	var left_ptr_obj = '';
+	if ( left > editor_bounds.width ) {
+		left_ptr_obj = '<div style="' +
+			'position: absolute; ' +
+			'width: 0; height: 0; z-index: 99; ' +
+			'top: ' + top + 'px; ' +
+			'left: 0; border-top: ' + (triangle_height/2) + 'px solid transparent; ' +
+			'border-left: ' + (triangle_height/3) + 'px solid ' + colorStyle + '; ' +
+			'border-bottom: ' + (triangle_height/2) + 'px solid transparent; ' +
+			'opacity: 0.7; ' +
+			'"></div>';
+	}
+	var tag_obj = '<div style="background-color: ' + colorStyle +
+		'; opacity: 0.5; z-index: 99; position: absolute; top: ' + (top - tag_height) + 'px; padding: 2px; left: ' +
+		(left + ball_width) + 'px; color: #f0f0f0;">' + user_tag + '</div>';
 
 	return left_ptr_obj + tag_obj +
 		'<div style="position: absolute; top: ' + (top - extra_height) + 'px; left: ' + left + 'px; color: ' +
