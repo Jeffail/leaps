@@ -90,7 +90,7 @@ multiplat: build
 package_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" armspec="$${plat\#*/}" \
 		GOOS="$${plat%/*/*}" GOARCH="$${armspec%/*}" GOARM="$${armspec\#*/}"; \
-		p_stamp="$${GOOS}_$${GOARCH}$${GOARM}" a_name="$(PROJECT)-$${p_stamp}-$(VERSION)"; \
+		p_stamp="$${GOOS}_$${GOARCH}$${GOARM}" a_name="$(PROJECT)-$${p_stamp}"; \
 		echo "archiving $${a_name}"; \
 		mkdir -p "./releases/$(VERSION)"; \
 		cp -LR "$(BIN)/$${p_stamp}" "./releases/$(VERSION)/$(PROJECT)"; \
