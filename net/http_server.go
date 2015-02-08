@@ -36,6 +36,26 @@ import (
  */
 
 /*
+SSLConfig - Options for setting an SSL certificate
+*/
+type SSLConfig struct {
+	Enabled         bool   `json:"enabled" yaml:"enabled"`
+	CertificatePath string `json:"certificate_path" yaml:"certificate_path"`
+	PrivateKeyPath  string `json:"private_key_path" yaml:"private_key_path"`
+}
+
+/*
+NewSSLConfig - Creates a new SSLConfig object with default values
+*/
+func NewSSLConfig() SSLConfig {
+	return SSLConfig{
+		Enabled:         false,
+		CertificatePath: "",
+		PrivateKeyPath:  "",
+	}
+}
+
+/*
 HTTPBinderConfig - Options for individual binders (one for each socket connection)
 */
 type HTTPBinderConfig struct {
@@ -46,11 +66,13 @@ type HTTPBinderConfig struct {
 HTTPServerConfig - Holds configuration options for the HTTPServer.
 */
 type HTTPServerConfig struct {
-	StaticPath     string           `json:"static_path" yaml:"static_path"`
-	Path           string           `json:"socket_path" yaml:"socket_path"`
-	Address        string           `json:"address" yaml:"address"`
-	StaticFilePath string           `json:"www_dir" yaml:"www_dir"`
-	Binder         HTTPBinderConfig `json:"binder" yaml:"binder"`
+	StaticPath     string               `json:"static_path" yaml:"static_path"`
+	Path           string               `json:"socket_path" yaml:"socket_path"`
+	Address        string               `json:"address" yaml:"address"`
+	StaticFilePath string               `json:"www_dir" yaml:"www_dir"`
+	Binder         HTTPBinderConfig     `json:"binder" yaml:"binder"`
+	SSL            SSLConfig            `json:"ssl" yaml:"ssl"`
+	HTTPAuth       AuthMiddlewareConfig `json:"basic_auth" yaml:"basic_auth"`
 }
 
 /*
@@ -66,6 +88,8 @@ func DefaultHTTPServerConfig() HTTPServerConfig {
 		Binder: HTTPBinderConfig{
 			BindSendTimeout: 10,
 		},
+		SSL:      NewSSLConfig(),
+		HTTPAuth: NewAuthMiddlewareConfig(),
 	}
 }
 
@@ -106,6 +130,7 @@ type HTTPServer struct {
 	config    HTTPServerConfig
 	logger    *log.Logger
 	stats     *log.Stats
+	auth      *AuthMiddleware
 	locator   LeapLocator
 	closeChan chan bool
 }
@@ -119,25 +144,33 @@ func CreateHTTPServer(
 	logger *log.Logger,
 	stats *log.Stats,
 ) (*HTTPServer, error) {
-
+	auth, err := NewAuthMiddleware(config.HTTPAuth, logger, stats)
+	if err != nil {
+		return nil, err
+	}
 	httpServer := HTTPServer{
 		config:    config,
 		locator:   locator,
 		logger:    logger.NewModule("[http]"),
 		stats:     stats,
+		auth:      auth,
 		closeChan: make(chan bool),
 	}
 	if len(httpServer.config.Path) == 0 {
 		return nil, errors.New("invalid config value for socket path")
 	}
-	http.Handle(httpServer.config.Path, websocket.Handler(httpServer.websocketHandler))
+	http.Handle(
+		httpServer.config.Path,
+		httpServer.auth.WrapWSHandler(websocket.Handler(httpServer.websocketHandler)),
+	)
 	if len(httpServer.config.StaticFilePath) > 0 {
 		if len(httpServer.config.StaticPath) == 0 {
 			return nil, errors.New("invalid config value for static path")
 		}
 		http.Handle(httpServer.config.StaticPath,
-			http.StripPrefix(httpServer.config.StaticPath,
-				http.FileServer(http.Dir(httpServer.config.StaticFilePath))))
+			httpServer.auth.WrapHandler( // Auth wrap
+				http.StripPrefix(httpServer.config.StaticPath, // File strip prefix wrap
+					http.FileServer(http.Dir(httpServer.config.StaticFilePath))))) // File serve handler
 	}
 	return &httpServer, nil
 }
@@ -191,12 +224,12 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 			}
 			h.logger.Infoln("Attempting to create document")
 			if binder, err := h.locator.CreateDocument(
-				clientMsg.Token, clientMsg.UserID, clientMsg.Document); err == nil {
+				clientMsg.Token, clientMsg.UserID, *clientMsg.Document); err == nil {
 				h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
 
 				websocket.JSON.Send(ws, LeapServerMessage{
 					Type:     "document",
-					Document: binder.Document,
+					Document: &binder.Document,
 					Version:  &binder.Version,
 				})
 				socketRouter := NewWebsocketServer(h.config.Binder, ws, binder, h.closeChan, h.logger, h.stats)
@@ -216,7 +249,7 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 
 				websocket.JSON.Send(ws, LeapServerMessage{
 					Type:     "document",
-					Document: binder.Document,
+					Document: &binder.Document,
 					Version:  &binder.Version,
 				})
 				socketRouter := NewWebsocketServer(h.config.Binder, ws, binder, h.closeChan, h.logger, h.stats)
@@ -242,11 +275,24 @@ func (h *HTTPServer) Listen() error {
 	if len(h.config.Address) == 0 {
 		return errors.New("invalid config value for URL.Address")
 	}
+	if h.config.SSL.Enabled && (len(h.config.SSL.CertificatePath) == 0 || len(h.config.SSL.PrivateKeyPath) == 0) {
+		return errors.New("SSL requires both a certificate path and private key path")
+	}
 	h.logger.Infof("Listening for websockets at address: %v%v\n", h.config.Address, h.config.Path)
 	if len(h.config.StaticPath) > 0 {
 		h.logger.Infof("Serving static file requests at address: %v%v\n", h.config.Address, h.config.StaticPath)
 	}
-	err := http.ListenAndServe(h.config.Address, nil)
+	var err error
+	if h.config.SSL.Enabled {
+		err = http.ListenAndServeTLS(
+			h.config.Address,
+			h.config.SSL.CertificatePath,
+			h.config.SSL.PrivateKeyPath,
+			nil,
+		)
+	} else {
+		err = http.ListenAndServe(h.config.Address, nil)
+	}
 	return err
 }
 

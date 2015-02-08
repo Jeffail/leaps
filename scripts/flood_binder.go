@@ -28,7 +28,7 @@ func main() {
 	binderConfig := lib.DefaultBinderConfig()
 	binderConfig.RetentionPeriod = 1
 
-	if err := store.Create(doc.ID, doc); err != nil {
+	if err := store.Create(doc.ID, *doc); err != nil {
 		fmt.Printf("error: %v\n", err)
 		return
 	}

@@ -39,7 +39,7 @@ type LeapLocator interface {
 	FindDocument(string, string) (lib.BinderPortal, error)
 
 	// CreateDocument - Create and return a binder portal to a new document
-	CreateDocument(string, string, *lib.Document) (lib.BinderPortal, error)
+	CreateDocument(string, string, lib.Document) (lib.BinderPortal, error)
 
 	// Close - Close the LeapLocator
 	Close()

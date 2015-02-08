@@ -405,7 +405,8 @@ var join_new_document = function(document_id) {
 
 	leaps_client.ACE_set_cursor_handler(ACE_cursor_handler, ACE_cursor_clear_handler);
 
-	leaps_client.connect("ws://" + window.location.host + "/socket");
+	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
+	leaps_client.connect(protocol + "//" + window.location.host + "/socket");
 };
 
 var fileItemClass = "file-path";

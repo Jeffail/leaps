@@ -61,9 +61,9 @@ order to accommodate for multiple storage strategies. These methods should be as
 possible.
 */
 type DocumentStore interface {
-	Create(string, *Document) error
-	Store(string, *Document) error
-	Fetch(string) (*Document, error)
+	Create(string, Document) error
+	Store(string, Document) error
+	Fetch(string) (Document, error)
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -94,21 +94,21 @@ MemoryStore - Most basic implementation of DocumentStore, simply keeps the docum
 zero persistence across sessions.
 */
 type MemoryStore struct {
-	documents map[string]*Document
+	documents map[string]Document
 	mutex     sync.RWMutex
 }
 
 /*
 Create - Store document in memory.
 */
-func (s *MemoryStore) Create(id string, doc *Document) error {
+func (s *MemoryStore) Create(id string, doc Document) error {
 	return s.Store(id, doc)
 }
 
 /*
 Store - Store document in memory.
 */
-func (s *MemoryStore) Store(id string, doc *Document) error {
+func (s *MemoryStore) Store(id string, doc Document) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -119,13 +119,13 @@ func (s *MemoryStore) Store(id string, doc *Document) error {
 /*
 Fetch - Fetch document from memory.
 */
-func (s *MemoryStore) Fetch(id string) (*Document, error) {
+func (s *MemoryStore) Fetch(id string) (Document, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
 	doc, ok := s.documents[id]
 	if !ok {
-		return nil, errors.New("attempting to fetch memory store that has not been initialized")
+		return doc, errors.New("attempting to fetch memory store that has not been initialized")
 	}
 	return doc, nil
 }
@@ -135,7 +135,7 @@ GetMemoryStore - Just a func that returns a MemoryStore
 */
 func GetMemoryStore(config DocumentStoreConfig) (DocumentStore, error) {
 	return &MemoryStore{
-		documents: make(map[string]*Document),
+		documents: make(map[string]Document),
 	}, nil
 }
 
@@ -148,9 +148,9 @@ document has the ID of the config value 'Name'.
 */
 func GetMockStore(config DocumentStoreConfig) (DocumentStore, error) {
 	memStore := &MemoryStore{
-		documents: make(map[string]*Document),
+		documents: make(map[string]Document),
 	}
-	memStore.documents[config.Name] = &Document{
+	memStore.documents[config.Name] = Document{
 		ID:      config.Name,
 		Content: "Open this page multiple times to see the edits appear in all of them.",
 	}

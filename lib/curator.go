@@ -210,7 +210,7 @@ CreateDocument - Creates a fresh Binder for a new document, which is subsequentl
 error if either the document ID is already currently in use, or if there is a problem storing the
 new document. May require authentication, if so a userID is supplied.
 */
-func (c *Curator) CreateDocument(token string, userID string, doc *Document) (BinderPortal, error) {
+func (c *Curator) CreateDocument(token string, userID string, doc Document) (BinderPortal, error) {
 	c.log.Debugf("Creating new document with token %v\n", token)
 
 	if !c.authenticator.AuthoriseCreate(token, userID) {

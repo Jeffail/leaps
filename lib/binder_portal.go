@@ -71,7 +71,7 @@ client.
 */
 type BinderPortal struct {
 	Token            string
-	Document         *Document
+	Document         Document
 	Version          int
 	Error            error
 	TransformRcvChan <-chan OTransform

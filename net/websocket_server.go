@@ -109,7 +109,7 @@ func (w *WebsocketServer) Launch() {
 	bindTOut := time.Duration(w.config.BindSendTimeout) * time.Millisecond
 
 	// TODO: Preserve reference of doc ID?
-	w.binder.Document = nil
+	w.binder.Document = lib.Document{}
 
 	defer func() {
 		w.binder.Exit(bindTOut)

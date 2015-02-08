@@ -340,15 +340,16 @@ func (b *Binder) processMessage(request MessageSubmission) {
 flush - Obtain latest document content, flush current changes to document, and store the updated
 version.
 */
-func (b *Binder) flush() (*Document, error) {
-	var errStore, errFlush error
-	var changed bool
-	var doc *Document
-
+func (b *Binder) flush() (Document, error) {
+	var (
+		errStore, errFlush error
+		changed            bool
+		doc                Document
+	)
 	doc, errStore = b.block.Fetch(b.ID)
 	if errStore != nil {
 		b.stats.Incr("binder.block_fetch.error", 1)
-		return nil, errStore
+		return doc, errStore
 	}
 	changed, errFlush = b.model.FlushTransforms(&doc.Content, b.config.RetentionPeriod)
 	if changed {
@@ -356,7 +357,7 @@ func (b *Binder) flush() (*Document, error) {
 	}
 	if errStore != nil || errFlush != nil {
 		b.stats.Incr("binder.flush.error", 1)
-		return nil, fmt.Errorf("%v, %v", errFlush, errStore)
+		return doc, fmt.Errorf("%v, %v", errFlush, errStore)
 	}
 	if changed {
 		b.stats.Incr("binder.flush.success", 1)

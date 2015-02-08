@@ -90,7 +90,7 @@ type SQLStore struct {
 /*
 Create - Create a new document in a database table.
 */
-func (m *SQLStore) Create(id string, doc *Document) error {
+func (m *SQLStore) Create(id string, doc Document) error {
 	_, err := m.createStmt.Exec(id, doc.Content)
 	return err
 }
@@ -98,7 +98,7 @@ func (m *SQLStore) Create(id string, doc *Document) error {
 /*
 Store - Store document in a database table.
 */
-func (m *SQLStore) Store(id string, doc *Document) error {
+func (m *SQLStore) Store(id string, doc Document) error {
 	_, err := m.updateStmt.Exec(doc.Content, id)
 	return err
 }
@@ -106,7 +106,7 @@ func (m *SQLStore) Store(id string, doc *Document) error {
 /*
 Fetch - Fetch document from a database table.
 */
-func (m *SQLStore) Fetch(id string) (*Document, error) {
+func (m *SQLStore) Fetch(id string) (Document, error) {
 	var document Document
 	document.ID = id
 
@@ -114,27 +114,26 @@ func (m *SQLStore) Fetch(id string) (*Document, error) {
 
 	switch {
 	case err == sql.ErrNoRows:
-		return nil, errors.New("document ID was not found in table")
+		return Document{}, errors.New("document ID was not found in table")
 	case err != nil:
-		return nil, err
+		return Document{}, err
 	}
-
-	return &document, nil
+	return document, nil
 }
 
 /*
 GetSQLStore - Just a func that returns an SQLStore
 */
 func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
-	var db *sql.DB
-	var createStr, updateStr, readStr string
-	var create, update, read *sql.Stmt
-	var err error
-
+	var (
+		db                            *sql.DB
+		createStr, updateStr, readStr string
+		create, update, read          *sql.Stmt
+		err                           error
+	)
 	if len(config.SQLConfig.DSN) == 0 {
 		return nil, fmt.Errorf("attempted to connect to %v database without a valid DSN", config.Type)
 	}
-
 	db, err = sql.Open(config.Type, config.SQLConfig.DSN)
 	if err != nil {
 		return nil, err

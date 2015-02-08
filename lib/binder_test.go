@@ -50,8 +50,8 @@ func TestGracefullShutdown(t *testing.T) {
 	logger, stats := getLoggerAndStats()
 	doc, _ := NewDocument("hello world")
 
-	store := MemoryStore{documents: map[string]*Document{
-		"KILL_ME": doc,
+	store := MemoryStore{documents: map[string]Document{
+		"KILL_ME": *doc,
 	}}
 
 	binder, err := NewBinder("KILL_ME", &store, DefaultBinderConfig(), errChan, logger, stats)
@@ -75,7 +75,7 @@ func TestUpdates(t *testing.T) {
 
 	binder, err := NewBinder(
 		doc.ID,
-		&MemoryStore{documents: map[string]*Document{doc.ID: doc}},
+		&MemoryStore{documents: map[string]Document{doc.ID: *doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -117,7 +117,7 @@ func TestNewBinder(t *testing.T) {
 
 	binder, err := NewBinder(
 		doc.ID,
-		&MemoryStore{documents: map[string]*Document{doc.ID: doc}},
+		&MemoryStore{documents: map[string]Document{doc.ID: *doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -209,7 +209,7 @@ func TestClients(t *testing.T) {
 
 	binder, err := NewBinder(
 		doc.ID,
-		&MemoryStore{documents: map[string]*Document{doc.ID: doc}},
+		&MemoryStore{documents: map[string]Document{doc.ID: *doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -332,7 +332,7 @@ func TestBinderStories(t *testing.T) {
 
 		binder, err := NewBinder(
 			doc.ID,
-			&MemoryStore{documents: map[string]*Document{doc.ID: doc}},
+			&MemoryStore{documents: map[string]Document{doc.ID: *doc}},
 			config,
 			errChan,
 			logger,

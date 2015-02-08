@@ -48,14 +48,14 @@ type FileStore struct {
 /*
 Create - Store document in a file location
 */
-func (s *FileStore) Create(id string, doc *Document) error {
+func (s *FileStore) Create(id string, doc Document) error {
 	return s.Store(id, doc)
 }
 
 /*
 Store - Store document in its file location.
 */
-func (s *FileStore) Store(id string, doc *Document) error {
+func (s *FileStore) Store(id string, doc Document) error {
 	filePath := path.Join(s.config.StoreDirectory, id)
 	fileDir := path.Dir(filePath)
 
@@ -70,12 +70,12 @@ func (s *FileStore) Store(id string, doc *Document) error {
 /*
 Fetch - Fetch document from its file location.
 */
-func (s *FileStore) Fetch(id string) (*Document, error) {
+func (s *FileStore) Fetch(id string) (Document, error) {
 	bytes, err := ioutil.ReadFile(path.Join(s.config.StoreDirectory, id))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read content from document file: %v", err)
+		return Document{}, fmt.Errorf("failed to read content from document file: %v", err)
 	}
-	return &Document{
+	return Document{
 		Content: string(bytes),
 		ID:      id,
 	}, nil
