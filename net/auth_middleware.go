@@ -45,7 +45,7 @@ AuthMiddlewareConfig - Holds configuration options for the AuthMiddleware
 */
 type AuthMiddlewareConfig struct {
 	Enabled        bool   `json:"enabled" yaml:"enabled"`
-	PasswdFilePath string `json:"htaccess_path" yaml:"htaccess_path"`
+	PasswdFilePath string `json:"htpasswd_path" yaml:"htpasswd_path"`
 }
 
 /*
@@ -88,10 +88,10 @@ func NewAuthMiddleware(
 	}
 	if config.Enabled {
 		if 0 == len(config.PasswdFilePath) {
-			return nil, errors.New("HTTP Auth requires a htaccess file path in the configuration")
+			return nil, errors.New("HTTP Auth requires a htpasswd file path in the configuration")
 		}
 		if err := auth.accountsFromFile(config.PasswdFilePath); err != nil {
-			return nil, fmt.Errorf("htaccess file read error: %v", err)
+			return nil, fmt.Errorf("htpasswd file read error: %v", err)
 		}
 	}
 	return &auth, nil
@@ -163,7 +163,7 @@ func (a *AuthMiddleware) requestAuth(w http.ResponseWriter, r *http.Request) {
  */
 
 /*
-accountsFromFile - Extract a map of username and password hashes from a htaccess file. MD5 hashes
+accountsFromFile - Extract a map of username and password hashes from a htpasswd file. MD5 hashes
 are not supported, use SHA1 instead.
 */
 func (a *AuthMiddleware) accountsFromFile(path string) error {
