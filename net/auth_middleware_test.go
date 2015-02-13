@@ -82,7 +82,7 @@ func (t *TestResponseWriter) WriteHeader(header int) {
 	t.status = header
 }
 
-var TestHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
+var TestHandler = func(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write([]byte("authenticated"))
 }

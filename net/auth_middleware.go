@@ -32,7 +32,7 @@ import (
 	"os"
 	"strings"
 
-	"code.google.com/p/go.net/websocket"
+	"golang.org/x/net/websocket"
 
 	"github.com/jeffail/util/log"
 )

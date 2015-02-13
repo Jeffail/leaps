@@ -26,9 +26,9 @@ import (
 	"fmt"
 	"time"
 
-	"code.google.com/p/go.net/websocket"
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/util/log"
+	"golang.org/x/net/websocket"
 )
 
 /*--------------------------------------------------------------------------------------------------
