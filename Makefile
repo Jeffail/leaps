@@ -41,6 +41,7 @@ build: check
 	@mkdir -p $(JS_BIN)
 	@echo "building $(BIN)/$(PROJECT)"
 	@go build -o $(BIN)/$(PROJECT) $(GOFLAGS)
+	@cp $(BIN)/$(PROJECT) $$GOPATH/bin
 	@echo "copying/compressing js libraries into $(JS_BIN)"
 	@cp $(JS_CLIENT) $(JS_BIN)/leaps.js; \
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-min.js"; \

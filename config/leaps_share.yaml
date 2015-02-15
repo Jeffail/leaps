@@ -26,15 +26,14 @@ logger:
 stats:
   prefix: leaps
   retain_internal: true
-curator:
-  storage:
-    type: file
-    store_directory: .
-  authenticator:
-    type: file
-    file_config:
-      share_path: .
-      path: /files
+storage:
+  type: file
+  store_directory: .
+authenticator:
+  type: file
+  file_config:
+    share_path: .
+    path: /files
 http_server:
   static_path: /
   socket_path: /socket

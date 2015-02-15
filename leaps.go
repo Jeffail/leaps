@@ -44,12 +44,14 @@ components, which determine the role of this leaps instance. Currently a stand a
 the only supported role.
 */
 type LeapsConfig struct {
-	NumProcesses      int                   `json:"num_processes" yaml:"num_processes"`
-	LoggerConfig      log.LoggerConfig      `json:"logger" yaml:"logger"`
-	StatsConfig       log.StatsConfig       `json:"stats" yaml:"stats"`
-	CuratorConfig     lib.CuratorConfig     `json:"curator" yaml:"curator"`
-	HTTPServerConfig  net.HTTPServerConfig  `json:"http_server" yaml:"http_server"`
-	StatsServerConfig log.StatsServerConfig `json:"stats_server" yaml:"stats_server"`
+	NumProcesses        int                          `json:"num_processes" yaml:"num_processes"`
+	LoggerConfig        log.LoggerConfig             `json:"logger" yaml:"logger"`
+	StatsConfig         log.StatsConfig              `json:"stats" yaml:"stats"`
+	StoreConfig         lib.DocumentStoreConfig      `json:"storage" yaml:"storage"`
+	AuthenticatorConfig lib.TokenAuthenticatorConfig `json:"authenticator" yaml:"authenticator"`
+	CuratorConfig       lib.CuratorConfig            `json:"curator" yaml:"curator"`
+	HTTPServerConfig    net.HTTPServerConfig         `json:"http_server" yaml:"http_server"`
+	StatsServerConfig   log.StatsServerConfig        `json:"stats_server" yaml:"stats_server"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -63,12 +65,14 @@ func main() {
 	)
 
 	leapsConfig := LeapsConfig{
-		NumProcesses:      runtime.NumCPU(),
-		LoggerConfig:      log.DefaultLoggerConfig(),
-		StatsConfig:       log.DefaultStatsConfig(),
-		CuratorConfig:     lib.DefaultCuratorConfig(),
-		HTTPServerConfig:  net.DefaultHTTPServerConfig(),
-		StatsServerConfig: log.DefaultStatsServerConfig(),
+		NumProcesses:        runtime.NumCPU(),
+		LoggerConfig:        log.DefaultLoggerConfig(),
+		StatsConfig:         log.DefaultStatsConfig(),
+		StoreConfig:         lib.DefaultDocumentStoreConfig(),
+		AuthenticatorConfig: lib.DefaultTokenAuthenticatorConfig(),
+		CuratorConfig:       lib.DefaultCuratorConfig(),
+		HTTPServerConfig:    net.DefaultHTTPServerConfig(),
+		StatsServerConfig:   log.DefaultStatsServerConfig(),
 	}
 
 	// A list of default config paths to check for if not explicitly defined
@@ -93,7 +97,17 @@ func main() {
 
 	fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
 
-	curator, err = lib.NewCurator(leapsConfig.CuratorConfig, logger, stats)
+	documentStore, err := lib.DocumentStoreFactory(leapsConfig.StoreConfig)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Document store error: %v\n", err))
+		return
+	}
+	authenticator, err := lib.TokenAuthenticatorFactory(leapsConfig.AuthenticatorConfig, logger)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Authenticator error: %v\n", err))
+		return
+	}
+	curator, err = lib.NewCurator(leapsConfig.CuratorConfig, logger, stats, authenticator, documentStore)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
 		return

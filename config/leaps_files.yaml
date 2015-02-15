@@ -2,10 +2,13 @@ logger:
   prefix: '[leaps]'
 stats:
   prefix: leaps
+storage:
+  type: file
+  store_directory: ./
+authenticator:
+  type: none
+  allow_creation: true
 curator:
-  storage:
-    type: file
-    store_directory: ./
   binder:
     flush_period_ms: 10000
     retention_period_s: 60
@@ -14,9 +17,6 @@ curator:
     transform_model:
       max_document_size: 50000000
       max_transform_length: 50000
-  authenticator:
-    type: none
-    allow_creation: true
 http_server:
   static_path: /
   socket_path: /socket

@@ -42,10 +42,17 @@ func loggerAndStats() (*log.Logger, *log.Stats) {
 	return logger, stats
 }
 
+func authAndStore(logger *log.Logger) (TokenAuthenticator, DocumentStore) {
+	store, _ := DocumentStoreFactory(DefaultDocumentStoreConfig())
+	auth, _ := TokenAuthenticatorFactory(DefaultTokenAuthenticatorConfig(), logger)
+	return auth, store
+}
+
 func TestNewCurator(t *testing.T) {
 	log, stats := loggerAndStats()
+	auth, store := authAndStore(log)
 
-	cur, err := NewCurator(DefaultCuratorConfig(), log, stats)
+	cur, err := NewCurator(DefaultCuratorConfig(), log, stats, auth, store)
 	if err != nil {
 		t.Errorf("Create curator error: %v", err)
 		return
@@ -56,11 +63,12 @@ func TestNewCurator(t *testing.T) {
 
 func TestCuratorClients(t *testing.T) {
 	log, stats := loggerAndStats()
+	auth, store := authAndStore(log)
 
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000
 
-	curator, err := NewCurator(DefaultCuratorConfig(), log, stats)
+	curator, err := NewCurator(DefaultCuratorConfig(), log, stats, auth, store)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return

@@ -37,9 +37,7 @@ import (
 CuratorConfig - Holds configuration options for a curator.
 */
 type CuratorConfig struct {
-	StoreConfig         DocumentStoreConfig      `json:"storage" yaml:"storage"`
-	BinderConfig        BinderConfig             `json:"binder" yaml:"binder"`
-	AuthenticatorConfig TokenAuthenticatorConfig `json:"authenticator" yaml:"authenticator"`
+	BinderConfig BinderConfig `json:"binder" yaml:"binder"`
 }
 
 /*
@@ -48,9 +46,7 @@ each field.
 */
 func DefaultCuratorConfig() CuratorConfig {
 	return CuratorConfig{
-		StoreConfig:         DefaultDocumentStoreConfig(),
-		BinderConfig:        DefaultBinderConfig(),
-		AuthenticatorConfig: DefaultTokenAuthenticatorConfig(),
+		BinderConfig: DefaultBinderConfig(),
 	}
 }
 
@@ -83,17 +79,14 @@ type Curator struct {
 /*
 NewCurator - Creates and returns a fresh curator, and launches its internal loop.
 */
-func NewCurator(config CuratorConfig, log *log.Logger, stats *log.Stats) (*Curator, error) {
-	store, err := DocumentStoreFactory(config.StoreConfig)
-	if err != nil {
-		return nil, err
-	}
-	auth, err := TokenAuthenticatorFactory(config.AuthenticatorConfig, log)
-	if err != nil {
-		return nil, err
-	}
+func NewCurator(
+	config CuratorConfig,
+	log *log.Logger,
+	stats *log.Stats,
+	auth TokenAuthenticator,
+	store DocumentStore,
+) (*Curator, error) {
 
-	log.Debugln("Creating curator")
 	curator := Curator{
 		config:        config,
 		store:         store,

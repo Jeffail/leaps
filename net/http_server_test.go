@@ -221,6 +221,12 @@ func loggerAndStats() (*log.Logger, *log.Stats) {
 	return logger, stats
 }
 
+func authAndStore(logger *log.Logger) (lib.TokenAuthenticator, lib.DocumentStore) {
+	store, _ := lib.DocumentStoreFactory(lib.DefaultDocumentStoreConfig())
+	auth, _ := lib.TokenAuthenticatorFactory(lib.DefaultTokenAuthenticatorConfig(), logger)
+	return auth, store
+}
+
 func TestHttpServer(t *testing.T) {
 	bytes, err := ioutil.ReadFile("../data/binder_stories.js")
 	if err != nil {
@@ -238,8 +244,9 @@ func TestHttpServer(t *testing.T) {
 	httpServerConfig.Address = "localhost:8254"
 
 	logger, stats := loggerAndStats()
+	auth, store := authAndStore(logger)
 
-	curator, err := lib.NewCurator(lib.DefaultCuratorConfig(), logger, stats)
+	curator, err := lib.NewCurator(lib.DefaultCuratorConfig(), logger, stats, auth, store)
 	if err != nil {
 		t.Errorf("Curator error: %v", err)
 	}
