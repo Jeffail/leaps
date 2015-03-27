@@ -28,7 +28,9 @@ var fs   = require('fs'),
     lc   = require('../leapclient').client,
     la   = require('../leapclient').apply;
 
-var client_stories_text = fs.readFileSync(path.resolve(__dirname, "./../../data/", "./client_stories.js"), "utf8");
+var client_stories_text = fs.readFileSync(
+		path.resolve(__dirname, "./../../test/stories/", "./client_stories.js"), "utf8");
+
 var stories = JSON.parse(client_stories_text).client_stories;
 
 var run_story = function(story, test) {

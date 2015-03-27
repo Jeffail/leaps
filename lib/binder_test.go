@@ -301,7 +301,7 @@ func TestBinderStories(t *testing.T) {
 	nClients := 10
 	logger, stats := getLoggerAndStats()
 
-	bytes, err := ioutil.ReadFile("../data/binder_stories.js")
+	bytes, err := ioutil.ReadFile("../test/stories/binder_stories.js")
 	if err != nil {
 		t.Errorf("Read file error: %v", err)
 		return

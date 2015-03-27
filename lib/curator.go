@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/jeffail/leaps/util"
 	"github.com/jeffail/util/log"
 )
 
@@ -213,7 +212,7 @@ func (c *Curator) CreateDocument(token string, userID string, doc Document) (Bin
 	c.stats.Incr("curator.create.accepted_client", 1)
 
 	// Always generate a fresh ID
-	doc.ID = util.GenerateStampedUUID()
+	doc.ID = GenerateStampedUUID()
 
 	if err := c.store.Create(doc.ID, doc); err != nil {
 		c.stats.Incr("curator.create_new.failed", 1)

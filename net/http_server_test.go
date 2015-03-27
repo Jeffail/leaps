@@ -228,7 +228,7 @@ func authAndStore(logger *log.Logger) (lib.TokenAuthenticator, lib.DocumentStore
 }
 
 func TestHttpServer(t *testing.T) {
-	bytes, err := ioutil.ReadFile("../data/binder_stories.js")
+	bytes, err := ioutil.ReadFile("../test/stories/binder_stories.js")
 	if err != nil {
 		t.Errorf("Read file error: %v", err)
 		return

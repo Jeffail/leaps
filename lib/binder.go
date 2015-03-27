@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeffail/leaps/util"
 	"github.com/jeffail/util/log"
 )
 
@@ -170,7 +169,7 @@ the subscription was unsuccessful the BinderPortal will contain an error.
 */
 func (b *Binder) Subscribe(token string) BinderPortal {
 	if len(token) == 0 {
-		token = util.GenerateStampedUUID()
+		token = GenerateStampedUUID()
 	}
 	retChan := make(chan BinderPortal, 1)
 	bundle := BinderSubscribeBundle{

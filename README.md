@@ -6,7 +6,7 @@ To read more and find examples check out the wiki: [leaps wiki](https://github.c
 
 ##How to run
 
-Leaps is a single binary, with no runtime dependencies, everything is set through a single config file. Just download a release package for your OS and do the following to set up an example:
+Leaps is a single binary, with no runtime dependencies, everything is set through a single config file. Just download a release package for your OS and do the following to run an example:
 
 ```bash
 tar -xvf ./leaps-linux_amd64-v0.1.2.tar.gz
@@ -29,12 +29,14 @@ To generate a configuration file of all default values:
 
 ##Customizing your service
 
+There are lots of example configuration files in ./config to check out for various use cases.
+
 To learn how to customize your leaps service read here:
 [leaps service wiki](https://github.com/Jeffail/leaps/wiki/Service)
 
 ##Leaps clients
 
-The leaps client is written in JavaScript and is ready to simply drop into your website. You can read about it here:
+The leaps client is written in JavaScript and is ready to simply drop into a website. You can read about it here:
 [leaps client wiki](https://github.com/Jeffail/leaps/wiki/Clients)
 
 The files to include can be found in the release packages at ./js, or in a built repository at ./bin/js. Here's a short example of using leaps to turn a textarea into a shared leaps editor:
@@ -71,15 +73,14 @@ Windows x86_64   | Supported
 
 ##How to build
 
-Dependencies:
+Leaps has a Makefile that can lint, run tests, generate the client libraries and package leaps builds into archives. However, if you only wish to get a leaps binary then you can simply use `go get github.com/jeffail/leaps`.
+
+Build dependencies for Makefile:
 
 - Golang 1.2+
 - [golint](https://github.com/golang/lint "golint")
-
-To build clients:
-
 - nodejs
-- npm (uglifyjs, jshint, nodeunit)
+- npm (global install of uglifyjs, jshint, nodeunit)
 
 To build and then start up an example server do the following:
 

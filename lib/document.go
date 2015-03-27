@@ -22,8 +22,6 @@ THE SOFTWARE.
 
 package lib
 
-import "github.com/jeffail/leaps/util"
-
 /*--------------------------------------------------------------------------------------------------
  */
 
@@ -43,7 +41,7 @@ NewDocument - Create a fresh leap document with a title, description, type and t
 */
 func NewDocument(content string) (*Document, error) {
 	doc := &Document{
-		ID:      util.GenerateStampedUUID(),
+		ID:      GenerateStampedUUID(),
 		Content: content,
 	}
 	return doc, nil

@@ -24,7 +24,7 @@ curator:
 http_server:
   static_path: /
   socket_path: /socket
-  address: :8080
+  address: :8001
   www_dir: ./static/example
   binder:
     bind_send_timeout_ms: 10

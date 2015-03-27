@@ -23,6 +23,7 @@ THE SOFTWARE.
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -52,6 +53,17 @@ type LeapsConfig struct {
 	CuratorConfig       lib.CuratorConfig            `json:"curator" yaml:"curator"`
 	HTTPServerConfig    net.HTTPServerConfig         `json:"http_server" yaml:"http_server"`
 	StatsServerConfig   log.StatsServerConfig        `json:"stats_server" yaml:"stats_server"`
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
+var (
+	sharePathOverride *string
+)
+
+func init() {
+	sharePathOverride = flag.String("share", "", "Override the path for file system sharing configs")
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -88,6 +100,11 @@ func main() {
 	// Load configuration etc
 	if !util.Bootstrap(&leapsConfig, defaultPaths...) {
 		return
+	}
+
+	if len(*sharePathOverride) > 0 {
+		leapsConfig.AuthenticatorConfig.FileConfig.SharePath = *sharePathOverride
+		leapsConfig.StoreConfig.StoreDirectory = *sharePathOverride
 	}
 
 	runtime.GOMAXPROCS(leapsConfig.NumProcesses)

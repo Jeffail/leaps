@@ -27,8 +27,6 @@ JS_CLIENT := $(JS_PATH)/leapclient.js
 BIN := ./bin
 JS_BIN := $(BIN)/js
 
-JS_BIN_FILES = $(shell ls $(JS_BIN))
-
 VERSION := $(shell git describe --tags || echo "v0.0.0")
 DATE := $(shell date +"%c" | tr ' :' '__')
 
@@ -43,21 +41,9 @@ build: check
 	@go build -o $(BIN)/$(PROJECT) $(GOFLAGS)
 	@cp $(BIN)/$(PROJECT) $$GOPATH/bin
 	@echo "copying/compressing js libraries into $(JS_BIN)"
-	@cp $(JS_CLIENT) $(JS_BIN)/leaps.js; \
+	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-*.js > $(JS_BIN)/leaps.js; \
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-min.js"; \
 		uglifyjs "$(JS_BIN)/leaps.js" >> "$(JS_BIN)/leaps-min.js";
-	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-*.js > $(JS_BIN)/leaps-all.js; \
-		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-all-min.js"; \
-		uglifyjs "$(JS_BIN)/leaps-all.js" >> "$(JS_BIN)/leaps-all-min.js";
-	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-ace.js > $(JS_BIN)/leaps-ace.js; \
-		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-ace-min.js"; \
-		uglifyjs "$(JS_BIN)/leaps-ace.js" >> "$(JS_BIN)/leaps-ace-min.js";
-	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-codemirror.js > $(JS_BIN)/leaps-codemirror.js; \
-		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-codemirror-min.js"; \
-		uglifyjs "$(JS_BIN)/leaps-codemirror.js" >> "$(JS_BIN)/leaps-codemirror-min.js";
-	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-textarea.js > $(JS_BIN)/leaps-textarea.js; \
-		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-textarea-min.js"; \
-		uglifyjs "$(JS_BIN)/leaps-textarea.js" >> "$(JS_BIN)/leaps-textarea-min.js";
 
 GOLINT=$(shell golint .)
 lint:
@@ -98,8 +84,7 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 		cp -LR "$(BIN)/js" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "./config" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "./static" "./releases/$(VERSION)/$(PROJECT)"; \
-		cp -LR "./scripts/install.sh" "./releases/$(VERSION)/$(PROJECT)"; \
-		cp -LR "./scripts/uninstall.sh" "./releases/$(VERSION)/$(PROJECT)"; \
+		cp -LR "./scripts" "./releases/$(VERSION)/$(PROJECT)"; \
 		cd "./releases/$(VERSION)"; \
 		tar -czf "$${a_name}.tar.gz" "./$(PROJECT)"; \
 		rm -r "./$(PROJECT)"; \

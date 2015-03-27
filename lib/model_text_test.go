@@ -118,7 +118,7 @@ type storiesContainer struct {
 }
 
 func TestTransformStories(t *testing.T) {
-	bytes, err := ioutil.ReadFile("../data/transform_stories.js")
+	bytes, err := ioutil.ReadFile("../test/stories/transform_stories.js")
 	if err != nil {
 		t.Errorf("Read file error: %v", err)
 		return

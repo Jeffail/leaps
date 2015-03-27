@@ -2,7 +2,6 @@ package lib
 
 import (
 	"encoding/json"
-	"flag"
 	"net/http"
 	"os"
 	"path"
@@ -13,17 +12,6 @@ import (
 
 	"github.com/jeffail/util/log"
 )
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-var (
-	sharePathOverride *string
-)
-
-func init() {
-	sharePathOverride = flag.String("share", "", "Override config curator.authenticator.file_config.share_path")
-}
 
 /*--------------------------------------------------------------------------------------------------
  */
@@ -136,10 +124,6 @@ type FileAuthenticator struct {
 NewFileAuthenticator - Creates an FileAuthenticator using the provided configuration.
 */
 func NewFileAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *FileAuthenticator {
-	// Do any overrides.
-	if len(*sharePathOverride) > 0 {
-		config.FileConfig.SharePath = *sharePathOverride
-	}
 	fa := FileAuthenticator{
 		logger: logger.NewModule("[fs_auth]"),
 		config: config,
