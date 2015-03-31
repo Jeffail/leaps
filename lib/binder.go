@@ -265,7 +265,7 @@ func (b *Binder) processTransform(request TransformSubmission) {
 	var err error
 	var version int
 
-	b.log.Debugf("Received transform: %v\n", request.Transform)
+	b.log.Debugf("Received transform: %q\n", fmt.Sprintf("%v", request.Transform))
 	dispatch, version, err = b.model.PushTransform(request.Transform)
 
 	if err != nil {

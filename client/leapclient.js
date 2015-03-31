@@ -20,21 +20,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+/*jshint newcap: false*/
+
+var leap_client = {};
+
+(function() {
+"use strict";
+
 /*--------------------------------------------------------------------------------------------------
  */
-/* _leap_model is an object designed to keep track of the inbound and outgoing transforms
+/* leap_model is an object designed to keep track of the inbound and outgoing transforms
  * for a local document, and updates the caller with the appropriate actions at each stage.
  *
- * _leap_model has three states:
+ * leap_model has three states:
  * 1. READY     - No pending sends, transforms received can be applied instantly to local document.
  * 2. SENDING   - Transforms are being sent and we're awaiting the corrected version of those
  *                transforms.
  * 3. BUFFERING - A corrected version has been received for our latest send but we're still waiting
  *                for the transforms that came before that send to be received before moving on.
  */
-var _leap_model = function(base_version) {
-	"use strict";
-
+var leap_model = function(base_version) {
 	this.READY = 1;
 	this.SENDING = 2;
 	this.BUFFERING = 3;
@@ -52,9 +57,7 @@ var _leap_model = function(base_version) {
 /* _validate_transforms iterates an array of transform objects and validates that each transform
  * contains the correct fields. Returns an error message as a string if there was a problem.
  */
-_leap_model.prototype._validate_transforms = function(transforms) {
-	"use strict";
-
+leap_model.prototype._validate_transforms = function(transforms) {
 	for ( var i = 0, l = transforms.length; i < l; i++ ) {
 		var tform = transforms[i];
 
@@ -93,9 +96,7 @@ _leap_model.prototype._validate_transforms = function(transforms) {
 /* _validate_updates iterates an array of user update objects and validates that each update
  * contains the correct fields. Returns an error message as a string if there was a problem.
  */
-_leap_model.prototype._validate_updates = function(user_updates) {
-	"use strict";
-
+leap_model.prototype._validate_updates = function(user_updates) {
 	for ( var i = 0, l = user_updates.length; i < l; i++ ) {
 		var update = user_updates[i];
 
@@ -128,9 +129,7 @@ _leap_model.prototype._validate_updates = function(user_updates) {
  * attempts to merge them into one transform. This will not be possible with some combinations, and
  * the function returns a boolean to indicate whether the merge was successful.
  */
-_leap_model.prototype._merge_transforms = function(first, second) {
-	"use strict";
-
+leap_model.prototype._merge_transforms = function(first, second) {
 	var overlap, remainder;
 
 	if ( first.position + first.insert.length === second.position ) {
@@ -161,9 +160,7 @@ _leap_model.prototype._merge_transforms = function(first, second) {
  * unsent transform that has already been applied. The unsent transform is fixed so that it is
  * unaffected by the unapplied transform when submitted to the server.
  */
-_leap_model.prototype._collide_transforms = function(unapplied, unsent) {
-	"use strict";
-
+leap_model.prototype._collide_transforms = function(unapplied, unsent) {
 	var earlier, later;
 
 	if ( unapplied.position <= unsent.position ) {
@@ -202,9 +199,7 @@ _leap_model.prototype._collide_transforms = function(unapplied, unsent) {
  * state is determined to no longer be appropriate then it will return an object containing the
  * following actions to be performed.
  */
-_leap_model.prototype._resolve_state = function() {
-	"use strict";
-
+leap_model.prototype._resolve_state = function() {
 	switch (this._leap_state) {
 	case this.READY:
 	case this.SENDING:
@@ -247,9 +242,7 @@ _leap_model.prototype._resolve_state = function() {
  * gives the model the information it needs to determine which changes are missing from our model
  * from before our submission was accepted.
  */
-_leap_model.prototype.correct = function(version) {
-	"use strict";
-
+leap_model.prototype.correct = function(version) {
 	switch (this._leap_state) {
 	case this.READY:
 	case this.BUFFERING:
@@ -266,9 +259,7 @@ _leap_model.prototype.correct = function(version) {
  * will determine whether it is currently safe to dispatch those changes to the server, and will
  * also provide each change with the correct version number.
  */
-_leap_model.prototype.submit = function(transform) {
-	"use strict";
-
+leap_model.prototype.submit = function(transform) {
 	switch (this._leap_state) {
 	case this.READY:
 		this._leap_state = this.SENDING;
@@ -287,9 +278,7 @@ _leap_model.prototype.submit = function(transform) {
  * these changes to our local document, so the model will keep return these transforms to us when it
  * is known to be safe.
  */
-_leap_model.prototype.receive = function(transforms) {
-	"use strict";
-
+leap_model.prototype.receive = function(transforms) {
 	var expected_version = this._version + this._unapplied.length + 1;
 	if ( (transforms.length > 0) && (transforms[0].version !== expected_version) ) {
 		return { error :
@@ -316,9 +305,7 @@ _leap_model.prototype.receive = function(transforms) {
 /* leap_client is the main tool provided to allow an easy and stable interface for connecting to a
  * leaps server.
  */
-var leap_client = function() {
-	"use strict";
-
+leap_client = function() {
 	this._socket = null;
 	this._document_id = null;
 
@@ -345,8 +332,6 @@ var leap_client = function() {
  * transforms, document responses and errors etc. Returns a string if an error occurrs.
  */
 leap_client.prototype.subscribe_event = function(name, subscriber) {
-	"use strict";
-
 	if ( typeof(subscriber) !== "function" ) {
 		return "subscriber was not a function";
 	}
@@ -365,16 +350,12 @@ leap_client.prototype.on = leap_client.prototype.subscribe_event;
 /* clear_subscribers, removes all functions subscribed to an event.
  */
 leap_client.prototype.clear_subscribers = function(name) {
-	"use strict";
-
 	this._events[name] = [];
 };
 
 /* dispatch_event, sends args to all subscribers of an event.
  */
 leap_client.prototype._dispatch_event = function(name, args) {
-	"use strict";
-
 	var targets = this._events[name];
 	if ( targets !== undefined && targets instanceof Array ) {
 		for ( var i = 0, l = targets.length; i < l; i++ ) {
@@ -388,8 +369,6 @@ leap_client.prototype._dispatch_event = function(name, args) {
 /* _do_action is a call that acts accordingly provided an action_obj from our leap_model.
  */
 leap_client.prototype._do_action = function(action_obj) {
-	"use strict";
-
 	if ( action_obj.error !== undefined ) {
 		return action_obj.error;
 	}
@@ -409,8 +388,6 @@ leap_client.prototype._do_action = function(action_obj) {
  * returned.
  */
 leap_client.prototype._process_message = function(message) {
-	"use strict";
-
 	var validate_error, action_obj, action_err;
 
 	if ( message.response_type === undefined || typeof(message.response_type) !== "string" ) {
@@ -433,7 +410,7 @@ leap_client.prototype._process_message = function(message) {
 				this._document_id + " != " + message.leap_document.id;
 		}
 		this.document_id = message.leap_document.id;
-		this._model = new _leap_model(message.version);
+		this._model = new leap_model(message.version);
 		this._dispatch_event(this.EVENT_TYPE.DOCUMENT, [ message.leap_document ]);
 		break;
 	case "transforms":
@@ -502,8 +479,6 @@ leap_client.prototype._process_message = function(message) {
  * change was made out of order.
  */
 leap_client.prototype.send_transform = function(transform) {
-	"use strict";
-
 	if ( this._model === null ) {
 		return "leap_client must be initialized and joined to a document before submitting transforms";
 	}
@@ -523,8 +498,6 @@ leap_client.prototype.send_transform = function(transform) {
 /* send_message - send a text message out to all other users connected to your shared document.
  */
 leap_client.prototype.send_message = function(message) {
-	"use strict";
-
 	if ( "string" !== typeof(message) ) {
 		return "must supply message as a valid string value";
 	}
@@ -541,8 +514,6 @@ leap_client.prototype.send_message = function(message) {
  * shared document.
  */
 leap_client.prototype.update_cursor = function(position) {
-	"use strict";
-
 	if ( "number" !== typeof(position) ) {
 		return "must supply position as a valid integer value";
 	}
@@ -558,8 +529,6 @@ leap_client.prototype.update_cursor = function(position) {
  * error message if there is a problem with the request.
  */
 leap_client.prototype.join_document = function(id, token) {
-	"use strict";
-
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
 		return "leap_client is not currently connected";
 	}
@@ -585,8 +554,6 @@ leap_client.prototype.join_document = function(id, token) {
  * document.
  */
 leap_client.prototype.create_document = function(content, token) {
-	"use strict";
-
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
 		return "leap_client is not currently connected";
 	}
@@ -613,8 +580,6 @@ leap_client.prototype.create_document = function(content, token) {
  * document.
  */
 leap_client.prototype.connect = function(address, _websocket) {
-	"use strict";
-
 	try {
 		if ( _websocket !== undefined ) {
 				this._socket = _websocket;
@@ -675,8 +640,6 @@ leap_client.prototype.connect = function(address, _websocket) {
 /* Close the connection to the document and halt all operations.
  */
 leap_client.prototype.close = function() {
-	"use strict";
-
 	if ( undefined !== this._heartbeat ) {
 		clearTimeout(this._heartbeat);
 	}
@@ -694,8 +657,6 @@ leap_client.prototype.close = function() {
 /* leap_apply is a function that applies a single transform to content and returns the result.
  */
 var leap_apply = function(transform, content) {
-	"use strict";
-
 	var num_delete = 0, to_insert = "";
 
 	if ( typeof(transform.position) !== "number" ) {
@@ -725,7 +686,7 @@ try {
 		module.exports = {
 			client : leap_client,
 			apply : leap_apply,
-			_model : _leap_model
+			_model : leap_model
 		};
 	}
 } catch(e) {
@@ -733,3 +694,5 @@ try {
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+})();

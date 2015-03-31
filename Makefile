@@ -78,7 +78,7 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" armspec="$${plat\#*/}" \
 		GOOS="$${plat%/*/*}" GOARCH="$${armspec%/*}" GOARM="$${armspec\#*/}"; \
 		p_stamp="$${GOOS}_$${GOARCH}$${GOARM}" a_name="$(PROJECT)-$${p_stamp}"; \
-		echo "archiving $${a_name}"; \
+		echo "archiving $${a_name} version $(VERSION)"; \
 		mkdir -p "./releases/$(VERSION)"; \
 		cp -LR "$(BIN)/$${p_stamp}" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "$(BIN)/js" "./releases/$(VERSION)/$(PROJECT)"; \

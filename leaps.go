@@ -114,26 +114,34 @@ func main() {
 
 	fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
 
+	// Document storage engine
 	documentStore, err := lib.DocumentStoreFactory(leapsConfig.StoreConfig)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Document store error: %v\n", err))
 		return
 	}
+
+	// Authenticator
 	authenticator, err := lib.TokenAuthenticatorFactory(leapsConfig.AuthenticatorConfig, logger)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Authenticator error: %v\n", err))
 		return
 	}
+
+	// Curator of documents
 	curator, err = lib.NewCurator(leapsConfig.CuratorConfig, logger, stats, authenticator, documentStore)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
 		return
 	}
+
+	// HTTP API
 	leapHTTP, err := net.CreateHTTPServer(curator, leapsConfig.HTTPServerConfig, logger, stats)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("HTTP error: %v\n", err))
 		return
 	}
+
 	go func() {
 		if httperr := leapHTTP.Listen(); httperr != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("Http listen error: %v\n", httperr))
@@ -141,12 +149,13 @@ func main() {
 		closeChan <- true
 	}()
 
-	// Run a stats service in the background.
+	// Internal Statistics HTTP API
 	statsServer, err := log.NewStatsServer(leapsConfig.StatsServerConfig, logger, stats)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Stats error: %v\n", err))
 		return
 	}
+
 	go func() {
 		if statserr := statsServer.Listen(); statserr != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("Stats server listen error: %v\n", statserr))
@@ -156,6 +165,7 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	// Wait for termination signal
 	select {
 	case <-sigChan:
 	case <-closeChan:

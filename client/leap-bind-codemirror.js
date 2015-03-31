@@ -20,6 +20,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+/*jshint newcap: false*/
+
+(function() {
+"use strict";
+
 /*--------------------------------------------------------------------------------------------------
  */
 
@@ -27,8 +32,6 @@ THE SOFTWARE.
  * (http://codemirror.net/) into a live leaps shared editor.
  */
 var leap_bind_codemirror = function(leap_client, codemirror_object) {
-	"use strict";
-
 	this._codemirror = codemirror_object;
 	this._leap_client = leap_client;
 
@@ -74,8 +77,6 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 /* apply_transform, applies a single transform to the codemirror document
  */
 leap_bind_codemirror.prototype._apply_transform = function(transform) {
-	"use strict";
-
 	this._blind_eye_turned = true;
 
 	var live_document = this._codemirror.getDoc();
@@ -109,8 +110,6 @@ leap_bind_codemirror.prototype._apply_transform = function(transform) {
 /* convert_to_transform, takes a codemirror edit event, converts it into a transform and sends it.
  */
 leap_bind_codemirror.prototype._convert_to_transform = function(e) {
-	"use strict";
-
 	if ( this._blind_eye_turned ) {
 		return;
 	}
@@ -155,8 +154,8 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
  */
 
 try {
-	if ( leap_client !== undefined && typeof(leap_client) === "function" ) {
-		leap_client.prototype.bind_codemirror = function(codemirror_object) {
+	if ( window.leap_client !== undefined && typeof(window.leap_client) === "function" ) {
+		window.leap_client.prototype.bind_codemirror = function(codemirror_object) {
 			this._codemirror = new leap_bind_codemirror(this, codemirror_object);
 		};
 	}
@@ -165,3 +164,5 @@ try {
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+})();

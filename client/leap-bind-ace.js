@@ -20,6 +20,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+/*jshint newcap: false*/
+
+(function() {
+"use strict";
+
 /*--------------------------------------------------------------------------------------------------
  */
 
@@ -28,8 +33,6 @@ _create_leaps_ace_marker - creates a marker for displaying the cursor positions 
 ace editor.
 */
 var _create_leaps_ace_marker = function(ace_editor) {
-	"use strict";
-
 	var marker = {};
 
 	marker.draw_handler = null;
@@ -107,8 +110,6 @@ var _create_leaps_ace_marker = function(ace_editor) {
  * (http://ace.c9.io) into a live leaps shared editor.
  */
 var leap_bind_ace_editor = function(leap_client, ace_editor) {
-	"use strict";
-
 	if ( null === document.getElementById("leaps-ace-style") ) {
 		var node = document.createElement('style');
 		node.id = "leaps-ace-style";
@@ -189,8 +190,6 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
  * markers before redrawing).
  */
 leap_bind_ace_editor.prototype.set_cursor_handler = function(handler, clear_handler) {
-	"use strict";
-
 	if ( 'function' === typeof handler ) {
 		this._marker.draw_handler = handler;
 	}
@@ -202,8 +201,6 @@ leap_bind_ace_editor.prototype.set_cursor_handler = function(handler, clear_hand
 /* apply_transform, applies a single transform to the ace document.
  */
 leap_bind_ace_editor.prototype._apply_transform = function(transform) {
-	"use strict";
-
 	this._blind_eye_turned = true;
 
 	var edit_session = this._ace.getSession();
@@ -238,8 +235,6 @@ leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 /* convert_to_transform, takes an ace editor event, converts it into a transform and sends it.
  */
 leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
-	"use strict";
-
 	if ( this._blind_eye_turned ) {
 		return;
 	}
@@ -298,8 +293,8 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
  */
 
 try {
-	if ( leap_client !== undefined && typeof(leap_client) === "function" ) {
-		leap_client.prototype.bind_ace_editor = function(ace_editor) {
+	if ( window.leap_client !== undefined && typeof(window.leap_client) === "function" ) {
+		window.leap_client.prototype.bind_ace_editor = function(ace_editor) {
 			this._ace_editor = new leap_bind_ace_editor(this, ace_editor);
 		};
 	}
@@ -309,3 +304,5 @@ try {
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+})();

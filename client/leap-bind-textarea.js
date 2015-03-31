@@ -20,6 +20,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+/*jshint newcap: false*/
+
+(function() {
+"use strict";
+
 /*--------------------------------------------------------------------------------------------------
  */
 
@@ -28,8 +33,6 @@ THE SOFTWARE.
  * places any errors in the obj.error field to be checked after construction.
  */
 var leap_bind_textarea = function(leap_client, text_area) {
-	"use strict";
-
 	this._text_area = text_area;
 	this._leap_client = leap_client;
 
@@ -83,8 +86,6 @@ var leap_bind_textarea = function(leap_client, text_area) {
  * cursor position.
  */
 leap_bind_textarea.prototype._apply_transform = function(transform) {
-	"use strict";
-
 	var cursor_pos = this._text_area.selectionStart;
 	var cursor_pos_end = this._text_area.selectionEnd;
 	var content = this._text_area.value;
@@ -104,8 +105,6 @@ leap_bind_textarea.prototype._apply_transform = function(transform) {
  * is generated from the comparison and dispatched via the leap_client.
  */
 leap_bind_textarea.prototype._trigger_diff = function() {
-	"use strict";
-
 	var new_content = this._text_area.value;
 	if ( !(this._ready) || new_content === this._content ) {
 		return;
@@ -145,8 +144,8 @@ leap_bind_textarea.prototype._trigger_diff = function() {
  */
 
 try {
-	if ( leap_client !== undefined && typeof(leap_client) === "function" ) {
-		leap_client.prototype.bind_textarea = function(text_area) {
+	if ( window.leap_client !== undefined && typeof(window.leap_client) === "function" ) {
+		window.leap_client.prototype.bind_textarea = function(text_area) {
 			this._textarea = new leap_bind_textarea(this, text_area);
 		};
 	}
@@ -155,3 +154,5 @@ try {
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+})();
