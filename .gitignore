@@ -1,6 +1,5 @@
 node_modules
 bin
 releases
-test
 ./leaps
 static/share_dir/ace

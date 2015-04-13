@@ -27,8 +27,11 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"runtime"
 	"syscall"
+
+	"github.com/kardianos/osext"
 
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/leaps/net"
@@ -88,14 +91,23 @@ func main() {
 	}
 
 	// A list of default config paths to check for if not explicitly defined
-	defaultPaths := []string{
-		"./leaps.yaml",
-		"./leaps.json",
+	defaultPaths := []string{}
+
+	if executablePath, err := osext.ExecutableFolder(); err == nil {
+		defaultPaths = append(defaultPaths, path.Join(executablePath, "config.yaml"))
+		defaultPaths = append(defaultPaths, path.Join(executablePath, "config", "leaps.yaml"))
+		defaultPaths = append(defaultPaths, path.Join(executablePath, "config.json"))
+		defaultPaths = append(defaultPaths, path.Join(executablePath, "config", "leaps.json"))
+	}
+
+	defaultPaths = append(defaultPaths, []string{
+		path.Join(".", "leaps.yaml"),
+		path.Join(".", "leaps.json"),
 		"/etc/leaps.yaml",
 		"/etc/leaps.json",
 		"/etc/leaps/config.yaml",
 		"/etc/leaps/config.json",
-	}
+	}...)
 
 	// Load configuration etc
 	if !util.Bootstrap(&leapsConfig, defaultPaths...) {
