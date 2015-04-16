@@ -26,6 +26,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
+
+	"github.com/kardianos/osext"
 
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/util/log"
@@ -166,6 +169,15 @@ func CreateHTTPServer(
 	if len(httpServer.config.StaticFilePath) > 0 {
 		if len(httpServer.config.StaticPath) == 0 {
 			return nil, errors.New("invalid config value for static path")
+		}
+		// If the static file path is relative then we use the location of the binary to resolve it.
+		if !path.IsAbs(httpServer.config.StaticFilePath) {
+			if executablePath, err := osext.ExecutableFolder(); err == nil {
+				httpServer.config.StaticFilePath = path.Join(
+					executablePath,
+					httpServer.config.StaticFilePath,
+				)
+			}
 		}
 		http.Handle(httpServer.config.StaticPath,
 			httpServer.auth.WrapHandler( // Auth wrap
