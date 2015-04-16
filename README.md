@@ -14,7 +14,7 @@ cd leaps
 ./leaps -c ./config/leaps_example.yaml
 ```
 
-and then visit: http://localhost:8080 to play with an example server.
+and then visit: http://localhost:8001 to play with an example server.
 A leaps service by default will run and host a statistics page to view event counts and uptime, for the example this is hosted at: http://localhost:4040.
 
 To generate a configuration file of all default values:
@@ -82,6 +82,13 @@ Build dependencies for Makefile:
 - nodejs
 - npm (global install of uglifyjs, jshint, nodeunit)
 
+Make sure you have go 1.2+ and nodejs installed and then:
+
+```bash
+go get github.com/golang/lint
+sudo npm install -g uglifyjs jshint nodeunit
+```
+
 To build and then start up an example server do the following:
 
 ```bash
@@ -89,12 +96,14 @@ go get github.com/jeffail/leaps
 cd $GOPATH/src/github.com/jeffail/leaps
 
 # To build the binary and client libraries:
-make
+make build
 ./bin/leaps -c ./config/leaps_example.yaml
 
 # Or, to build only the service binary:
 go build
 ```
+
+For more build options call `make help`.
 
 ##Contributing and customizing
 

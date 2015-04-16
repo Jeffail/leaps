@@ -33,7 +33,20 @@ DATE := $(shell date +"%c" | tr ' :' '__')
 GOFLAGS := -ldflags "-X github.com/jeffail/util.version $(VERSION) \
 	-X github.com/jeffail/util.dateBuilt $(DATE)"
 
-all: build
+help:
+	@echo "Leaps build system, run one of the following commands:"
+	@echo ""
+	@echo "make build      - Build the service and generate client libraries"
+	@echo ""
+	@echo "make lint       - Run linting on both .go and .js files"
+	@echo "make check      - Run unit tests on both Golang and JavaScript code"
+	@echo ""
+	@echo "make package    - Package the service, scripts and client libraries"
+	@echo "                  into a .tar.gz archive for all supported operating"
+	@echo "                  systems"
+	@echo ""
+	@echo "make clean      - Clean the repository of any built/generated files"
+
 
 build: check
 	@mkdir -p $(JS_BIN)
@@ -57,9 +70,6 @@ check: lint
 clean:
 	@find $(GOPATH)/pkg/*/github.com/jeffail -name $(PROJECT).a -delete
 	@rm -rf $(BIN)
-
-install: check
-	@go install
 
 PLATFORMS = "darwin/amd64/" "freebsd/amd64/" "freebsd/arm/7" "freebsd/arm/5" "linux/amd64/" "linux/arm/7" "linux/arm/5" "windows/amd64/"
 
@@ -93,6 +103,3 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 
 package: multiplat
 	@$(package_builds)
-
-example: install
-	@$(PROJECT) -c ./config/leaps_example.js
