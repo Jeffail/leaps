@@ -8,11 +8,11 @@
 # Description: Leaps is a service that hosts collaborative and shared documents for important people.
 ### END INIT INFO
 
-DAEMON=/usr/sbin/leaps
+DAEMON=/opt/leaps/bin/leaps
 NAME=leaps
 
 RUNAS=leaps
-CONFIG=/etc/leaps/config.yaml
+CONFIG=/opt/leaps/config.yaml
 
 PID=/var/run/leaps.pid
 LOG=/var/log/leaps.log

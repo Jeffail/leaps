@@ -11,7 +11,7 @@ Leaps is a single binary, with no runtime dependencies, everything is set throug
 ```bash
 tar -xvf ./leaps-linux_amd64-v0.1.2.tar.gz
 cd leaps
-./leaps -c ./config/leaps_example.yaml
+./bin/leaps -c ./config/leaps_example.yaml
 ```
 
 and then visit: http://localhost:8001 to play with an example server.
@@ -21,10 +21,10 @@ To generate a configuration file of all default values:
 
 ```bash
 # for a JSON file
-./leaps --print-json
+./bin/leaps --print-json
 
 # for a YAML file
-./leaps --print-yaml
+./bin/leaps --print-yaml
 ```
 
 ##Customizing your service

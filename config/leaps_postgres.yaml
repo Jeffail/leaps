@@ -30,13 +30,13 @@ http_server:
   static_path: /
   socket_path: /socket
   address: :8001
-  www_dir: ./static/example
+  www_dir: ../static/example
   binder:
     bind_send_timeout_ms: 10
 stats_server:
   static_path: /
   stats_path: /stats
   address: :4040
-  www_dir: ./static/stats
+  www_dir: ../static/stats
   stat_timeout_ms: 200
   request_timeout_s: 10

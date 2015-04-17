@@ -93,11 +93,15 @@ func main() {
 	// A list of default config paths to check for if not explicitly defined
 	defaultPaths := []string{}
 
+	/* If we manage to get the path of our executable then we want to try and find config files
+	 * relative to that path, we always check from the parent folder since we assume leaps is
+	 * stored within the bin folder.
+	 */
 	if executablePath, err := osext.ExecutableFolder(); err == nil {
-		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "config.yaml"))
-		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "config", "leaps.yaml"))
-		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "config.json"))
-		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "config", "leaps.json"))
+		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "..", "config.yaml"))
+		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "..", "config", "leaps.yaml"))
+		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "..", "config.json"))
+		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "..", "config", "leaps.json"))
 	}
 
 	defaultPaths = append(defaultPaths, []string{

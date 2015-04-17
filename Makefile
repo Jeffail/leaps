@@ -36,21 +36,21 @@ GOFLAGS := -ldflags "-X github.com/jeffail/util.version $(VERSION) \
 help:
 	@echo "Leaps build system, run one of the following commands:"
 	@echo ""
-	@echo "    make build      : Build the service and generate client libraries"
+	@echo "    make build    : Build the service and generate client libraries"
 	@echo ""
-	@echo "    make lint       : Run linting on both .go and .js files"
-	@echo "    make check      : Run unit tests on both Golang and JavaScript code"
+	@echo "    make lint     : Run linting on both .go and .js files"
+	@echo "    make check    : Run unit tests on both Golang and JavaScript code"
 	@echo ""
-	@echo "    make package    : Package the service, scripts and client libraries"
-	@echo "                      into a .tar.gz archive for all supported operating"
-	@echo "                      systems"
+	@echo "    make package  : Package the service, scripts and client libraries"
+	@echo "                    into a .tar.gz archive for all supported operating"
+	@echo "                    systems"
 	@echo ""
-	@echo "    make clean      : Clean the repository of any built/generated files"
+	@echo "    make clean    : Clean the repository of any built/generated files"
 
 
 build: check
 	@mkdir -p $(JS_BIN)
-	@echo "building $(BIN)/$(PROJECT)"
+	@echo ""; echo " -- Building $(BIN)/$(PROJECT) -- ";
 	@go build -o $(BIN)/$(PROJECT) $(GOFLAGS)
 	@cp $(BIN)/$(PROJECT) $$GOPATH/bin
 	@echo "copying/compressing js libraries into $(JS_BIN)"
@@ -60,12 +60,14 @@ build: check
 
 GOLINT=$(shell golint .)
 lint:
+	@echo ""; echo " -- Linting Golang and JavaScript files -- ";
 	@gofmt -w . && go tool vet ./**/*.go && echo "$(GOLINT)" && test -z "$(GOLINT)" && jshint $(JS_PATH)/*.js
 
 check: lint
+	@echo ""; echo " -- Unit testing Golang and JavaScript files -- ";
 	@go test ./...
 	@cd $(JS_PATH); find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;
-	@echo ""; echo " -- Testing complete -- "; echo "";
+	@echo ""; echo " -- Testing complete -- ";
 
 clean:
 	@find $(GOPATH)/pkg/*/github.com/jeffail -name $(PROJECT).a -delete
@@ -76,12 +78,14 @@ PLATFORMS = "darwin/amd64/" "freebsd/amd64/" "freebsd/arm/7" "freebsd/arm/5" "li
 multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" armspec="$${plat\#*/}" \
 		GOOS="$${plat%/*/*}" GOARCH="$${armspec%/*}" GOARM="$${armspec\#*/}"; \
-		bindir="$(BIN)/$${GOOS}_$${GOARCH}$${GOARM}" exepath="$${bindir}/$(PROJECT)"; \
+		bindir="$(BIN)/$${GOOS}_$${GOARCH}$${GOARM}" exepath="$${bindir}/bin/$(PROJECT)"; \
 		echo "building $${exepath} with GOOS=$${GOOS}, GOARCH=$${GOARCH}, GOARM=$${GOARM}"; \
-		mkdir -p "$$bindir"; GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath" $(GOFLAGS); \
+		mkdir -p "$${bindir}/bin"; \
+		GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath" $(GOFLAGS); \
 	)
 
 multiplat: build
+	@echo ""; echo " -- Building multiplatform binaries -- ";
 	@$(multiplatform_builds)
 
 package_builds = $(foreach platform, $(PLATFORMS), \
@@ -95,6 +99,7 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 		cp -LR "./config" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "./static" "./releases/$(VERSION)/$(PROJECT)"; \
 		cp -LR "./scripts" "./releases/$(VERSION)/$(PROJECT)"; \
+		cp -LR "./docs" "./releases/$(VERSION)/$(PROJECT)"; \
 		cd "./releases/$(VERSION)"; \
 		tar -czf "$${a_name}.tar.gz" "./$(PROJECT)"; \
 		rm -r "./$(PROJECT)"; \
@@ -102,4 +107,5 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 	)
 
 package: multiplat
+	@echo ""; echo " -- Packaging multiplatform archives -- ";
 	@$(package_builds)
