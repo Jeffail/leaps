@@ -36,16 +36,16 @@ GOFLAGS := -ldflags "-X github.com/jeffail/util.version $(VERSION) \
 help:
 	@echo "Leaps build system, run one of the following commands:"
 	@echo ""
-	@echo "make build      - Build the service and generate client libraries"
+	@echo "    make build      : Build the service and generate client libraries"
 	@echo ""
-	@echo "make lint       - Run linting on both .go and .js files"
-	@echo "make check      - Run unit tests on both Golang and JavaScript code"
+	@echo "    make lint       : Run linting on both .go and .js files"
+	@echo "    make check      : Run unit tests on both Golang and JavaScript code"
 	@echo ""
-	@echo "make package    - Package the service, scripts and client libraries"
-	@echo "                  into a .tar.gz archive for all supported operating"
-	@echo "                  systems"
+	@echo "    make package    : Package the service, scripts and client libraries"
+	@echo "                      into a .tar.gz archive for all supported operating"
+	@echo "                      systems"
 	@echo ""
-	@echo "make clean      - Clean the repository of any built/generated files"
+	@echo "    make clean      : Clean the repository of any built/generated files"
 
 
 build: check

@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -56,8 +56,8 @@ func (s *FileStore) Create(id string, doc Document) error {
 Store - Store document in its file location.
 */
 func (s *FileStore) Store(id string, doc Document) error {
-	filePath := path.Join(s.config.StoreDirectory, id)
-	fileDir := path.Dir(filePath)
+	filePath := filepath.Join(s.config.StoreDirectory, id)
+	fileDir := filepath.Dir(filePath)
 
 	if _, err := os.Stat(fileDir); os.IsNotExist(err) {
 		if err = os.MkdirAll(fileDir, os.ModePerm); err != nil {
@@ -71,7 +71,7 @@ func (s *FileStore) Store(id string, doc Document) error {
 Fetch - Fetch document from its file location.
 */
 func (s *FileStore) Fetch(id string) (Document, error) {
-	bytes, err := ioutil.ReadFile(path.Join(s.config.StoreDirectory, id))
+	bytes, err := ioutil.ReadFile(filepath.Join(s.config.StoreDirectory, id))
 	if err != nil {
 		return Document{}, fmt.Errorf("failed to read content from document file: %v", err)
 	}

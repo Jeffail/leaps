@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"runtime"
 	"syscall"
 
@@ -94,15 +94,15 @@ func main() {
 	defaultPaths := []string{}
 
 	if executablePath, err := osext.ExecutableFolder(); err == nil {
-		defaultPaths = append(defaultPaths, path.Join(executablePath, "config.yaml"))
-		defaultPaths = append(defaultPaths, path.Join(executablePath, "config", "leaps.yaml"))
-		defaultPaths = append(defaultPaths, path.Join(executablePath, "config.json"))
-		defaultPaths = append(defaultPaths, path.Join(executablePath, "config", "leaps.json"))
+		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "config.yaml"))
+		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "config", "leaps.yaml"))
+		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "config.json"))
+		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "config", "leaps.json"))
 	}
 
 	defaultPaths = append(defaultPaths, []string{
-		path.Join(".", "leaps.yaml"),
-		path.Join(".", "leaps.json"),
+		filepath.Join(".", "leaps.yaml"),
+		filepath.Join(".", "leaps.json"),
 		"/etc/leaps.yaml",
 		"/etc/leaps.json",
 		"/etc/leaps/config.yaml",
