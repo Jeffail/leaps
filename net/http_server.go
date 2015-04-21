@@ -26,12 +26,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path/filepath"
-
-	"github.com/kardianos/osext"
 
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/path"
 	"golang.org/x/net/websocket"
 )
 
@@ -171,13 +169,8 @@ func CreateHTTPServer(
 			return nil, errors.New("invalid config value for static path")
 		}
 		// If the static file path is relative then we use the location of the binary to resolve it.
-		if !filepath.IsAbs(httpServer.config.StaticFilePath) {
-			if executablePath, err := osext.ExecutableFolder(); err == nil {
-				httpServer.config.StaticFilePath = filepath.Join(
-					executablePath,
-					httpServer.config.StaticFilePath,
-				)
-			}
+		if err := path.FromBinaryIfRelative(&httpServer.config.StaticFilePath); err != nil {
+			return nil, fmt.Errorf("relative path for static files could not be resolved: %v", err)
 		}
 		http.Handle(httpServer.config.StaticPath,
 			httpServer.auth.WrapHandler( // Auth wrap
@@ -287,8 +280,17 @@ func (h *HTTPServer) Listen() error {
 	if len(h.config.Address) == 0 {
 		return errors.New("invalid config value for URL.Address")
 	}
-	if h.config.SSL.Enabled && (len(h.config.SSL.CertificatePath) == 0 || len(h.config.SSL.PrivateKeyPath) == 0) {
-		return errors.New("SSL requires both a certificate path and private key path")
+	if h.config.SSL.Enabled {
+		if len(h.config.SSL.CertificatePath) == 0 || len(h.config.SSL.PrivateKeyPath) == 0 {
+			return errors.New("SSL requires both a certificate path and private key path")
+		}
+		// If the static paths are relative then we use the location of the binary to resolve it.
+		if err := path.FromBinaryIfRelative(&h.config.SSL.CertificatePath); err != nil {
+			return fmt.Errorf("relative path for certificate could not be resolved: %v", err)
+		}
+		if err := path.FromBinaryIfRelative(&h.config.SSL.PrivateKeyPath); err != nil {
+			return fmt.Errorf("relative path for private key could not be resolved: %v", err)
+		}
 	}
 	h.logger.Infof("Listening for websockets at address: %v%v\n", h.config.Address, h.config.Path)
 	if len(h.config.StaticPath) > 0 {

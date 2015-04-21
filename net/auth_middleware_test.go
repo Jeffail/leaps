@@ -24,15 +24,22 @@ package net
 
 import (
 	"net/http"
+	"path/filepath"
 	"testing"
 )
 
 func TestReadGoodFile(t *testing.T) {
 	logger, stats := loggerAndStats()
 
+	absPath, err := filepath.Abs("./htpasswd_test")
+	if err != nil {
+		t.Errorf("Failed to make absolute path: %v", err)
+		return
+	}
+
 	config := NewAuthMiddlewareConfig()
 	config.Enabled = true
-	config.PasswdFilePath = "./htpasswd_test"
+	config.PasswdFilePath = absPath
 	authMiddleware, err := NewAuthMiddleware(config, logger, stats)
 	if err != nil {
 		t.Errorf("Failed to read good htpasswd file: %v", err)
@@ -47,9 +54,15 @@ func TestReadGoodFile(t *testing.T) {
 func TestReadBadFile(t *testing.T) {
 	logger, stats := loggerAndStats()
 
+	absPath, err := filepath.Abs("./htpasswd_bad_test")
+	if err != nil {
+		t.Errorf("Failed to make absolute path: %v", err)
+		return
+	}
+
 	config := NewAuthMiddlewareConfig()
 	config.Enabled = true
-	config.PasswdFilePath = "./htpasswd_bad_test"
+	config.PasswdFilePath = absPath
 	if _, err := NewAuthMiddleware(config, logger, stats); err == nil {
 		t.Error("Error not returned from bad htpasswd file")
 	}
@@ -100,9 +113,15 @@ func (e emptyReader) Read(p []byte) (n int, err error) { return 0, nil }
 func TestBasicAccess(t *testing.T) {
 	logger, stats := loggerAndStats()
 
+	absPath, err := filepath.Abs("./htpasswd_test")
+	if err != nil {
+		t.Errorf("Failed to make absolute path: %v", err)
+		return
+	}
+
 	config := NewAuthMiddlewareConfig()
 	config.Enabled = true
-	config.PasswdFilePath = "./htpasswd_test"
+	config.PasswdFilePath = absPath
 	authMiddleware, err := NewAuthMiddleware(config, logger, stats)
 	if err != nil {
 		t.Errorf("Failed to read good htpasswd file: %v", err)

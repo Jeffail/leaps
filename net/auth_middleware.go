@@ -35,6 +35,7 @@ import (
 	"golang.org/x/net/websocket"
 
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/path"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -166,8 +167,12 @@ func (a *AuthMiddleware) requestAuth(w http.ResponseWriter, r *http.Request) {
 accountsFromFile - Extract a map of username and password hashes from a htpasswd file. MD5 hashes
 are not supported, use SHA1 instead.
 */
-func (a *AuthMiddleware) accountsFromFile(path string) error {
-	r, err := os.Open(path)
+func (a *AuthMiddleware) accountsFromFile(filePath string) error {
+	// If the file path is relative then we use the location of the binary to resolve it.
+	if err := path.FromBinaryIfRelative(&filePath); err != nil {
+		return err
+	}
+	r, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}

@@ -87,6 +87,7 @@ multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 multiplat: build
 	@echo ""; echo " -- Building multiplatform binaries -- ";
 	@$(multiplatform_builds)
+	@mv ./bin/windows_amd64/bin/leaps ./bin/windows_amd64/bin/leaps.exe
 
 package_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" armspec="$${plat\#*/}" \

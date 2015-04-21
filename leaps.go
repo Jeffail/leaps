@@ -31,12 +31,11 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/kardianos/osext"
-
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/leaps/net"
 	"github.com/jeffail/util"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/path"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -97,7 +96,7 @@ func main() {
 	 * relative to that path, we always check from the parent folder since we assume leaps is
 	 * stored within the bin folder.
 	 */
-	if executablePath, err := osext.ExecutableFolder(); err == nil {
+	if executablePath, err := path.BinaryPath(); err == nil {
 		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "..", "config.yaml"))
 		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "..", "config", "leaps.yaml"))
 		defaultPaths = append(defaultPaths, filepath.Join(executablePath, "..", "config.json"))
