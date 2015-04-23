@@ -65,7 +65,7 @@ lint:
 
 check: lint
 	@echo ""; echo " -- Unit testing Golang and JavaScript files -- ";
-	@go test ./...
+	@go test -race ./...
 	@cd $(JS_PATH); find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;
 	@echo ""; echo " -- Testing complete -- ";
 
