@@ -150,9 +150,9 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 .logo {
-	height: 40px;
+	height: 100%;
 	padding: 0px;
-	margin: 5px 0 0 30px;
+	margin: 0 0 0 20px;
 }
 
 .directory-name {
@@ -303,6 +303,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 #info-window {
 	right: 0;
 	bottom: 0;
+	transition: box-shadow .25s ease-in-out;
 }
 
 #file-list-container {
@@ -324,11 +325,6 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 		height: 20vh;
 		left: 250px;
 		left: 16vw;
-	}
-
-	#chat-bar-container {
-		right: 10px;
-		bottom: 10px;
 	}
 
 	#chat-bar {

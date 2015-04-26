@@ -9,7 +9,7 @@ To read more and find examples check out the wiki: [leaps wiki](https://github.c
 Leaps is a single binary, with no runtime dependencies, everything is set through a single config file. Just download a release package for your OS and do the following to run an example:
 
 ```bash
-tar -xvf ./leaps-linux_amd64-v0.1.2.tar.gz
+tar -xvf ./leaps-linux_amd64-v0.4.0.tar.gz
 cd leaps
 ./bin/leaps -c ./config/leaps_example.yaml
 ```
@@ -26,6 +26,8 @@ To generate a configuration file of all default values:
 # for a YAML file
 ./bin/leaps --print-yaml
 ```
+
+For a cooler example check out the [website](https://jeffail.github.io/leaps)
 
 ##Customizing your service
 
@@ -95,12 +97,14 @@ To build and then start up an example server do the following:
 go get github.com/jeffail/leaps
 cd $GOPATH/src/github.com/jeffail/leaps
 
-# To build the binary and client libraries:
 make build
 ./bin/leaps -c ./config/leaps_example.yaml
+```
 
-# Or, to build only the service binary:
-go build
+Or, to simply build the service binary on its own is just:
+
+```bash
+go get github.com/jeffail/leaps
 ```
 
 For more build options call `make help`.

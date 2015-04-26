@@ -47,7 +47,6 @@ help:
 	@echo ""
 	@echo "    make clean    : Clean the repository of any built/generated files"
 
-
 build: check
 	@mkdir -p $(JS_BIN)
 	@echo ""; echo " -- Building $(BIN)/$(PROJECT) -- ";

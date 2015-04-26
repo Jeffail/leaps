@@ -431,6 +431,7 @@ var create_path_click = function(ele, id) {
 				current_ele.className = fileItemClass;
 			}
 			ele.className = fileItemClass + ' selected';
+			window.location.hash = "path:" + id;
 			join_new_document(id);
 		}
 	};
@@ -546,6 +547,16 @@ var get_paths = function() {
 	});
 };
 
+// Use to alert users when new messages appear
+var flash_chat_window = function() {
+	var info_window = document.getElementById("info-window");
+	info_window.style.boxShadow = "0px 0px 0px 5px #4E81B4";
+
+	setTimeout(function() {
+		info_window.style.boxShadow = "0px 0px 0px 0px #4E81B4";
+	}, 300);
+};
+
 var chat_message = function(user_id, username, message) {
 	var container = document.getElementById("info-window");
 	var messages = document.getElementById("info-messages");
@@ -589,6 +600,8 @@ var chat_message = function(user_id, username, message) {
 
 	messages.appendChild(div);
 	container.scrollTop = container.scrollHeight;
+
+	flash_chat_window();
 };
 
 var system_message = function(text, style) {
@@ -603,6 +616,8 @@ var system_message = function(text, style) {
 	div.appendChild(textNode);
 	messages.appendChild(div);
 	container.scrollTop = container.scrollHeight;
+
+	flash_chat_window();
 };
 
 var set_cookie_option = function(key, value) {
@@ -742,6 +757,10 @@ window.onload = function() {
 		chat_bar.focus();
 	};
 
+	/* We're using our own implementation of usernames by sending JSON objects in leaps messages,
+	 * so to keep all clients up to date across name changes lets just send it every second. It's a
+	 * painless job so why not?
+	 */
 	setInterval(function() {
 		if ( leaps_client !== null ) {
 			leaps_client.send_message(JSON.stringify({
@@ -749,6 +768,13 @@ window.onload = function() {
 			}));
 		}
 	}, 1000);
+
+	// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
+	if ( window.location.hash.length > 0 &&
+			window.location.hash.substr(1, 5) === "path:" ) {
+		var path = window.location.hash.substr(6);
+		join_new_document(path);
+	}
 };
 
 })();
