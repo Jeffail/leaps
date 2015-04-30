@@ -63,6 +63,11 @@ func newPool(config RedisAuthenticatorConfig) *redis.Pool {
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the RedisAuthenticator type.
+var (
+	ErrNoKey = errors.New("key did not exist")
+)
+
 /*
 RedisAuthenticator - A wrapper around the Redis client that acts as an authenticator.
 */
@@ -157,7 +162,7 @@ func (s *RedisAuthenticator) DeleteKey(key string) error {
 		return err
 	}
 	if 0 == reply {
-		return errors.New("key did not exist")
+		return ErrNoKey
 	}
 	return nil
 }

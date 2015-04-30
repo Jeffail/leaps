@@ -55,6 +55,11 @@ func DefaultDocumentStoreConfig() DocumentStoreConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the DocumentStore type.
+var (
+	ErrInvalidDocumentType = errors.New("invalid document store type")
+)
+
 /*
 DocumentStore - Implemented by types able to acquire and store documents. This is abstracted in
 order to accommodate for multiple storage strategies. These methods should be asynchronous if
@@ -83,11 +88,16 @@ func DocumentStoreFactory(config DocumentStoreConfig) (DocumentStore, error) {
 	case "mysql", "postgres":
 		return GetSQLStore(config)
 	}
-	return nil, errors.New("configuration provided invalid document store type")
+	return nil, ErrInvalidDocumentType
 }
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+// Errors for the MemoryStore type.
+var (
+	ErrDocumentNotExist = errors.New("attempting to fetch memory store that has not been initialized")
+)
 
 /*
 MemoryStore - Most basic implementation of DocumentStore, simply keeps the document in memory. Has
@@ -125,7 +135,7 @@ func (s *MemoryStore) Fetch(id string) (Document, error) {
 
 	doc, ok := s.documents[id]
 	if !ok {
-		return doc, errors.New("attempting to fetch memory store that has not been initialized")
+		return doc, ErrDocumentNotExist
 	}
 	return doc, nil
 }

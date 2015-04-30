@@ -61,6 +61,11 @@ func DefaultBinderConfig() BinderConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the Binder type.
+var (
+	ErrDuplicateClientToken = errors.New("duplicate client token")
+)
+
 /*
 Binder - Contains a single document and acts as a broker between multiple readers, writers and the
 storage strategy.
@@ -202,7 +207,7 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 	if _, ok := b.clients[request.Token]; ok {
 		b.stats.Incr("binder.rejected_client", 1)
 		b.log.Warnf("Rejected client due to duplicate token: %v\n", request.Token)
-		return errors.New("rejected due to duplicate token")
+		return ErrDuplicateClientToken
 	}
 
 	transformSndChan := make(chan OTransform, 1)
@@ -420,11 +425,12 @@ func (b *Binder) loop() {
 			if running && open {
 				b.log.Debugf("Received exit request from: %v\n", exitKey)
 				if c, ok := b.clients[exitKey]; ok {
+					b.stats.Decr("binder.subscribed_clients", 1)
+
 					delete(b.clients, exitKey)
 					close(c.TransformChan)
 					close(c.MessageChan)
 				}
-				b.stats.Decr("binder.subscribed_clients", 1)
 			} else {
 				b.log.Infoln("Exit channel closed, shutting down")
 				running = false

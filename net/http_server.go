@@ -123,6 +123,15 @@ type LeapServerMessage struct {
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the HTTPServer type.
+var (
+	ErrInvalidSocketPath = errors.New("invalid config value for socket path")
+	ErrInvalidStaticPath = errors.New("invalid config value for static path")
+	ErrInvalidDocument   = errors.New("invalid document structure")
+	ErrInvalidURLAddr    = errors.New("invalid config value for URL.Address")
+	ErrInvalidSSLConfig  = errors.New("invalid config value for certificate path and/or private key path")
+)
+
 /*
 HTTPServer - A construct designed to take a LeapLocator (a structure for finding and binding to
 leap documents) and bind it to http clients.
@@ -158,7 +167,7 @@ func CreateHTTPServer(
 		closeChan: make(chan bool),
 	}
 	if len(httpServer.config.Path) == 0 {
-		return nil, errors.New("invalid config value for socket path")
+		return nil, ErrInvalidSocketPath
 	}
 	http.Handle(
 		httpServer.config.Path,
@@ -166,7 +175,7 @@ func CreateHTTPServer(
 	)
 	if len(httpServer.config.StaticFilePath) > 0 {
 		if len(httpServer.config.StaticPath) == 0 {
-			return nil, errors.New("invalid config value for static path")
+			return nil, ErrInvalidStaticPath
 		}
 		// If the static file path is relative then we use the location of the binary to resolve it.
 		if err := path.FromBinaryIfRelative(&httpServer.config.StaticFilePath); err != nil {
@@ -224,7 +233,7 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 		switch clientMsg.Command {
 		case "create":
 			if clientMsg.Document == nil {
-				handleInitError(errors.New("create request must contain a valid document structure"))
+				handleInitError(ErrInvalidDocument)
 				return
 			}
 			h.logger.Infoln("Attempting to create document")
@@ -245,7 +254,7 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 			return
 		case "find":
 			if len(clientMsg.DocID) <= 0 {
-				handleInitError(errors.New("find request must contain a valid document ID"))
+				handleInitError(ErrInvalidDocument)
 				return
 			}
 			h.logger.Infof("Attempting to bind to document: %v\n", clientMsg.DocID)
@@ -278,11 +287,11 @@ simply a helper function that calls http.ListenAndServe
 */
 func (h *HTTPServer) Listen() error {
 	if len(h.config.Address) == 0 {
-		return errors.New("invalid config value for URL.Address")
+		return ErrInvalidURLAddr
 	}
 	if h.config.SSL.Enabled {
 		if len(h.config.SSL.CertificatePath) == 0 || len(h.config.SSL.PrivateKeyPath) == 0 {
-			return errors.New("SSL requires both a certificate path and private key path")
+			return ErrInvalidSSLConfig
 		}
 		// If the static paths are relative then we use the location of the binary to resolve it.
 		if err := path.FromBinaryIfRelative(&h.config.SSL.CertificatePath); err != nil {

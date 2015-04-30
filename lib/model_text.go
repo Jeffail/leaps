@@ -32,6 +32,13 @@ import (
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the internal Operational Transform model.
+var (
+	ErrTransformNegDelete = errors.New("transform contained negative delete")
+	ErrTransformTooLong   = errors.New("transform insert length exceeded the limit")
+	ErrTransformTooOld    = errors.New("transform diff greater than transform archive")
+)
+
 /*
 OTransform - A representation of a transformation relating to a leap document. This can either be a
 text addition, a text deletion, or both.
@@ -77,10 +84,10 @@ unaware of, this fixed version gets sent back for distributing across other clie
 */
 func (m *OModel) PushTransform(ot OTransform) (OTransform, int, error) {
 	if ot.Delete < 0 {
-		return OTransform{}, 0, errors.New("transform contained negative delete")
+		return OTransform{}, 0, ErrTransformNegDelete
 	}
 	if uint64(len(ot.Insert)) > m.config.MaxTransformLength {
-		return OTransform{}, 0, errors.New("transform insert length exceeded the limit")
+		return OTransform{}, 0, ErrTransformTooLong
 	}
 
 	lenApplied, lenUnapplied := len(m.Applied), len(m.Unapplied)
@@ -88,7 +95,7 @@ func (m *OModel) PushTransform(ot OTransform) (OTransform, int, error) {
 	diff := (m.Version + 1) - ot.Version
 
 	if diff > lenApplied+lenUnapplied {
-		return OTransform{}, 0, errors.New("transform diff greater than transform archive")
+		return OTransform{}, 0, ErrTransformTooOld
 	}
 	if diff < 0 {
 		return OTransform{}, 0, fmt.Errorf(
@@ -142,7 +149,7 @@ func (m *OModel) FlushTransforms(content *string, secondsRetention int64) (bool,
 	for i = 0; i < len(transforms); i++ {
 		lenContent += (len(transforms[i].Insert) - transforms[i].Delete)
 		if uint64(lenContent) > m.config.MaxDocumentSize {
-			return i > 0, errors.New("cannot apply transform, document length would exceed limit")
+			return i > 0, ErrTransformTooLong
 		}
 		if err = m.applyTransform(&runeContent, &transforms[i]); err != nil {
 			break
@@ -229,7 +236,7 @@ applyTransform - Apply a specific transform to some content.
 */
 func (m *OModel) applyTransform(content *[]rune, ot *OTransform) error {
 	if ot.Delete < 0 {
-		return errors.New("transform contained negative deletion")
+		return ErrTransformNegDelete
 	}
 	if ot.Position+ot.Delete > len(*content) {
 		return fmt.Errorf(

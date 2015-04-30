@@ -57,6 +57,11 @@ func DefaultTokenAuthenticatorConfig() TokenAuthenticatorConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the TokenAuthentication type.
+var (
+	ErrInvalidAuthenticatorType = errors.New("invalid token authenticator type")
+)
+
 /*
 TokenAuthenticator - Implemented by types able to validate tokens for editing or creating documents.
 This is abstracted in order to accommodate for multiple authentication strategies.
@@ -81,7 +86,7 @@ func TokenAuthenticatorFactory(config TokenAuthenticatorConfig, logger *log.Logg
 	case "redis":
 		return NewRedisAuthenticator(config, logger), nil
 	}
-	return nil, errors.New("configuration provided invalid token authenticator type")
+	return nil, ErrInvalidAuthenticatorType
 }
 
 /*--------------------------------------------------------------------------------------------------

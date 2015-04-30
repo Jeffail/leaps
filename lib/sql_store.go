@@ -24,7 +24,6 @@ package lib
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
 	// Blank because SQL driver
@@ -114,7 +113,7 @@ func (m *SQLStore) Fetch(id string) (Document, error) {
 
 	switch {
 	case err == sql.ErrNoRows:
-		return Document{}, errors.New("document ID was not found in table")
+		return Document{}, ErrDocumentNotExist
 	case err != nil:
 		return Document{}, err
 	}

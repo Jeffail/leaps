@@ -33,6 +33,11 @@ import (
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the FileStore type.
+var (
+	ErrInvalidDirectory = errors.New("invalid directory")
+)
+
 /*
 FileStore - Most basic persistent implementation of DocumentStore. Simply stores each document into
 a file within a configured directory. The ID represents the filepath relative to the configured
@@ -86,7 +91,7 @@ GetFileStore - Just a func that returns a FileStore
 */
 func GetFileStore(config DocumentStoreConfig) (DocumentStore, error) {
 	if len(config.StoreDirectory) == 0 {
-		return nil, errors.New("a file store document configuration requires a valid directory")
+		return nil, ErrInvalidDirectory
 	}
 	if _, err := os.Stat(config.StoreDirectory); os.IsNotExist(err) {
 		if err = os.MkdirAll(config.StoreDirectory, os.ModePerm); err != nil {

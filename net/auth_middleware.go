@@ -62,6 +62,11 @@ func NewAuthMiddlewareConfig() AuthMiddlewareConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the AuthMiddleware type.
+var (
+	ErrInvalidHtpasswdPath = errors.New("invalid htpasswd file path")
+)
+
 /*
 AuthMiddleware - A construct designed to take a LeapLocator (a structure for finding and binding to
 leap documents) and bind it to http clients.
@@ -89,7 +94,7 @@ func NewAuthMiddleware(
 	}
 	if config.Enabled {
 		if 0 == len(config.PasswdFilePath) {
-			return nil, errors.New("HTTP Auth requires a htpasswd file path in the configuration")
+			return nil, ErrInvalidHtpasswdPath
 		}
 		if err := auth.accountsFromFile(config.PasswdFilePath); err != nil {
 			return nil, fmt.Errorf("htpasswd file read error: %v", err)

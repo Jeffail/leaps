@@ -64,6 +64,11 @@ type BinderSubscribeBundle struct {
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the BinderPortal type.
+var (
+	ErrTimeout = errors.New("timed out")
+)
+
 /*
 BinderPortal - A container that holds all data necessary to begin an open portal with the binder,
 allowing fresh transforms to be submitted and returned as they come. Also carries the token of the
@@ -102,7 +107,7 @@ func (p *BinderPortal) SendTransform(ot OTransform, timeout time.Duration) (int,
 		return ver, nil
 	case <-time.After(timeout):
 	}
-	return 0, errors.New("timeout occured waiting for binder response")
+	return 0, ErrTimeout
 }
 
 /*
