@@ -50,6 +50,7 @@ type LeapsConfig struct {
 	NumProcesses        int                          `json:"num_processes" yaml:"num_processes"`
 	LoggerConfig        log.LoggerConfig             `json:"logger" yaml:"logger"`
 	StatsConfig         log.StatsConfig              `json:"stats" yaml:"stats"`
+	RiemannConfig       log.RiemannClientConfig      `json:"riemann" yaml:"riemann"`
 	StoreConfig         lib.DocumentStoreConfig      `json:"storage" yaml:"storage"`
 	AuthenticatorConfig lib.TokenAuthenticatorConfig `json:"authenticator" yaml:"authenticator"`
 	CuratorConfig       lib.CuratorConfig            `json:"curator" yaml:"curator"`
@@ -82,6 +83,7 @@ func main() {
 		NumProcesses:        runtime.NumCPU(),
 		LoggerConfig:        log.DefaultLoggerConfig(),
 		StatsConfig:         log.DefaultStatsConfig(),
+		RiemannConfig:       log.NewRiemannClientConfig(),
 		StoreConfig:         lib.DefaultDocumentStoreConfig(),
 		AuthenticatorConfig: lib.DefaultTokenAuthenticatorConfig(),
 		CuratorConfig:       lib.DefaultCuratorConfig(),
@@ -124,8 +126,20 @@ func main() {
 
 	runtime.GOMAXPROCS(leapsConfig.NumProcesses)
 
+	// Logging and stats aggregation
 	logger := log.NewLogger(os.Stdout, leapsConfig.LoggerConfig)
 	stats := log.NewStats(leapsConfig.StatsConfig)
+
+	if riemannClient, err := log.NewRiemannClient(leapsConfig.RiemannConfig); err == nil {
+		logger.UseRiemann(riemannClient)
+		stats.UseRiemann(riemannClient)
+
+		defer riemannClient.Close()
+	} else if err != log.ErrEmptyConfigAddress {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Riemann client error: %v\n", err))
+		return
+	}
+	defer stats.Close()
 
 	fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
 
@@ -149,6 +163,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
 		return
 	}
+	defer curator.Close()
 
 	// HTTP API
 	leapHTTP, err := net.CreateHTTPServer(curator, leapsConfig.HTTPServerConfig, logger, stats)
@@ -156,6 +171,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("HTTP error: %v\n", err))
 		return
 	}
+	defer leapHTTP.Stop()
 
 	go func() {
 		if httperr := leapHTTP.Listen(); httperr != nil {
@@ -185,9 +201,6 @@ func main() {
 	case <-sigChan:
 	case <-closeChan:
 	}
-
-	leapHTTP.Stop()
-	curator.Close()
 }
 
 /*--------------------------------------------------------------------------------------------------
