@@ -18,7 +18,7 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 #THE SOFTWARE.
 
-.PHONY: all build lint check clean install example multiplat package
+.PHONY: all deps build lint check clean install example multiplat package
 
 PROJECT := leaps
 JS_PATH := ./client
@@ -36,6 +36,8 @@ GOFLAGS := -ldflags "-X github.com/jeffail/util.version $(VERSION) \
 help:
 	@echo "Leaps build system, run one of the following commands:"
 	@echo ""
+	@echo "    make deps     : Get/update all go library dependencies"
+	@echo ""
 	@echo "    make build    : Build the service and generate client libraries"
 	@echo ""
 	@echo "    make lint     : Run linting on both .go and .js files"
@@ -46,6 +48,9 @@ help:
 	@echo "                    systems"
 	@echo ""
 	@echo "    make clean    : Clean the repository of any built/generated files"
+
+deps:
+	@go get -d -u ./...
 
 build: check
 	@mkdir -p $(JS_BIN)
