@@ -89,7 +89,7 @@ func NewAuthMiddleware(
 	auth := AuthMiddleware{
 		config:   config,
 		accounts: map[string]string{},
-		logger:   logger.NewModule("[basic_auth]"),
+		logger:   logger.NewModule(":basic_auth"),
 		stats:    stats,
 	}
 	if config.Enabled {

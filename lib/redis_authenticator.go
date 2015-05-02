@@ -82,7 +82,7 @@ NewRedisAuthenticator - Creates a RedisAuthenticator using the provided configur
 */
 func NewRedisAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *RedisAuthenticator {
 	return &RedisAuthenticator{
-		logger: logger.NewModule("[redis_auth]"),
+		logger: logger.NewModule(":redis_auth"),
 		config: config,
 		pool:   newPool(config.RedisConfig),
 	}

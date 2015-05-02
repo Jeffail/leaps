@@ -161,7 +161,7 @@ func CreateHTTPServer(
 	httpServer := HTTPServer{
 		config:    config,
 		locator:   locator,
-		logger:    logger.NewModule("[http]"),
+		logger:    logger.NewModule(":http"),
 		stats:     stats,
 		auth:      auth,
 		closeChan: make(chan bool),

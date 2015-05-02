@@ -1,5 +1,5 @@
 logger:
-  prefix: '[leaps]'
+  prefix: 'leaps'
 stats:
   prefix: leaps
 storage:

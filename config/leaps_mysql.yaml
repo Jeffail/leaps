@@ -1,6 +1,5 @@
-num_processes: 1
 logger:
-  prefix: '[leaps]'
+  prefix: 'leaps'
   log_level: INFO
   add_timestamp: true
 stats:

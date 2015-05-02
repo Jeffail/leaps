@@ -125,7 +125,7 @@ NewFileAuthenticator - Creates an FileAuthenticator using the provided configura
 */
 func NewFileAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *FileAuthenticator {
 	fa := FileAuthenticator{
-		logger: logger.NewModule("[fs_auth]"),
+		logger: logger.NewModule(":fs_auth"),
 		config: config,
 		paths:  []string{},
 		mutex:  &sync.RWMutex{},

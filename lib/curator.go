@@ -89,7 +89,7 @@ func NewCurator(
 	curator := Curator{
 		config:        config,
 		store:         store,
-		log:           log.NewModule("[curator]"),
+		log:           log.NewModule(":curator"),
 		stats:         stats,
 		authenticator: auth,
 		openBinders:   make(map[string]*Binder),

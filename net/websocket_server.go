@@ -91,7 +91,7 @@ func NewWebsocketServer(
 		socket:    socket,
 		binder:    binder,
 		closeChan: closeChan,
-		logger:    logger.NewModule("[socket]"),
+		logger:    logger.NewModule(":socket"),
 		stats:     stats,
 	}
 }

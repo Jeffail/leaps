@@ -108,7 +108,7 @@ func NewBinder(
 		config:        config,
 		model:         CreateTextModel(config.ModelConfig),
 		block:         block,
-		log:           log.NewModule("[binder]"),
+		log:           log.NewModule(":binder"),
 		stats:         stats,
 		clients:       make(map[string]BinderClient),
 		subscribeChan: make(chan BinderSubscribeBundle),
