@@ -45,5 +45,14 @@ type LeapLocator interface {
 	Close()
 }
 
+/*
+LeapAdmin - An interface for performing privileged actions around the curation of leaps documents
+such as user kicking and getting full lists of connected users per document.
+*/
+type LeapAdmin interface {
+	// Kick a user from a document, needs the documentID and userID.
+	KickUser(documentID, userID string) error
+}
+
 /*--------------------------------------------------------------------------------------------------
  */

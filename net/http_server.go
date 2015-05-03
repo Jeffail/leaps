@@ -126,10 +126,7 @@ type LeapServerMessage struct {
 // Errors for the HTTPServer type.
 var (
 	ErrInvalidSocketPath = errors.New("invalid config value for socket path")
-	ErrInvalidStaticPath = errors.New("invalid config value for static path")
 	ErrInvalidDocument   = errors.New("invalid document structure")
-	ErrInvalidURLAddr    = errors.New("invalid config value for URL.Address")
-	ErrInvalidSSLConfig  = errors.New("invalid config value for certificate path and/or private key path")
 )
 
 /*
