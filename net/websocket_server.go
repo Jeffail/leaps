@@ -166,6 +166,8 @@ func (w *WebsocketServer) loopIncoming(closeSignalChan chan<- struct{}, closeCmd
 		if err := websocket.JSON.Receive(w.socket, &msg); err == nil {
 			w.logger.Tracef("Received %v command from client\n", msg.Command)
 
+			timeStarted := time.Now()
+
 			switch msg.Command {
 			case "submit":
 				if msg.Transform == nil {
@@ -184,6 +186,8 @@ func (w *WebsocketServer) loopIncoming(closeSignalChan chan<- struct{}, closeCmd
 						Type:    "correction",
 						Version: ver,
 					})
+					w.stats.Incr("http.websocket.submit.success", 1)
+					w.stats.Timing("http.websocket.submit.timer", time.Since(timeStarted).Seconds())
 				} else {
 					w.logger.Errorf("Transform request failed %v\n", err)
 					websocket.JSON.Send(w.socket, LeapSocketServerMessage{
@@ -191,6 +195,7 @@ func (w *WebsocketServer) loopIncoming(closeSignalChan chan<- struct{}, closeCmd
 						Error: fmt.Sprintf("submit error: %v", err),
 					})
 					w.logger.Debugln("Closing websocket due to failed transform send")
+					w.stats.Incr("http.websocket.submit.error", 1)
 					closeSignalChan <- struct{}{}
 					return
 				}

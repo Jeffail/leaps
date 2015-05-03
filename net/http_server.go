@@ -87,7 +87,7 @@ func DefaultHTTPServerConfig() HTTPServerConfig {
 		Address:        "localhost:8080",
 		StaticFilePath: "",
 		Binder: HTTPBinderConfig{
-			BindSendTimeout: 10,
+			BindSendTimeout: 100,
 		},
 		SSL:      NewSSLConfig(),
 		HTTPAuth: NewAuthMiddlewareConfig(),
