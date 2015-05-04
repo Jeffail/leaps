@@ -135,7 +135,7 @@ func (i *InternalServer) registerEndpoints() {
 		})
 
 	// Register /kick_user endpoint for kicking users from documents
-	i.Register("/kick_user", `<POST> Kick a user from a document {"user_id":"<id>", "doc_id":"<id>"}`,
+	i.Register("/kick_user", `<POST> Kick a user from a document {"user_id":"<id>","doc_id":"<id>"}`,
 		func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != "POST" {
 				i.stats.Incr("http_admin.kick_user.error", 1)
@@ -143,6 +143,7 @@ func (i *InternalServer) registerEndpoints() {
 				http.Error(w, "Wrong method", http.StatusMethodNotAllowed)
 				return
 			}
+
 			bodyBytes, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				i.stats.Incr("http_admin.kick_user.error", 1)
@@ -150,6 +151,7 @@ func (i *InternalServer) registerEndpoints() {
 				http.Error(w, "Bad data", http.StatusBadRequest)
 				return
 			}
+
 			dataObj := struct{ UserID, DocID string }{}
 			if err := json.Unmarshal(bodyBytes, &dataObj); err != nil {
 				i.stats.Incr("http_admin.kick_user.error", 1)
@@ -157,6 +159,7 @@ func (i *InternalServer) registerEndpoints() {
 				http.Error(w, "Bad data", http.StatusBadRequest)
 				return
 			}
+
 			// TODO: Configure timeout
 			if err := i.admin.KickUser(dataObj.DocID, dataObj.UserID, time.Second); err != nil {
 				i.stats.Incr("http_admin.kick_user.error", 1)
@@ -164,8 +167,47 @@ func (i *InternalServer) registerEndpoints() {
 				http.Error(w, "Error kicking user", http.StatusInternalServerError)
 				return
 			}
+
 			i.stats.Incr("http_admin.kick_user.success", 1)
 			i.logger.Infof("/kick_user: Kicked user %v from %v\n", dataObj.UserID, dataObj.DocID)
+
+			fmt.Fprintf(w, "Success")
+		})
+
+	// Register /get_users endpoint for listing users connected to all open documents
+	i.Register(
+		"/get_users",
+		`<GET> Get a list of all connected users {"<document_id1>":["<id1>","<id2>"],"<document_id2":["<id3>"]}`,
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "GET" {
+				i.stats.Incr("http_admin.get_users.error", 1)
+				i.logger.Warnf("/get_users: Wrong method %v\n", r.Method)
+				http.Error(w, "Wrong method", http.StatusMethodNotAllowed)
+				return
+			}
+
+			// TODO: Configure timeout
+			resultObj, err := i.admin.GetUsers(time.Second)
+			if err != nil {
+				i.stats.Incr("http_admin.get_users.error", 1)
+				i.logger.Errorf("/get_users: %v\n", err)
+				http.Error(w, "Error collecting users", http.StatusInternalServerError)
+				return
+			}
+
+			resultBytes, err := json.Marshal(resultObj)
+			if err != nil {
+				i.stats.Incr("http_admin.get_users.error", 1)
+				i.logger.Errorf("/get_users: %v\n", err)
+				http.Error(w, "Error collecting users", http.StatusInternalServerError)
+				return
+			}
+
+			i.stats.Incr("http_admin.get_users.success", 1)
+			i.logger.Infof("/get_users: sending users for %v documents\n", len(resultObj))
+
+			w.Header().Add("Content-Type", "application/json")
+			w.Write(resultBytes)
 		})
 }
 

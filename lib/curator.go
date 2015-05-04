@@ -197,6 +197,38 @@ func (c *Curator) KickUser(documentID, userID string, timeout time.Duration) err
 }
 
 /*
+GetUsers - Return a full list of all connected users of all open documents.
+*/
+func (c *Curator) GetUsers(timeout time.Duration) (map[string][]string, error) {
+	openBinders := []*Binder{}
+
+	c.binderMutex.Lock()
+	for _, binder := range c.openBinders {
+		openBinders = append(openBinders, binder)
+	}
+	c.binderMutex.Unlock()
+
+	started := time.Now()
+
+	// TODO: make these calls asynchronous
+	list := map[string][]string{}
+	for _, binder := range openBinders {
+		users, err := binder.GetUsers(timeout - time.Since(started))
+		if err != nil {
+			c.stats.Incr("curator.get_users.error", 1)
+			c.log.Errorf("Failed to get users list from %v\n", binder.ID)
+			return list, err
+		}
+		if len(users) > 0 {
+			list[binder.ID] = users
+		}
+	}
+
+	c.stats.Incr("curator.get_users.success", 1)
+	return list, nil
+}
+
+/*
 FindDocument - Locates or creates a Binder for an existing document and returns that Binder for
 subscribing to. Returns an error if there was a problem locating the document.
 */

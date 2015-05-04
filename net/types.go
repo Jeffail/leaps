@@ -54,6 +54,9 @@ such as user kicking and getting full lists of connected users per document.
 type LeapAdmin interface {
 	// Kick a user from a document, needs the documentID and userID.
 	KickUser(documentID, userID string, timeout time.Duration) error
+
+	// Get the list of all users connected to all open binders.
+	GetUsers(timeout time.Duration) (map[string][]string, error)
 }
 
 /*--------------------------------------------------------------------------------------------------

@@ -25,10 +25,10 @@ package net
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"testing"
 	"time"
 )
-import "net/http"
-import "testing"
 
 /*--------------------------------------------------------------------------------------------------
  */
@@ -37,6 +37,10 @@ type FakeAdmin struct{}
 
 func (f FakeAdmin) KickUser(doc, user string, timeout time.Duration) error {
 	return nil
+}
+
+func (f FakeAdmin) GetUsers(timeout time.Duration) (map[string][]string, error) {
+	return map[string][]string{}, nil
 }
 
 func TestEndpointsEndpoint(t *testing.T) {
@@ -73,8 +77,9 @@ func TestEndpointsEndpoint(t *testing.T) {
 	}
 
 	expectedEndpoints := "/internal/endpoints: <GET> the available endpoints of this leaps API\n" +
-		`/internal/kick_user: <POST> Kick a user from a document {"user_id":"<id>", "doc_id":"<id>"}` +
-		"\n/internal/first: The first endpoint\n" +
+		`/internal/kick_user: <POST> Kick a user from a document {"user_id":"<id>","doc_id":"<id>"}` + "\n" +
+		`/internal/get_users: <GET> Get a list of all connected users {"<document_id1>":["<id1>","<id2>"],"<document_id2":["<id3>"]}` + "\n" +
+		"/internal/first: The first endpoint\n" +
 		"/internal/second: The second endpoint\n" +
 		"/internal/third: The third endpoint\n"
 
