@@ -22,10 +22,7 @@ THE SOFTWARE.
 
 package lib
 
-import (
-	"errors"
-	"time"
-)
+import "time"
 
 /*--------------------------------------------------------------------------------------------------
  */
@@ -63,11 +60,6 @@ type BinderSubscribeBundle struct {
 
 /*--------------------------------------------------------------------------------------------------
  */
-
-// Errors for the BinderPortal type.
-var (
-	ErrTimeout = errors.New("timed out")
-)
 
 /*
 BinderPortal - A container that holds all data necessary to begin an open portal with the binder,

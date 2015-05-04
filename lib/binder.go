@@ -83,11 +83,12 @@ type Binder struct {
 	subscribeChan chan BinderSubscribeBundle
 
 	// Control channels
-	transformChan chan TransformSubmission
-	messageChan   chan MessageSubmission
-	exitChan      chan string
-	errorChan     chan<- BinderError
-	closedChan    chan struct{}
+	transformChan    chan TransformSubmission
+	messageChan      chan MessageSubmission
+	usersRequestChan chan usersRequestObj
+	exitChan         chan string
+	errorChan        chan<- BinderError
+	closedChan       chan struct{}
 }
 
 /*
@@ -104,19 +105,20 @@ func NewBinder(
 ) (*Binder, error) {
 
 	binder := Binder{
-		ID:            id,
-		config:        config,
-		model:         CreateTextModel(config.ModelConfig),
-		block:         block,
-		log:           log.NewModule(":binder"),
-		stats:         stats,
-		clients:       make(map[string]BinderClient),
-		subscribeChan: make(chan BinderSubscribeBundle),
-		transformChan: make(chan TransformSubmission),
-		messageChan:   make(chan MessageSubmission),
-		exitChan:      make(chan string),
-		errorChan:     errorChan,
-		closedChan:    make(chan struct{}),
+		ID:               id,
+		config:           config,
+		model:            CreateTextModel(config.ModelConfig),
+		block:            block,
+		log:              log.NewModule(":binder"),
+		stats:            stats,
+		clients:          make(map[string]BinderClient),
+		subscribeChan:    make(chan BinderSubscribeBundle),
+		transformChan:    make(chan TransformSubmission),
+		messageChan:      make(chan MessageSubmission),
+		usersRequestChan: make(chan usersRequestObj),
+		exitChan:         make(chan string),
+		errorChan:        errorChan,
+		closedChan:       make(chan struct{}),
 	}
 	binder.log.Debugln("Bound to document, attempting flush")
 
@@ -138,10 +140,10 @@ ClientMessage - A struct containing various updates to a clients' state and an o
 be distributed out to all other clients of a binder.
 */
 type ClientMessage struct {
-	Message  string `json:"message,omitempty" yaml:"message,omitempty"`
-	Position *int64 `json:"position,omitempty" yaml:"position,omitempty"`
-	Active   bool   `json:"active" yaml:"active"`
-	Token    string `json:"user_id" yaml:"user_id"`
+	Message  string `json:"message,omitempty"`
+	Position *int64 `json:"position,omitempty"`
+	Active   bool   `json:"active"`
+	Token    string `json:"user_id"`
 }
 
 /*
@@ -168,6 +170,38 @@ type BinderError struct {
 /*--------------------------------------------------------------------------------------------------
  */
 
+type usersRequestObj struct {
+	responseChan chan<- []string
+}
+
+/*
+GetUsers - Get a list of user id's connected to this binder.
+*/
+func (b *Binder) GetUsers(timeout time.Duration) ([]string, error) {
+	resChan := make(chan []string)
+	b.usersRequestChan <- usersRequestObj{resChan}
+
+	select {
+	case result := <-resChan:
+		return result, nil
+	case <-time.After(timeout):
+	}
+	return []string{}, ErrTimeout
+}
+
+/*
+KickUser - Signals the binder to remove a particular user. Currently doesn't confirm removal, this
+ought to be a blocking call until the removal is validated.
+*/
+func (b *Binder) KickUser(userID string, timeout time.Duration) error {
+	select {
+	case b.exitChan <- userID:
+	case <-time.After(timeout):
+		return ErrTimeout
+	}
+	return nil
+}
+
 /*
 Subscribe - Returns a BinderPortal, which represents a contract between a client and the binder. If
 the subscription was unsuccessful the BinderPortal will contain an error.
@@ -184,15 +218,6 @@ func (b *Binder) Subscribe(token string) BinderPortal {
 	b.subscribeChan <- bundle
 
 	return <-retChan
-}
-
-/*
-KickUser - Signals the binder to remove a particular user. Currently doesn't confirm removal, this
-ought to be a blocking call until the removal is validated.
-*/
-func (b *Binder) KickUser(userID string) error {
-	b.exitChan <- userID
-	return nil
 }
 
 /*
@@ -267,6 +292,25 @@ func (b *Binder) sendClientError(errChan chan<- error, err error) {
 	default:
 		b.log.Errorln("Send client error was blocked")
 		b.stats.Incr("binder.send_client_error.blocked", 1)
+	}
+}
+
+/*
+processUsersRequest - Processes a request for the list of connected clients.
+*/
+func (b *Binder) processUsersRequest(request usersRequestObj) {
+	var clients []string
+	for k, _ := range b.clients {
+		clients = append(clients, k)
+	}
+	select {
+	case request.responseChan <- clients:
+	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
+		/* If the receive channel is blocked then we move on, we have more important things to
+		 * deal with.
+		 */
+		b.stats.Incr("binder.rejected_users_request", 1)
+		b.log.Warnln("Rejected users request")
 	}
 }
 
@@ -428,6 +472,13 @@ func (b *Binder) loop() {
 				closeTimer.Reset(closePeriod)
 			} else {
 				b.log.Infoln("Messages channel closed, shutting down")
+				running = false
+			}
+		case usersRequest, open := <-b.usersRequestChan:
+			if running && open {
+				b.processUsersRequest(usersRequest)
+			} else {
+				b.log.Infoln("Users request channel closed, shutting down")
 				running = false
 			}
 		case exitKey, open := <-b.exitChan:

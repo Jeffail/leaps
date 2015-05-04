@@ -26,3 +26,10 @@ lower level logic for sorting and merging Operational Transforms as well as the 
 abstractions for creating and managing documents.
 */
 package lib
+
+import "errors"
+
+// Errors used throughout the package.
+var (
+	ErrTimeout = errors.New("timed out")
+)

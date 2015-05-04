@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/jeffail/util/log"
 )
@@ -170,7 +171,7 @@ func (c *Curator) loop() {
 /*
 KickUser - Remove a particular user from a document, requires the respective user and document IDs.
 */
-func (c *Curator) KickUser(documentID, userID string) error {
+func (c *Curator) KickUser(documentID, userID string, timeout time.Duration) error {
 	c.log.Debugf("attempting to kick user %v from document %v\n", documentID, userID)
 
 	c.binderMutex.Lock()
@@ -186,7 +187,7 @@ func (c *Curator) KickUser(documentID, userID string) error {
 		return ErrBinderNotFound
 	}
 
-	if err := binder.KickUser(userID); err != nil {
+	if err := binder.KickUser(userID, timeout); err != nil {
 		c.stats.Incr("curator.kick_user.error", 1)
 		return err
 	}

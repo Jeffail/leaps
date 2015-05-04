@@ -25,6 +25,7 @@ package net
 import (
 	"fmt"
 	"io/ioutil"
+	"time"
 )
 import "net/http"
 import "testing"
@@ -34,7 +35,7 @@ import "testing"
 
 type FakeAdmin struct{}
 
-func (f FakeAdmin) KickUser(doc, user string) error {
+func (f FakeAdmin) KickUser(doc, user string, timeout time.Duration) error {
 	return nil
 }
 
@@ -71,8 +72,9 @@ func TestEndpointsEndpoint(t *testing.T) {
 		return
 	}
 
-	expectedEndpoints := "/internal/endpoints: Display the available endpoints of this leaps API\n" +
-		"/internal/first: The first endpoint\n" +
+	expectedEndpoints := "/internal/endpoints: <GET> the available endpoints of this leaps API\n" +
+		`/internal/kick_user: <POST> Kick a user from a document {"user_id":"<id>", "doc_id":"<id>"}` +
+		"\n/internal/first: The first endpoint\n" +
 		"/internal/second: The second endpoint\n" +
 		"/internal/third: The third endpoint\n"
 

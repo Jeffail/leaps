@@ -68,6 +68,72 @@ func TestGracefullShutdown(t *testing.T) {
 	binder.Close()
 }
 
+func TestClientAdminTasks(t *testing.T) {
+	errChan := make(chan BinderError, 10)
+
+	logger, stats := getLoggerAndStats()
+	doc, _ := NewDocument("hello world")
+
+	store := MemoryStore{documents: map[string]Document{
+		"KILL_ME": *doc,
+	}}
+
+	binder, err := NewBinder("KILL_ME", &store, DefaultBinderConfig(), errChan, logger, stats)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+
+	nClients := 10
+
+	portals := make([]BinderPortal, nClients)
+	clientIDs := make([]string, nClients)
+
+	for i := 0; i < nClients; i++ {
+		portals[i] = binder.Subscribe("")
+		if portals[i].Error != nil {
+			t.Errorf("Subscribe error: %v\n", portals[i].Error)
+			return
+		}
+		clientIDs[i] = portals[i].Token
+	}
+
+	for i := 0; i < nClients; i++ {
+		remainingClients, err := binder.GetUsers(time.Second)
+		if err != nil {
+			t.Errorf("Get users error: %v\n", err)
+			return
+		}
+		if len(remainingClients) != len(clientIDs) {
+			t.Errorf("Wrong number of remaining clients: %v != %v\n", len(remainingClients), len(clientIDs))
+			return
+		}
+		for _, val := range clientIDs {
+			found := false
+			for _, c := range remainingClients {
+				if val == c {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Client not found in binder: %v\n", val)
+				return
+			}
+		}
+
+		killID := clientIDs[0]
+		clientIDs = clientIDs[1:]
+
+		if err := binder.KickUser(killID, time.Second); err != nil {
+			t.Errorf("Kick user error: %v\n", err)
+			return
+		}
+	}
+
+	binder.Close()
+}
+
 func TestUpdates(t *testing.T) {
 	errChan := make(chan BinderError)
 	doc, _ := NewDocument("hello world")

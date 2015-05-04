@@ -23,9 +23,12 @@ THE SOFTWARE.
 package net
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/jeffail/util/log"
 	binpath "github.com/jeffail/util/path"
@@ -43,7 +46,6 @@ type InternalServerConfig struct {
 	StaticFilePath string               `json:"www_dir" yaml:"www_dir"`
 	SSL            SSLConfig            `json:"ssl" yaml:"ssl"`
 	HTTPAuth       AuthMiddlewareConfig `json:"basic_auth" yaml:"basic_auth"`
-	RequestTimeout int                  `json:"request_timeout_s" yaml:"request_timeout_s"`
 }
 
 /*
@@ -57,7 +59,6 @@ func NewInternalServerConfig() InternalServerConfig {
 		StaticFilePath: "",
 		SSL:            NewSSLConfig(),
 		HTTPAuth:       NewAuthMiddlewareConfig(),
-		RequestTimeout: 10,
 	}
 }
 
@@ -99,6 +100,8 @@ func NewInternalServer(
 		mux:    http.NewServeMux(),
 		auth:   auth,
 	}
+
+	// Register handling for static files
 	if len(httpServer.config.StaticFilePath) > 0 {
 		if len(httpServer.config.Path) == 0 {
 			return nil, ErrInvalidStaticPath
@@ -112,14 +115,58 @@ func NewInternalServer(
 				http.StripPrefix(httpServer.config.Path, // File strip prefix wrap
 					http.FileServer(http.Dir(httpServer.config.StaticFilePath))))) // File serve handler
 	}
-	httpServer.Register("/endpoints", "Display the available endpoints of this leaps API",
+
+	httpServer.registerEndpoints()
+
+	return &httpServer, nil
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
+func (i *InternalServer) registerEndpoints() {
+	// Register /endpoints endpoint for printing endpoints
+	i.Register("/endpoints", "<GET> the available endpoints of this leaps API",
 		func(w http.ResponseWriter, r *http.Request) {
-			for _, epoint := range httpServer.apiEndpoints {
+			for _, epoint := range i.apiEndpoints {
 				fmt.Fprintf(w, "%v: %v\n", epoint.endpoint, epoint.desc)
 			}
 			w.Header().Add("Content-Type", "text/plain")
 		})
-	return &httpServer, nil
+
+	// Register /kick_user endpoint for kicking users from documents
+	i.Register("/kick_user", `<POST> Kick a user from a document {"user_id":"<id>", "doc_id":"<id>"}`,
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "POST" {
+				i.stats.Incr("http_admin.kick_user.error", 1)
+				i.logger.Warnf("/kick_user: Wrong method %v\n", r.Method)
+				http.Error(w, "Wrong method", http.StatusMethodNotAllowed)
+				return
+			}
+			bodyBytes, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				i.stats.Incr("http_admin.kick_user.error", 1)
+				i.logger.Errorf("/kick_user: %v\n", err)
+				http.Error(w, "Bad data", http.StatusBadRequest)
+				return
+			}
+			dataObj := struct{ UserID, DocID string }{}
+			if err := json.Unmarshal(bodyBytes, &dataObj); err != nil {
+				i.stats.Incr("http_admin.kick_user.error", 1)
+				i.logger.Errorf("/kick_user: %v\n", err)
+				http.Error(w, "Bad data", http.StatusBadRequest)
+				return
+			}
+			// TODO: Configure timeout
+			if err := i.admin.KickUser(dataObj.DocID, dataObj.UserID, time.Second); err != nil {
+				i.stats.Incr("http_admin.kick_user.error", 1)
+				i.logger.Errorf("/kick_user: %v\n", err)
+				http.Error(w, "Error kicking user", http.StatusInternalServerError)
+				return
+			}
+			i.stats.Incr("http_admin.kick_user.success", 1)
+			i.logger.Infof("/kick_user: Kicked user %v from %v\n", dataObj.UserID, dataObj.DocID)
+		})
 }
 
 /*--------------------------------------------------------------------------------------------------

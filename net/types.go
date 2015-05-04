@@ -23,6 +23,8 @@ THE SOFTWARE.
 package net
 
 import (
+	"time"
+
 	"github.com/jeffail/leaps/lib"
 )
 
@@ -51,7 +53,7 @@ such as user kicking and getting full lists of connected users per document.
 */
 type LeapAdmin interface {
 	// Kick a user from a document, needs the documentID and userID.
-	KickUser(documentID, userID string) error
+	KickUser(documentID, userID string, timeout time.Duration) error
 }
 
 /*--------------------------------------------------------------------------------------------------
