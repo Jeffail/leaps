@@ -137,6 +137,13 @@ func (s *RedisAuthenticator) AuthoriseJoin(token, documentID string) bool {
 }
 
 /*
+RegisterHandlers - Nothing to register.
+*/
+func (s *RedisAuthenticator) RegisterHandlers(PubPrivEndpointRegister) error {
+	return nil
+}
+
+/*
 ReadKey - Simply return the value of a particular key, or an error.
 */
 func (s *RedisAuthenticator) ReadKey(key string) (string, error) {

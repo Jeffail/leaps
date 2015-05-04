@@ -187,6 +187,15 @@ func (b *Binder) Subscribe(token string) BinderPortal {
 }
 
 /*
+KickUser - Signals the binder to remove a particular user. Currently doesn't confirm removal, this
+ought to be a blocking call until the removal is validated.
+*/
+func (b *Binder) KickUser(userID string) error {
+	b.exitChan <- userID
+	return nil
+}
+
+/*
 Close - Close the binder, before closing the client channels the binder will flush changes and
 store the document.
 */
@@ -423,7 +432,7 @@ func (b *Binder) loop() {
 			}
 		case exitKey, open := <-b.exitChan:
 			if running && open {
-				b.log.Debugf("Received exit request from: %v\n", exitKey)
+				b.log.Debugf("Received exit request for: %v\n", exitKey)
 				if c, ok := b.clients[exitKey]; ok {
 					b.stats.Decr("binder.subscribed_clients", 1)
 

@@ -67,8 +67,14 @@ TokenAuthenticator - Implemented by types able to validate tokens for editing or
 This is abstracted in order to accommodate for multiple authentication strategies.
 */
 type TokenAuthenticator interface {
+	// AuthoriseCreate - Validate that a `create action` token corresponds to a particular user.
 	AuthoriseCreate(token, userID string) bool
+
+	// AuthoriseJoin - Validate that a `join action` token corresponds to a particular document.
 	AuthoriseJoin(token, documentID string) bool
+
+	// RegisterHandlers - Allow the TokenAuthenticator to register any API endpoints it needs.
+	RegisterHandlers(register PubPrivEndpointRegister) error
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -114,6 +120,13 @@ AuthoriseJoin - Always returns true, because anarchy.
 */
 func (a *Anarchy) AuthoriseJoin(_, _ string) bool {
 	return true
+}
+
+/*
+RegisterHandlers - Nothing to register.
+*/
+func (a *Anarchy) RegisterHandlers(PubPrivEndpointRegister) error {
+	return nil
 }
 
 /*

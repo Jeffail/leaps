@@ -23,6 +23,7 @@ THE SOFTWARE.
 package lib
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -51,6 +52,11 @@ func DefaultCuratorConfig() CuratorConfig {
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+// Errors for the Curator type.
+var (
+	ErrBinderNotFound = errors.New("binder was not found")
+)
 
 /*
 Curator - A structure designed to keep track of a live collection of Binders. Assists prospective
@@ -160,6 +166,34 @@ func (c *Curator) loop() {
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+/*
+KickUser - Remove a particular user from a document, requires the respective user and document IDs.
+*/
+func (c *Curator) KickUser(documentID, userID string) error {
+	c.log.Debugf("attempting to kick user %v from document %v\n", documentID, userID)
+
+	c.binderMutex.Lock()
+
+	// Check for existing binder
+	binder, ok := c.openBinders[documentID]
+
+	c.binderMutex.Unlock()
+
+	if !ok {
+		c.stats.Incr("curator.kick_user.error", 1)
+		c.log.Errorf("Failed to kick user %v from %v: Document was not open\n", userID, documentID)
+		return ErrBinderNotFound
+	}
+
+	if err := binder.KickUser(userID); err != nil {
+		c.stats.Incr("curator.kick_user.error", 1)
+		return err
+	}
+
+	c.stats.Incr("curator.kick_user.success", 1)
+	return nil
+}
 
 /*
 FindDocument - Locates or creates a Binder for an existing document and returns that Binder for

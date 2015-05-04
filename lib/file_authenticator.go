@@ -130,10 +130,6 @@ func NewFileAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *
 		paths:  []string{},
 		mutex:  &sync.RWMutex{},
 	}
-	if len(config.FileConfig.Path) > 0 {
-		fa.logger.Infof("Serving file search API at path: %v\n", config.FileConfig.Path)
-		http.HandleFunc(config.FileConfig.Path, fa.servePaths)
-	}
 	go fa.loop()
 	return &fa
 }
@@ -176,6 +172,20 @@ func (f *FileAuthenticator) AuthoriseJoin(token, documentID string) bool {
 		}
 	}
 	return false
+}
+
+/*
+RegisterHandlers - Register an endpoint for obtaining a list of available files.
+*/
+func (f *FileAuthenticator) RegisterHandlers(register PubPrivEndpointRegister) error {
+	if len(f.config.FileConfig.Path) > 0 {
+		return register.RegisterPublic(
+			f.config.FileConfig.Path,
+			"Get a list of files available for editing",
+			f.servePaths,
+		)
+	}
+	return nil
 }
 
 /*--------------------------------------------------------------------------------------------------

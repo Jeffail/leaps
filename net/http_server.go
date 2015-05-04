@@ -26,10 +26,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/path"
+	binpath "github.com/jeffail/util/path"
 	"golang.org/x/net/websocket"
 )
 
@@ -175,7 +176,7 @@ func CreateHTTPServer(
 			return nil, ErrInvalidStaticPath
 		}
 		// If the static file path is relative then we use the location of the binary to resolve it.
-		if err := path.FromBinaryIfRelative(&httpServer.config.StaticFilePath); err != nil {
+		if err := binpath.FromBinaryIfRelative(&httpServer.config.StaticFilePath); err != nil {
 			return nil, fmt.Errorf("relative path for static files could not be resolved: %v", err)
 		}
 		http.Handle(httpServer.config.StaticPath,
@@ -188,6 +189,13 @@ func CreateHTTPServer(
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+/*
+Register - Register your handler func to an endpoint of the public user API.
+*/
+func (h *HTTPServer) Register(endpoint, description string, handler http.HandlerFunc) {
+	http.HandleFunc(path.Join(h.config.StaticPath, endpoint), handler)
+}
 
 /*
 websocketHandler - The method for creating fresh websocket clients.
@@ -291,10 +299,10 @@ func (h *HTTPServer) Listen() error {
 			return ErrInvalidSSLConfig
 		}
 		// If the static paths are relative then we use the location of the binary to resolve it.
-		if err := path.FromBinaryIfRelative(&h.config.SSL.CertificatePath); err != nil {
+		if err := binpath.FromBinaryIfRelative(&h.config.SSL.CertificatePath); err != nil {
 			return fmt.Errorf("relative path for certificate could not be resolved: %v", err)
 		}
-		if err := path.FromBinaryIfRelative(&h.config.SSL.PrivateKeyPath); err != nil {
+		if err := binpath.FromBinaryIfRelative(&h.config.SSL.PrivateKeyPath); err != nil {
 			return fmt.Errorf("relative path for private key could not be resolved: %v", err)
 		}
 	}

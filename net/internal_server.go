@@ -25,9 +25,10 @@ package net
 import (
 	"fmt"
 	"net/http"
+	"path"
 
 	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/path"
+	binpath "github.com/jeffail/util/path"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -58,17 +59,6 @@ func NewInternalServerConfig() InternalServerConfig {
 		HTTPAuth:       NewAuthMiddlewareConfig(),
 		RequestTimeout: 10,
 	}
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-/*
-EndpointRegister - A type that allows other areas of the codebase to register their own endpoints.
-*/
-type EndpointRegister interface {
-	// Register - Register a handler with a description to an endpoint.
-	Register(endpoint string, description string, handler http.HandlerFunc)
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -114,7 +104,7 @@ func NewInternalServer(
 			return nil, ErrInvalidStaticPath
 		}
 		// If the static file path is relative then we use the location of the binary to resolve it.
-		if err := path.FromBinaryIfRelative(&httpServer.config.StaticFilePath); err != nil {
+		if err := binpath.FromBinaryIfRelative(&httpServer.config.StaticFilePath); err != nil {
 			return nil, fmt.Errorf("relative path for static files could not be resolved: %v", err)
 		}
 		httpServer.mux.Handle(httpServer.config.Path,
@@ -139,11 +129,12 @@ func NewInternalServer(
 Register - Register your handler func to an endpoint of the internal admin API.
 */
 func (i *InternalServer) Register(endpoint, description string, handler http.HandlerFunc) {
+	fullPath := path.Join(i.config.Path, endpoint)
 	i.apiEndpoints = append(i.apiEndpoints, struct{ endpoint, desc string }{
-		i.config.Path + endpoint,
+		fullPath,
 		description,
 	})
-	i.mux.HandleFunc(i.config.Path+endpoint, handler)
+	i.mux.HandleFunc(fullPath, handler)
 }
 
 /*
@@ -159,10 +150,10 @@ func (i *InternalServer) Listen() error {
 			return ErrInvalidSSLConfig
 		}
 		// If the static paths are relative then we use the location of the binary to resolve it.
-		if err := path.FromBinaryIfRelative(&i.config.SSL.CertificatePath); err != nil {
+		if err := binpath.FromBinaryIfRelative(&i.config.SSL.CertificatePath); err != nil {
 			return fmt.Errorf("relative path for certificate could not be resolved: %v", err)
 		}
-		if err := path.FromBinaryIfRelative(&i.config.SSL.PrivateKeyPath); err != nil {
+		if err := binpath.FromBinaryIfRelative(&i.config.SSL.PrivateKeyPath); err != nil {
 			return fmt.Errorf("relative path for private key could not be resolved: %v", err)
 		}
 	}

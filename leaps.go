@@ -23,8 +23,10 @@ THE SOFTWARE.
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -47,15 +49,16 @@ components, which determine the role of this leaps instance. Currently a stand a
 the only supported role.
 */
 type LeapsConfig struct {
-	NumProcesses        int                          `json:"num_processes" yaml:"num_processes"`
-	LoggerConfig        log.LoggerConfig             `json:"logger" yaml:"logger"`
-	StatsConfig         log.StatsConfig              `json:"stats" yaml:"stats"`
-	RiemannConfig       log.RiemannClientConfig      `json:"riemann" yaml:"riemann"`
-	StoreConfig         lib.DocumentStoreConfig      `json:"storage" yaml:"storage"`
-	AuthenticatorConfig lib.TokenAuthenticatorConfig `json:"authenticator" yaml:"authenticator"`
-	CuratorConfig       lib.CuratorConfig            `json:"curator" yaml:"curator"`
-	HTTPServerConfig    net.HTTPServerConfig         `json:"http_server" yaml:"http_server"`
-	StatsServerConfig   log.StatsServerConfig        `json:"stats_server" yaml:"stats_server"`
+	NumProcesses         int                          `json:"num_processes" yaml:"num_processes"`
+	LoggerConfig         log.LoggerConfig             `json:"logger" yaml:"logger"`
+	StatsConfig          log.StatsConfig              `json:"stats" yaml:"stats"`
+	RiemannConfig        log.RiemannClientConfig      `json:"riemann" yaml:"riemann"`
+	StoreConfig          lib.DocumentStoreConfig      `json:"storage" yaml:"storage"`
+	AuthenticatorConfig  lib.TokenAuthenticatorConfig `json:"authenticator" yaml:"authenticator"`
+	CuratorConfig        lib.CuratorConfig            `json:"curator" yaml:"curator"`
+	HTTPServerConfig     net.HTTPServerConfig         `json:"http_server" yaml:"http_server"`
+	InternalServerConfig net.InternalServerConfig     `json:"admin_server" yaml:"admin_server"`
+	StatsServerConfig    log.StatsServerConfig        `json:"stats_server" yaml:"stats_server"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -72,23 +75,56 @@ func init() {
 /*--------------------------------------------------------------------------------------------------
  */
 
+var errEndpointNotConfigured = errors.New("HTTP Endpoint API required but not configured")
+
+type endpointsRegister struct {
+	publicRegister  lib.EndpointRegister
+	privateRegister lib.EndpointRegister
+}
+
+func newEndpointsRegister(public, private lib.EndpointRegister) lib.PubPrivEndpointRegister {
+	return &endpointsRegister{
+		publicRegister:  public,
+		privateRegister: private,
+	}
+}
+
+func (e *endpointsRegister) RegisterPublic(endpoint, description string, handler http.HandlerFunc) error {
+	if e.publicRegister == nil {
+		return errEndpointNotConfigured
+	}
+	e.publicRegister.Register(endpoint, description, handler)
+	return nil
+}
+
+func (e *endpointsRegister) RegisterPrivate(endpoint, description string, handler http.HandlerFunc) error {
+	if e.publicRegister == nil {
+		return errEndpointNotConfigured
+	}
+	e.privateRegister.Register(endpoint, description, handler)
+	return nil
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 func main() {
 	var (
-		curator   net.LeapLocator
 		err       error
 		closeChan = make(chan bool)
 	)
 
 	leapsConfig := LeapsConfig{
-		NumProcesses:        runtime.NumCPU(),
-		LoggerConfig:        log.DefaultLoggerConfig(),
-		StatsConfig:         log.DefaultStatsConfig(),
-		RiemannConfig:       log.NewRiemannClientConfig(),
-		StoreConfig:         lib.DefaultDocumentStoreConfig(),
-		AuthenticatorConfig: lib.DefaultTokenAuthenticatorConfig(),
-		CuratorConfig:       lib.DefaultCuratorConfig(),
-		HTTPServerConfig:    net.DefaultHTTPServerConfig(),
-		StatsServerConfig:   log.DefaultStatsServerConfig(),
+		NumProcesses:         runtime.NumCPU(),
+		LoggerConfig:         log.DefaultLoggerConfig(),
+		StatsConfig:          log.DefaultStatsConfig(),
+		RiemannConfig:        log.NewRiemannClientConfig(),
+		StoreConfig:          lib.DefaultDocumentStoreConfig(),
+		AuthenticatorConfig:  lib.DefaultTokenAuthenticatorConfig(),
+		CuratorConfig:        lib.DefaultCuratorConfig(),
+		HTTPServerConfig:     net.DefaultHTTPServerConfig(),
+		InternalServerConfig: net.NewInternalServerConfig(),
+		StatsServerConfig:    log.DefaultStatsServerConfig(),
 	}
 
 	// A list of default config paths to check for if not explicitly defined
@@ -158,7 +194,7 @@ func main() {
 	}
 
 	// Curator of documents
-	curator, err = lib.NewCurator(leapsConfig.CuratorConfig, logger, stats, authenticator, documentStore)
+	curator, err := lib.NewCurator(leapsConfig.CuratorConfig, logger, stats, authenticator, documentStore)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
 		return
@@ -179,6 +215,27 @@ func main() {
 		}
 		closeChan <- true
 	}()
+
+	// Internal admin HTTP API
+	adminHTTP, err := net.NewInternalServer(curator, leapsConfig.InternalServerConfig, logger, stats)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Admin HTTP error: %v\n", err))
+		return
+	}
+
+	go func() {
+		if httperr := adminHTTP.Listen(); httperr != nil {
+			fmt.Fprintln(os.Stderr, fmt.Sprintf("Admin HTTP listen error: %v\n", httperr))
+		}
+		closeChan <- true
+	}()
+
+	// Register for allowing other components to set API endpoints.
+	register := newEndpointsRegister(leapHTTP, adminHTTP)
+	if err = authenticator.RegisterHandlers(register); err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Register authentication endpoints failed: %v\n", err))
+		return
+	}
 
 	// Internal Statistics HTTP API
 	statsServer, err := log.NewStatsServer(leapsConfig.StatsServerConfig, logger, stats)
