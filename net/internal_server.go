@@ -46,6 +46,7 @@ type InternalServerConfig struct {
 	StaticFilePath string               `json:"www_dir" yaml:"www_dir"`
 	SSL            SSLConfig            `json:"ssl" yaml:"ssl"`
 	HTTPAuth       AuthMiddlewareConfig `json:"basic_auth" yaml:"basic_auth"`
+	RequestTimeout int                  `json:"request_timeout_s" yaml:"request_timeout_s"`
 }
 
 /*
@@ -55,10 +56,11 @@ values for each field.
 func NewInternalServerConfig() InternalServerConfig {
 	return InternalServerConfig{
 		Path:           "/admin",
-		Address:        "localhost:4080",
+		Address:        "",
 		StaticFilePath: "",
 		SSL:            NewSSLConfig(),
 		HTTPAuth:       NewAuthMiddlewareConfig(),
+		RequestTimeout: 10,
 	}
 }
 
@@ -152,7 +154,10 @@ func (i *InternalServer) registerEndpoints() {
 				return
 			}
 
-			dataObj := struct{ UserID, DocID string }{}
+			dataObj := struct {
+				UserID string `json:"user_id"`
+				DocID  string `json:"doc_id"`
+			}{}
 			if err := json.Unmarshal(bodyBytes, &dataObj); err != nil {
 				i.stats.Incr("http_admin.kick_user.error", 1)
 				i.logger.Errorf("/kick_user: %v\n", err)
@@ -160,8 +165,11 @@ func (i *InternalServer) registerEndpoints() {
 				return
 			}
 
-			// TODO: Configure timeout
-			if err := i.admin.KickUser(dataObj.DocID, dataObj.UserID, time.Second); err != nil {
+			if err := i.admin.KickUser(
+				dataObj.DocID,
+				dataObj.UserID,
+				time.Second*time.Duration(i.config.RequestTimeout),
+			); err != nil {
 				i.stats.Incr("http_admin.kick_user.error", 1)
 				i.logger.Errorf("/kick_user: %v\n", err)
 				http.Error(w, "Error kicking user", http.StatusInternalServerError)
@@ -186,8 +194,7 @@ func (i *InternalServer) registerEndpoints() {
 				return
 			}
 
-			// TODO: Configure timeout
-			resultObj, err := i.admin.GetUsers(time.Second)
+			resultObj, err := i.admin.GetUsers(time.Second * time.Duration(i.config.RequestTimeout))
 			if err != nil {
 				i.stats.Incr("http_admin.get_users.error", 1)
 				i.logger.Errorf("/get_users: %v\n", err)
@@ -204,7 +211,7 @@ func (i *InternalServer) registerEndpoints() {
 			}
 
 			i.stats.Incr("http_admin.get_users.success", 1)
-			i.logger.Infof("/get_users: sending users for %v documents\n", len(resultObj))
+			i.logger.Debugf("/get_users: sending users for %v documents\n", len(resultObj))
 
 			w.Header().Add("Content-Type", "application/json")
 			w.Write(resultBytes)

@@ -216,22 +216,27 @@ func main() {
 		closeChan <- true
 	}()
 
+	var adminRegister lib.EndpointRegister
+
 	// Internal admin HTTP API
-	adminHTTP, err := net.NewInternalServer(curator, leapsConfig.InternalServerConfig, logger, stats)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Admin HTTP error: %v\n", err))
-		return
+	if 0 < len(leapsConfig.InternalServerConfig.Address) {
+		adminHTTP, err := net.NewInternalServer(curator, leapsConfig.InternalServerConfig, logger, stats)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, fmt.Sprintf("Admin HTTP error: %v\n", err))
+			return
+		}
+		adminRegister = adminHTTP
+
+		go func() {
+			if httperr := adminHTTP.Listen(); httperr != nil {
+				fmt.Fprintln(os.Stderr, fmt.Sprintf("Admin HTTP listen error: %v\n", httperr))
+			}
+			closeChan <- true
+		}()
 	}
 
-	go func() {
-		if httperr := adminHTTP.Listen(); httperr != nil {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("Admin HTTP listen error: %v\n", httperr))
-		}
-		closeChan <- true
-	}()
-
 	// Register for allowing other components to set API endpoints.
-	register := newEndpointsRegister(leapHTTP, adminHTTP)
+	register := newEndpointsRegister(leapHTTP, adminRegister)
 	if err = authenticator.RegisterHandlers(register); err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Register authentication endpoints failed: %v\n", err))
 		return
