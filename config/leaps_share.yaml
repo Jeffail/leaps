@@ -43,3 +43,5 @@ http_server:
   socket_path: /socket
   address: :8001
   www_dir: ../static/share_dir
+admin_server:
+  address: localhost:8002

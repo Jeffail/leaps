@@ -65,6 +65,9 @@ var docCookies = {
 	}
 };
 
+/*--------------------------------------------------------------------------------------------------
+                             File Extensions to ACE Editor Languages
+--------------------------------------------------------------------------------------------------*/
 var langs = {
 	as: "actionscript",
 	txt: "asciidoc",
@@ -133,6 +136,9 @@ var langs = {
 	yml: "yaml",
 };
 
+/*--------------------------------------------------------------------------------------------------
+                                  List of ACE Editor Themes
+--------------------------------------------------------------------------------------------------*/
 var themes = {
 	ambiance : "Ambiance",
 	chaos : "Chaos",
@@ -167,12 +173,18 @@ var themes = {
 	xcode : "XCode"
 };
 
+/*--------------------------------------------------------------------------------------------------
+                                  List of ACE Editor Key Mappings
+--------------------------------------------------------------------------------------------------*/
 var keymaps = {
 	none : "Standard",
 	vim : "Vim",
 	emacs : "Emacs"
 };
 
+/*--------------------------------------------------------------------------------------------------
+                                        Global Variables
+--------------------------------------------------------------------------------------------------*/
 var ace_editor = null;
 var leaps_client = null;
 var username = "anon";
@@ -184,6 +196,9 @@ var binding = "none";
 var useTabs = true;
 var wrapLines = true;
 
+/*--------------------------------------------------------------------------------------------------
+                                    ACE Editor Configuration
+--------------------------------------------------------------------------------------------------*/
 var configure_ace_editor = function() {
 	if ( ace_editor === null ) {
 		return;
@@ -199,6 +214,9 @@ var configure_ace_editor = function() {
 	ace_editor.getSession().setUseWrapMode(wrapLines);
 };
 
+/*--------------------------------------------------------------------------------------------------
+                                 Leaps Editor User Cursor Helpers
+--------------------------------------------------------------------------------------------------*/
 var HSVtoRGB = function(h, s, v) {
 	var r, g, b, i, f, p, q, t;
 	if (h && s === undefined && v === undefined) {
@@ -237,6 +255,18 @@ var hash = function(str) {
 	return hash;
 };
 
+var user_id_to_color = function(user_id) {
+	var id_hash = hash(user_id);
+	if ( id_hash < 0 ) {
+		id_hash = id_hash * -1;
+	}
+
+	var hue = ( id_hash % 10000 ) / 10000;
+	var rgb = HSVtoRGB(hue, 1, 0.8);
+
+	return "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 1)";
+};
+
 var oob_elements = [];
 
 var ACE_cursor_clear_handler = function() {
@@ -247,15 +277,7 @@ var ACE_cursor_clear_handler = function() {
 };
 
 var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
-	var id_hash = hash(user_id);
-	if ( id_hash < 0 ) {
-		id_hash = id_hash * -1;
-	}
-
-	var hue = ( id_hash % 10000 ) / 10000;
-	var rgb = HSVtoRGB(hue, 1, 0.8);
-
-	var colorStyle = "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 1)";
+	var colorStyle = user_id_to_color(user_id);
 
 	// Needs IE9
 	var editor_bounds = ace_editor.container.getBoundingClientRect();
@@ -335,6 +357,9 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
 		'</div>';
 };
 
+/*--------------------------------------------------------------------------------------------------
+                                 Leaps Editor Bootstrapping
+--------------------------------------------------------------------------------------------------*/
 var join_new_document = function(document_id) {
 	if ( leaps_client !== null ) {
 		leaps_client.close();
@@ -391,15 +416,26 @@ var join_new_document = function(document_id) {
 	});
 
 	leaps_client.on("user", function(user_update) {
+		var refresh_user_list = false;
 		var metadata = user_update.message;
+
 		if ( 'string' === typeof metadata ) {
 			var data = JSON.parse(metadata);
 			if ( 'string' === typeof data.text ) {
 				chat_message(user_update.user_id, data.username, data.text);
 			}
 			if ( 'string' === typeof data.username ) {
+				refresh_user_list = refresh_user_list || !users.hasOwnProperty(user_update.user_id);
 				users[user_update.user_id] = data.username;
 			}
+		}
+		if ( typeof user_update.active === 'boolean' && !user_update.active ) {
+			refresh_user_list = true;
+			delete users[user_update.user_id]
+		}
+
+		if ( refresh_user_list ) {
+			refresh_users_list();
 		}
 	});
 
@@ -409,6 +445,9 @@ var join_new_document = function(document_id) {
 	leaps_client.connect(protocol + "//" + window.location.host + "/socket");
 };
 
+/*--------------------------------------------------------------------------------------------------
+                                    File Path Acquire and Listing
+--------------------------------------------------------------------------------------------------*/
 var fileItemClass = "file-path";
 
 var get_selected_li = function() {
@@ -510,7 +549,7 @@ var show_paths = function(paths_list) {
 	draw_path_object(paths_hierarchy, paths_ele, selected_path);
 };
 
-var AJAX_GET = function(path, onsuccess, onerror) {
+var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
 	var xmlhttp;
 	if (window.XMLHttpRequest)  {
 		// code for IE7+, Firefox, Chrome, Opera, Safari
@@ -530,12 +569,18 @@ var AJAX_GET = function(path, onsuccess, onerror) {
 		}
 	};
 
-	xmlhttp.open("GET", path, true);
-	xmlhttp.send();
+	if ( 'undefined' !== typeof data ) {
+		xmlhttp.open("POST", path, true);
+		xmlhttp.setRequestHeader("Content-Type","text/plain");
+		xmlhttp.send(data);
+	} else {
+		xmlhttp.open("GET", path, true);
+		xmlhttp.send();
+	}
 };
 
 var get_paths = function() {
-	AJAX_GET("/files", function(data) {
+	AJAX_REQUEST("/files", function(data) {
 		try {
 			var paths_list = JSON.parse(data);
 			show_paths(paths_list.paths);
@@ -547,6 +592,41 @@ var get_paths = function() {
 	});
 };
 
+/*--------------------------------------------------------------------------------------------------
+                                    Kick Button Helpers
+--------------------------------------------------------------------------------------------------*/
+var create_kick_btn = function(user_id) {
+	if ( window.location.hostname !== "localhost" &&
+		 window.location.hostname !== "127.0.0.1" ) {
+		return null;
+	}
+	var kick_btn = document.createElement("button");
+	kick_btn.onclick = function() {
+		if ( null === leaps_client ) {
+			return;
+		}
+		AJAX_REQUEST(
+			"http://localhost:8002/admin/kick_user",
+			function(data) {},
+			function(code, message) {
+				console.error("kick error", code, message);
+			},
+			JSON.stringify({
+				doc_id: leaps_client._document_id,
+				user_id: user_id
+			}));
+	};
+
+	kick_btn.className = "small-kick-button red";
+	kick_btn.innerHTML = "x";
+	kick_btn.title = "Kick user";
+
+	return kick_btn;
+};
+
+/*--------------------------------------------------------------------------------------------------
+                                      Chat UI Helpers
+--------------------------------------------------------------------------------------------------*/
 // Use to alert users when new messages appear
 var flash_chat_window = function() {
 	var info_window = document.getElementById("info-window");
@@ -567,15 +647,7 @@ var chat_message = function(user_id, username, message) {
 	var text_span = document.createElement('span');
 
 	if ( 'string' === typeof user_id ) {
-		var id_hash = hash(user_id);
-		if ( id_hash < 0 ) {
-			id_hash = id_hash * -1;
-		}
-
-		var hue = ( id_hash % 10000 ) / 10000;
-		var rgb = HSVtoRGB(hue, 1, 0.8);
-
-		name_span.style.backgroundColor = "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 1)";
+		name_span.style.backgroundColor = user_id_to_color(user_id);
 		name_span.style.color = "#f0f0f0";
 	}
 
@@ -620,6 +692,51 @@ var system_message = function(text, style) {
 	flash_chat_window();
 };
 
+/*--------------------------------------------------------------------------------------------------
+                                    Users List UI Helpers
+--------------------------------------------------------------------------------------------------*/
+var refresh_users_list = function() {
+	var styles = ["ash","light-grey"];
+	var style_index = 0;
+
+	var users_element = document.getElementById("users-list");
+	users_element.innerHTML = "";
+
+	var self_element = document.createElement("div");
+	// var self_text_ele = document.createTextNode(username);
+	var self_text_ele = document.createTextNode("Other users");
+
+	self_element.className = styles[((style_index++)%styles.length)];
+
+	self_element.appendChild(self_text_ele);
+	users_element.appendChild(self_element);
+
+	for (var user in users) {
+		if (users.hasOwnProperty(user)) {
+			var user_element = document.createElement("div");
+			var user_text_ele = document.createTextNode(users[user]);
+
+			var kick_btn = create_kick_btn(user);
+
+			user_element.className = styles[((style_index++)%styles.length)];
+			user_element.style.color = user_id_to_color(user);
+			/*
+			user_element.style.backgroundColor = user_id_to_color(user);
+			user_element.style.color = "#f0f0f0";
+			*/
+
+			if ( null !== kick_btn ) {
+				user_element.appendChild(kick_btn);
+			}
+			user_element.appendChild(user_text_ele);
+			users_element.appendChild(user_element);
+		}
+	}
+};
+
+/*--------------------------------------------------------------------------------------------------
+                                    Set Cookies Helper
+--------------------------------------------------------------------------------------------------*/
 var set_cookie_option = function(key, value) {
 	var expiresDate = new Date();
 	expiresDate.setDate(expiresDate.getDate() + 30);
@@ -630,18 +747,26 @@ var set_cookie_option = function(key, value) {
 window.onload = function() {
 	get_paths();
 
+/*--------------------------------------------------------------------------------------------------
+                                  File Paths Refresh Button
+--------------------------------------------------------------------------------------------------*/
 	var refresh_button = document.getElementById("refresh-button");
 	refresh_button.onclick = function() {
 		get_paths();
 	};
 
+/*--------------------------------------------------------------------------------------------------
+                                    Messages Clear Button
+--------------------------------------------------------------------------------------------------*/
 	var clear_button = document.getElementById("clear-button");
 	clear_button.onclick = function() {
 		var messages = document.getElementById("info-messages");
 		messages.innerHTML = "";
 	};
 
-	// Username option
+/*--------------------------------------------------------------------------------------------------
+                                       Username Input
+--------------------------------------------------------------------------------------------------*/
 	var username_bar = document.getElementById("username-bar");
 	if ( docCookies.hasItem("username") ) {
 		username_bar.value = docCookies.getItem("username");
@@ -650,9 +775,13 @@ window.onload = function() {
 	username_bar.onkeyup = function() {
 		username = username_bar.value || "anon";
 		set_cookie_option("username", username_bar.value);
+		refresh_users_list();
 	};
+	refresh_users_list();
 
-	// Use tabs option
+/*--------------------------------------------------------------------------------------------------
+                                     Use Tabs Checkbox
+--------------------------------------------------------------------------------------------------*/
 	var input_use_tabs = document.getElementById("input-use-tabs");
 	if ( docCookies.hasItem("useTabs") ) {
 		useTabs = docCookies.getItem("useTabs") === "true";
@@ -667,7 +796,9 @@ window.onload = function() {
 		}
 	};
 
-	// Wrap lines option
+/*--------------------------------------------------------------------------------------------------
+                                     Wrap Lines Checkbox
+--------------------------------------------------------------------------------------------------*/
 	var input_wrap_lines = document.getElementById("input-wrap-lines");
 	if ( docCookies.hasItem("wrapLines") ) {
 		wrapLines = docCookies.getItem("wrapLines") === "true";
@@ -682,7 +813,9 @@ window.onload = function() {
 		}
 	};
 
-	// Key map option
+/*--------------------------------------------------------------------------------------------------
+                                  Key Mapping Drop Down Menu
+--------------------------------------------------------------------------------------------------*/
 	var input_select = document.getElementById("input-select");
 	for ( var keymap in keymaps ) {
 		if ( keymaps.hasOwnProperty(keymap) ) {
@@ -706,7 +839,9 @@ window.onload = function() {
 		}
 	};
 
-	// Theme option
+/*--------------------------------------------------------------------------------------------------
+                                        Theme Drop Down Menu
+--------------------------------------------------------------------------------------------------*/
 	var theme_select = document.getElementById("theme-select");
 	for ( var prop in themes ) {
 		if ( themes.hasOwnProperty(prop) ) {
@@ -726,7 +861,9 @@ window.onload = function() {
 		}
 	};
 
-	// Chat bar
+/*--------------------------------------------------------------------------------------------------
+                                           Chat Bar
+--------------------------------------------------------------------------------------------------*/
 	var chat_bar = document.getElementById("chat-bar");
 	chat_bar.onkeypress = function(e) {
 		if ( typeof e !== 'object' ) {

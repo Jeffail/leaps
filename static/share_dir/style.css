@@ -117,6 +117,31 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 /* CLASSES */
 
+.small-kick-button {
+	border-radius: 10px;
+	width: 20px;
+	height: 20px;
+
+	margin-right: 10px;
+
+	text-align: center;
+	vertical-align: middle;
+
+	text-decoration: none;
+	cursor: pointer;
+
+    box-shadow: 0 5px 4px -2px rgba(38, 38, 38, 0.4);
+    border: 0 none;
+
+    position: relative;
+    top: -3px;
+}
+
+.small-kick-button:hover, .small-kick-button:focus, .small-kick-button:active {
+    box-shadow: 0 6px 6px -2px rgba(38, 38, 38, 0.4);
+    top: -4px;
+}
+
 .round-button {
 	border-radius: 30px;
 	width: 60px;
@@ -191,11 +216,11 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 /* UNIQUE */
 
-#file-list-container, #info-window, #editor, #menu-bar {
+#file-list-container, #info-window, #users-window, #editor, #menu-bar {
 	position: absolute;
 }
 
-#file-list-container, #info-window {
+#file-list-container, #info-window, #users-window {
 	overflow: auto;
 }
 
@@ -250,9 +275,17 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	font-size: 13px;
 }
 
-#info-messages {
+#info-messages, #users-list {
 	padding-top: 5px;
 	padding-bottom: 5px;
+}
+
+#users-list div {
+	font-size: 20px;
+	font-weight: bold;
+	padding: 4px;
+	padding-left: 1em;
+	padding-right: 1em;
 }
 
 #info-messages div {
@@ -300,6 +333,9 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	left: 16vw;
 }
 
+#users-window {
+}
+
 #info-window {
 	right: 0;
 	bottom: 0;
@@ -319,12 +355,22 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	bottom: 0;
 }
 
-@media (max-width: 760px) {
-	#info-window {
+@media (max-width: 960px) {
+	#users-window {
 		height: 150px;
 		height: 20vh;
 		left: 250px;
 		left: 16vw;
+		width: 350px;
+		width: 20vw;
+		bottom: 0;
+	}
+
+	#info-window {
+		height: 150px;
+		height: 20vh;
+		left: 600px;
+		left: 36vw;
 	}
 
 	#chat-bar {
@@ -339,14 +385,26 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	}
 }
 
-@media (min-width: 760px) {
+@media (min-width: 960px) {
+	#editor {
+		margin: 10px;
+		box-shadow: 2px 2px 0 #e0e0e0;
+	}
+
 	#editor {
 		right: 25vw; /* 100 - width of info window */
 		bottom: 0;
 	}
 
-	#info-window {
+	#users-window {
 		top: 50px;
+		height: 200px;
+		right: 0;
+		width: 25vw;
+	}
+
+	#info-window {
+		top: 250px;
 		right: 0;
 		bottom: 35px;
 		width: 25vw;
