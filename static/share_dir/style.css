@@ -388,7 +388,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 @media (min-width: 960px) {
 	#editor {
 		margin: 10px;
-		box-shadow: 2px 2px 0 #e0e0e0;
+		box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
 	}
 
 	#editor {

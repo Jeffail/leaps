@@ -376,6 +376,9 @@ var join_new_document = function(document_id) {
 		oldDiv.parentNode.replaceChild(newDiv, oldDiv);
 	}
 
+	users = {};
+	refresh_users_list();
+
 	ace_editor = ace.edit("editor");
 	configure_ace_editor();
 
@@ -425,7 +428,9 @@ var join_new_document = function(document_id) {
 				chat_message(user_update.user_id, data.username, data.text);
 			}
 			if ( 'string' === typeof data.username ) {
-				refresh_user_list = refresh_user_list || !users.hasOwnProperty(user_update.user_id);
+				refresh_user_list = refresh_user_list ||
+						!users.hasOwnProperty(user_update.user_id) ||
+						users[user_update.user_id] !== data.username;
 				users[user_update.user_id] = data.username;
 			}
 		}
@@ -704,7 +709,7 @@ var refresh_users_list = function() {
 
 	var self_element = document.createElement("div");
 	// var self_text_ele = document.createTextNode(username);
-	var self_text_ele = document.createTextNode("Other users");
+	var self_text_ele = document.createTextNode("Users");
 
 	self_element.className = styles[((style_index++)%styles.length)];
 
