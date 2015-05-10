@@ -40,8 +40,8 @@ help:
 	@echo ""
 	@echo "    make build    : Build the service and generate client libraries"
 	@echo ""
-	@echo "    make lint     : Run linting on both .go and .js files"
-	@echo "    make check    : Run unit tests on both Golang and JavaScript code"
+	@echo "    make lint     : Lint your code"
+	@echo "    make check    : Run unit tests"
 	@echo ""
 	@echo "    make package  : Package the service, scripts and client libraries"
 	@echo "                    into a .tar.gz archive for all supported operating"
@@ -63,14 +63,14 @@ build: check
 		uglifyjs "$(JS_BIN)/$(PROJECT).js" >> "$(JS_BIN)/$(PROJECT)-min.js";
 
 lint:
-	@echo ""; echo " -- Linting Golang and JavaScript files -- ";
+	@echo ""; echo " -- Linting code -- ";
 	@gofmt -w .
 	@go tool vet ./**/*.go
 	@golint ./...
 	@jshint $(JS_PATH)/*.js
 
 check: lint
-	@echo ""; echo " -- Unit testing Golang and JavaScript files -- ";
+	@echo ""; echo " -- Running unit tests -- ";
 	@go test -race ./...
 	@cd $(JS_PATH); find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;
 	@echo ""; echo " -- Testing complete -- ";
@@ -102,11 +102,11 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 		echo "archiving $${a_name} version $(VERSION)"; \
 		mkdir -p "./releases/$(VERSION)"; \
 		cp -LR "$(BIN)/$${p_stamp}" "./releases/$(VERSION)/$(PROJECT)"; \
-		cp -LR "$(BIN)/js" "./releases/$(VERSION)/$(PROJECT)"; \
-		cp -LR "./config" "./releases/$(VERSION)/$(PROJECT)"; \
-		cp -LR "./static" "./releases/$(VERSION)/$(PROJECT)"; \
-		cp -LR "./scripts" "./releases/$(VERSION)/$(PROJECT)"; \
-		cp -LR "./docs" "./releases/$(VERSION)/$(PROJECT)"; \
+		[ -d "$(BIN)/js" ] && cp -LR "$(BIN)/js" "./releases/$(VERSION)/$(PROJECT)"; \
+		[ -d "./config" ] && cp -LR "./config" "./releases/$(VERSION)/$(PROJECT)"; \
+		[ -d "./static" ] && cp -LR "./static" "./releases/$(VERSION)/$(PROJECT)"; \
+		[ -d "./scripts" ] && cp -LR "./scripts" "./releases/$(VERSION)/$(PROJECT)"; \
+		[ -d "./docs" ] && cp -LR "./docs" "./releases/$(VERSION)/$(PROJECT)"; \
 		cd "./releases/$(VERSION)"; \
 		tar -czf "$${a_name}.tar.gz" "./$(PROJECT)"; \
 		rm -r "./$(PROJECT)"; \
