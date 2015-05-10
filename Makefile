@@ -62,10 +62,12 @@ build: check
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/$(PROJECT)-min.js"; \
 		uglifyjs "$(JS_BIN)/$(PROJECT).js" >> "$(JS_BIN)/$(PROJECT)-min.js";
 
-GOLINT=$(shell golint .)
 lint:
 	@echo ""; echo " -- Linting Golang and JavaScript files -- ";
-	@gofmt -w . && go tool vet ./**/*.go && echo "$(GOLINT)" && test -z "$(GOLINT)" && jshint $(JS_PATH)/*.js
+	@gofmt -w .
+	@go tool vet ./**/*.go
+	@golint ./...
+	@jshint $(JS_PATH)/*.js
 
 check: lint
 	@echo ""; echo " -- Unit testing Golang and JavaScript files -- ";

@@ -300,7 +300,7 @@ processUsersRequest - Processes a request for the list of connected clients.
 */
 func (b *Binder) processUsersRequest(request usersRequestObj) {
 	var clients []string
-	for k, _ := range b.clients {
+	for k := range b.clients {
 		clients = append(clients, k)
 	}
 	select {
