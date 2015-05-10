@@ -34,7 +34,7 @@ GOFLAGS := -ldflags "-X github.com/jeffail/util.version $(VERSION) \
 	-X github.com/jeffail/util.dateBuilt $(DATE)"
 
 help:
-	@echo "Leaps build system, run one of the following commands:"
+	@echo "The $(PROJECT) build system, run one of the following commands:"
 	@echo ""
 	@echo "    make deps     : Get/update all go library dependencies"
 	@echo ""
@@ -58,9 +58,9 @@ build: check
 	@go build -o $(BIN)/$(PROJECT) $(GOFLAGS)
 	@cp $(BIN)/$(PROJECT) $$GOPATH/bin
 	@echo "copying/compressing js libraries into $(JS_BIN)"
-	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-*.js > $(JS_BIN)/leaps.js; \
-		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/leaps-min.js"; \
-		uglifyjs "$(JS_BIN)/leaps.js" >> "$(JS_BIN)/leaps-min.js";
+	@cat $(JS_CLIENT) $(JS_PATH)/leap-bind-*.js > $(JS_BIN)/$(PROJECT).js; \
+		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/$(PROJECT)-min.js"; \
+		uglifyjs "$(JS_BIN)/$(PROJECT).js" >> "$(JS_BIN)/$(PROJECT)-min.js";
 
 GOLINT=$(shell golint .)
 lint:
@@ -91,7 +91,7 @@ multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 multiplat: build
 	@echo ""; echo " -- Building multiplatform binaries -- ";
 	@$(multiplatform_builds)
-	@mv ./bin/windows_amd64/bin/leaps ./bin/windows_amd64/bin/leaps.exe
+	@mv ./bin/windows_amd64/bin/$(PROJECT) ./bin/windows_amd64/bin/$(PROJECT).exe
 
 package_builds = $(foreach platform, $(PLATFORMS), \
 		plat="$(platform)" armspec="$${plat\#*/}" \
