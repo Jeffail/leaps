@@ -42,15 +42,15 @@ func loggerAndStats() (*log.Logger, *log.Stats) {
 	return logger, stats
 }
 
-func authAndStore(logger *log.Logger) (TokenAuthenticator, DocumentStore) {
+func authAndStore(logger *log.Logger, stats *log.Stats) (TokenAuthenticator, DocumentStore) {
 	store, _ := DocumentStoreFactory(DefaultDocumentStoreConfig())
-	auth, _ := TokenAuthenticatorFactory(DefaultTokenAuthenticatorConfig(), logger)
+	auth, _ := TokenAuthenticatorFactory(DefaultTokenAuthenticatorConfig(), logger, stats)
 	return auth, store
 }
 
 func TestNewCurator(t *testing.T) {
 	log, stats := loggerAndStats()
-	auth, store := authAndStore(log)
+	auth, store := authAndStore(log, stats)
 
 	cur, err := NewCurator(DefaultCuratorConfig(), log, stats, auth, store)
 	if err != nil {
@@ -63,7 +63,7 @@ func TestNewCurator(t *testing.T) {
 
 func TestCuratorClients(t *testing.T) {
 	log, stats := loggerAndStats()
-	auth, store := authAndStore(log)
+	auth, store := authAndStore(log, stats)
 
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000

@@ -85,7 +85,9 @@ type TokenAuthenticator interface {
 /*
 TokenAuthenticatorFactory - Returns a document store object based on a configuration object.
 */
-func TokenAuthenticatorFactory(config TokenAuthenticatorConfig, logger *log.Logger) (TokenAuthenticator, error) {
+func TokenAuthenticatorFactory(
+	config TokenAuthenticatorConfig, logger *log.Logger, stats *log.Stats,
+) (TokenAuthenticator, error) {
 	switch config.Type {
 	case "none":
 		return GetAnarchy(config), nil
@@ -93,6 +95,8 @@ func TokenAuthenticatorFactory(config TokenAuthenticatorConfig, logger *log.Logg
 		return NewFileAuthenticator(config, logger), nil
 	case "redis":
 		return NewRedisAuthenticator(config, logger), nil
+	case "http":
+		return NewHTTPAuthenticator(config, logger, stats), nil
 	}
 	return nil, ErrInvalidAuthenticatorType
 }

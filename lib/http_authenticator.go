@@ -49,7 +49,7 @@ NewHTTPAuthenticatorConfig - Returns a default config object for a HTTPAuthentic
 */
 func NewHTTPAuthenticatorConfig() HTTPAuthenticatorConfig {
 	return HTTPAuthenticatorConfig{
-		Path:         "",
+		Path:         "auth",
 		ExpiryPeriod: 60,
 	}
 }

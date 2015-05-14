@@ -187,7 +187,7 @@ func main() {
 	}
 
 	// Authenticator
-	authenticator, err := lib.TokenAuthenticatorFactory(leapsConfig.AuthenticatorConfig, logger)
+	authenticator, err := lib.TokenAuthenticatorFactory(leapsConfig.AuthenticatorConfig, logger, stats)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Authenticator error: %v\n", err))
 		return
