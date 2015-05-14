@@ -40,6 +40,7 @@ type TokenAuthenticatorConfig struct {
 	AllowCreate bool                     `json:"allow_creation" yaml:"allow_creation"`
 	RedisConfig RedisAuthenticatorConfig `json:"redis_config" yaml:"redis_config"`
 	FileConfig  FileAuthenticatorConfig  `json:"file_config" yaml:"file_config"`
+	HTTPConfig  HTTPAuthenticatorConfig  `json:"http_config" yaml:"http_config"`
 }
 
 /*
@@ -51,6 +52,7 @@ func DefaultTokenAuthenticatorConfig() TokenAuthenticatorConfig {
 		AllowCreate: true,
 		RedisConfig: DefaultRedisAuthenticatorConfig(),
 		FileConfig:  DefaultFileAuthenticatorConfig(),
+		HTTPConfig:  NewHTTPAuthenticatorConfig(),
 	}
 }
 

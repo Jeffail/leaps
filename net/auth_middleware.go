@@ -32,6 +32,7 @@ import (
 	"os"
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 
 	"github.com/jeffail/util/log"
@@ -231,15 +232,27 @@ func (a *AuthMiddleware) authenticateRequest(r *http.Request) bool {
 		a.logger.Warnf("Rejecting due to non-existant account: %v\n", credentials[0])
 		return false
 	}
+
 	if strings.HasPrefix(passHash, "{SHA}") {
+		// Check SHA1 password
 		shaGen := sha1.New()
 		shaGen.Write([]byte(credentials[1]))
-		if passHash[5:] != base64.StdEncoding.EncodeToString(shaGen.Sum(nil)) {
-			a.logger.Warnf("Rejecting due to wrong password for account: %v\n", credentials[0])
-			return false
+		if passHash[5:] == base64.StdEncoding.EncodeToString(shaGen.Sum(nil)) {
+			return true
 		}
-	} // Only support SHA1 right now.
-	return true
+	} else if strings.HasPrefix(passHash, "$2a$") ||
+		strings.HasPrefix(passHash, "$2y$") {
+		// Check bcrypt
+		if err := bcrypt.CompareHashAndPassword([]byte(passHash), []byte(credentials[1])); err == nil {
+			return true
+		}
+	} else {
+		a.logger.Warnf("Rejecting due to unrecognised password hash for account: %v\n", credentials[0])
+		return false
+	}
+
+	a.logger.Warnf("Rejecting due to incorrect password for account: %v\n", credentials[0])
+	return false
 }
 
 /*--------------------------------------------------------------------------------------------------

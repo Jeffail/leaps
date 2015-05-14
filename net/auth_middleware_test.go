@@ -45,8 +45,10 @@ func TestReadGoodFile(t *testing.T) {
 		t.Errorf("Failed to read good htpasswd file: %v", err)
 		return
 	}
-	if 3 != len(authMiddleware.accounts) {
-		t.Errorf("Read incorrect # of accounts from htpasswd: %v != %v", len(authMiddleware.accounts), 3)
+
+	expectedNHashes := 4
+	if expectedNHashes != len(authMiddleware.accounts) {
+		t.Errorf("Read incorrect # of accounts from htpasswd: %v != %v", len(authMiddleware.accounts), expectedNHashes)
 		return
 	}
 }
@@ -136,6 +138,7 @@ func TestBasicAccess(t *testing.T) {
 		userTest{"nope", "chess", false},
 		userTest{"secure", "password123", true},
 		userTest{"non-user", "doesntmatter", false},
+		userTest{"bcrypt_guy1", "iamlegend", true},
 	}
 	for _, test := range userTests {
 		testBytes := emptyReader{}
