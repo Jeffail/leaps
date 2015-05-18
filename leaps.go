@@ -34,6 +34,9 @@ import (
 	"syscall"
 
 	"github.com/jeffail/leaps/lib"
+	"github.com/jeffail/leaps/lib/auth"
+	"github.com/jeffail/leaps/lib/register"
+	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/net"
 	"github.com/jeffail/util"
 	"github.com/jeffail/util/log"
@@ -49,16 +52,16 @@ components, which determine the role of this leaps instance. Currently a stand a
 the only supported role.
 */
 type LeapsConfig struct {
-	NumProcesses         int                          `json:"num_processes" yaml:"num_processes"`
-	LoggerConfig         log.LoggerConfig             `json:"logger" yaml:"logger"`
-	StatsConfig          log.StatsConfig              `json:"stats" yaml:"stats"`
-	RiemannConfig        log.RiemannClientConfig      `json:"riemann" yaml:"riemann"`
-	StoreConfig          lib.DocumentStoreConfig      `json:"storage" yaml:"storage"`
-	AuthenticatorConfig  lib.TokenAuthenticatorConfig `json:"authenticator" yaml:"authenticator"`
-	CuratorConfig        lib.CuratorConfig            `json:"curator" yaml:"curator"`
-	HTTPServerConfig     net.HTTPServerConfig         `json:"http_server" yaml:"http_server"`
-	InternalServerConfig net.InternalServerConfig     `json:"admin_server" yaml:"admin_server"`
-	StatsServerConfig    log.StatsServerConfig        `json:"stats_server" yaml:"stats_server"`
+	NumProcesses         int                      `json:"num_processes" yaml:"num_processes"`
+	LoggerConfig         log.LoggerConfig         `json:"logger" yaml:"logger"`
+	StatsConfig          log.StatsConfig          `json:"stats" yaml:"stats"`
+	RiemannConfig        log.RiemannClientConfig  `json:"riemann" yaml:"riemann"`
+	StoreConfig          store.Config             `json:"storage" yaml:"storage"`
+	AuthenticatorConfig  auth.Config              `json:"authenticator" yaml:"authenticator"`
+	CuratorConfig        lib.CuratorConfig        `json:"curator" yaml:"curator"`
+	HTTPServerConfig     net.HTTPServerConfig     `json:"http_server" yaml:"http_server"`
+	InternalServerConfig net.InternalServerConfig `json:"admin_server" yaml:"admin_server"`
+	StatsServerConfig    log.StatsServerConfig    `json:"stats_server" yaml:"stats_server"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -78,11 +81,11 @@ func init() {
 var errEndpointNotConfigured = errors.New("HTTP Endpoint API required but not configured")
 
 type endpointsRegister struct {
-	publicRegister  lib.EndpointRegister
-	privateRegister lib.EndpointRegister
+	publicRegister  register.EndpointRegister
+	privateRegister register.EndpointRegister
 }
 
-func newEndpointsRegister(public, private lib.EndpointRegister) lib.PubPrivEndpointRegister {
+func newEndpointsRegister(public, private register.EndpointRegister) register.PubPrivEndpointRegister {
 	return &endpointsRegister{
 		publicRegister:  public,
 		privateRegister: private,
@@ -119,8 +122,8 @@ func main() {
 		LoggerConfig:         log.DefaultLoggerConfig(),
 		StatsConfig:          log.DefaultStatsConfig(),
 		RiemannConfig:        log.NewRiemannClientConfig(),
-		StoreConfig:          lib.DefaultDocumentStoreConfig(),
-		AuthenticatorConfig:  lib.DefaultTokenAuthenticatorConfig(),
+		StoreConfig:          store.NewConfig(),
+		AuthenticatorConfig:  auth.NewConfig(),
 		CuratorConfig:        lib.DefaultCuratorConfig(),
 		HTTPServerConfig:     net.DefaultHTTPServerConfig(),
 		InternalServerConfig: net.NewInternalServerConfig(),
@@ -180,14 +183,14 @@ func main() {
 	fmt.Printf("Launching a leaps instance, use CTRL+C to close.\n\n")
 
 	// Document storage engine
-	documentStore, err := lib.DocumentStoreFactory(leapsConfig.StoreConfig)
+	documentStore, err := store.Factory(leapsConfig.StoreConfig)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Document store error: %v\n", err))
 		return
 	}
 
 	// Authenticator
-	authenticator, err := lib.TokenAuthenticatorFactory(leapsConfig.AuthenticatorConfig, logger, stats)
+	authenticator, err := auth.Factory(leapsConfig.AuthenticatorConfig, logger, stats)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Authenticator error: %v\n", err))
 		return
@@ -216,7 +219,7 @@ func main() {
 		closeChan <- true
 	}()
 
-	var adminRegister lib.EndpointRegister
+	var adminRegister register.EndpointRegister
 
 	// Internal admin HTTP API
 	if 0 < len(leapsConfig.InternalServerConfig.Address) {

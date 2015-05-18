@@ -22,7 +22,11 @@ THE SOFTWARE.
 
 package lib
 
-import "time"
+import (
+	"time"
+
+	"github.com/jeffail/leaps/lib/store"
+)
 
 /*--------------------------------------------------------------------------------------------------
  */
@@ -68,7 +72,7 @@ client.
 */
 type BinderPortal struct {
 	Token            string
-	Document         Document
+	Document         store.Document
 	Version          int
 	Error            error
 	TransformRcvChan <-chan OTransform

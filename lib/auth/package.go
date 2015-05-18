@@ -20,32 +20,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+/*
+Package auth - Contains multiple solutions for introducing token based authentication for accessing,
+creating and reading internal leaps documents.
+*/
+package auth
 
-/*--------------------------------------------------------------------------------------------------
- */
+import (
+	"errors"
+
+	"github.com/jeffail/leaps/lib/register"
+)
+
+// Errors for the auth package.
+var (
+	ErrInvalidAuthType = errors.New("invalid token authenticator type")
+)
 
 /*
-Document - A representation of a leap document.
+Authenticator - Implemented by types able to validate tokens for editing or creating documents.
+This is abstracted in order to accommodate for multiple authentication strategies.
 */
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
+type Authenticator interface {
+	// AuthoriseCreate - Validate that a `create action` token corresponds to a particular user.
+	AuthoriseCreate(token, userID string) bool
+
+	// AuthoriseJoin - Validate that a `join action` token corresponds to a particular document.
+	AuthoriseJoin(token, documentID string) bool
+
+	// RegisterHandlers - Allow the Auth to register any API endpoints it needs.
+	RegisterHandlers(register register.PubPrivEndpointRegister) error
 }
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-/*
-NewDocument - Create a fresh leap document with a title, description, type and the initial content.
-*/
-func NewDocument(content string) (*Document, error) {
-	doc := &Document{
-		ID:      GenerateStampedUUID(),
-		Content: content,
-	}
-	return doc, nil
-}
-
-/*--------------------------------------------------------------------------------------------------
- */

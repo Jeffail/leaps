@@ -29,6 +29,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jeffail/leaps/lib/auth"
+	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/util/log"
 )
 
@@ -42,17 +44,17 @@ func loggerAndStats() (*log.Logger, *log.Stats) {
 	return logger, stats
 }
 
-func authAndStore(logger *log.Logger, stats *log.Stats) (TokenAuthenticator, DocumentStore) {
-	store, _ := DocumentStoreFactory(DefaultDocumentStoreConfig())
-	auth, _ := TokenAuthenticatorFactory(DefaultTokenAuthenticatorConfig(), logger, stats)
-	return auth, store
+func authAndStore(logger *log.Logger, stats *log.Stats) (auth.Authenticator, store.Store) {
+	storage, _ := store.Factory(store.NewConfig())
+	auth, _ := auth.Factory(auth.NewConfig(), logger, stats)
+	return auth, storage
 }
 
 func TestNewCurator(t *testing.T) {
 	log, stats := loggerAndStats()
-	auth, store := authAndStore(log, stats)
+	auth, storage := authAndStore(log, stats)
 
-	cur, err := NewCurator(DefaultCuratorConfig(), log, stats, auth, store)
+	cur, err := NewCurator(DefaultCuratorConfig(), log, stats, auth, storage)
 	if err != nil {
 		t.Errorf("Create curator error: %v", err)
 		return
@@ -63,18 +65,18 @@ func TestNewCurator(t *testing.T) {
 
 func TestCuratorClients(t *testing.T) {
 	log, stats := loggerAndStats()
-	auth, store := authAndStore(log, stats)
+	auth, storage := authAndStore(log, stats)
 
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000
 
-	curator, err := NewCurator(DefaultCuratorConfig(), log, stats, auth, store)
+	curator, err := NewCurator(DefaultCuratorConfig(), log, stats, auth, storage)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
 	}
 
-	doc, err := NewDocument("hello world")
+	doc, err := store.NewDocument("hello world")
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return

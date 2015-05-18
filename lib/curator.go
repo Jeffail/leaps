@@ -28,6 +28,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jeffail/leaps/lib/auth"
+	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 )
 
@@ -67,10 +70,10 @@ The curator is fully in control of the binders, and manages their life cycles in
 */
 type Curator struct {
 	config        CuratorConfig
-	store         DocumentStore
+	store         store.Store
 	log           *log.Logger
 	stats         *log.Stats
-	authenticator TokenAuthenticator
+	authenticator auth.Authenticator
 
 	// Binders
 	openBinders map[string]*Binder
@@ -89,8 +92,8 @@ func NewCurator(
 	config CuratorConfig,
 	log *log.Logger,
 	stats *log.Stats,
-	auth TokenAuthenticator,
-	store DocumentStore,
+	auth auth.Authenticator,
+	store store.Store,
 ) (*Curator, error) {
 
 	curator := Curator{
@@ -269,7 +272,7 @@ CreateDocument - Creates a fresh Binder for a new document, which is subsequentl
 error if either the document ID is already currently in use, or if there is a problem storing the
 new document. May require authentication, if so a userID is supplied.
 */
-func (c *Curator) CreateDocument(token string, userID string, doc Document) (BinderPortal, error) {
+func (c *Curator) CreateDocument(token string, userID string, doc store.Document) (BinderPortal, error) {
 	c.log.Debugf("Creating new document with token %v\n", token)
 
 	if !c.authenticator.AuthoriseCreate(token, userID) {
@@ -279,7 +282,7 @@ func (c *Curator) CreateDocument(token string, userID string, doc Document) (Bin
 	c.stats.Incr("curator.create.accepted_client", 1)
 
 	// Always generate a fresh ID
-	doc.ID = GenerateStampedUUID()
+	doc.ID = util.GenerateStampedUUID()
 
 	if err := c.store.Create(doc.ID, doc); err != nil {
 		c.stats.Incr("curator.create_new.failed", 1)

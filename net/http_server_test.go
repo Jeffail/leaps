@@ -32,6 +32,8 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib"
+	"github.com/jeffail/leaps/lib/auth"
+	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/util/log"
 	"golang.org/x/net/websocket"
 )
@@ -221,9 +223,9 @@ func loggerAndStats() (*log.Logger, *log.Stats) {
 	return logger, stats
 }
 
-func authAndStore(logger *log.Logger, stats *log.Stats) (lib.TokenAuthenticator, lib.DocumentStore) {
-	store, _ := lib.DocumentStoreFactory(lib.DefaultDocumentStoreConfig())
-	auth, _ := lib.TokenAuthenticatorFactory(lib.DefaultTokenAuthenticatorConfig(), logger, stats)
+func authAndStore(logger *log.Logger, stats *log.Stats) (auth.Authenticator, store.Store) {
+	store, _ := store.Factory(store.NewConfig())
+	auth, _ := auth.Factory(auth.NewConfig(), logger, stats)
 	return auth, store
 }
 
@@ -244,9 +246,9 @@ func TestHttpServer(t *testing.T) {
 	httpServerConfig.Address = "localhost:8254"
 
 	logger, stats := loggerAndStats()
-	auth, store := authAndStore(logger, stats)
+	auth, storage := authAndStore(logger, stats)
 
-	curator, err := lib.NewCurator(lib.DefaultCuratorConfig(), logger, stats, auth, store)
+	curator, err := lib.NewCurator(lib.DefaultCuratorConfig(), logger, stats, auth, storage)
 	if err != nil {
 		t.Errorf("Curator error: %v", err)
 	}
@@ -277,7 +279,7 @@ func TestHttpServer(t *testing.T) {
 
 		websocket.JSON.Send(ws, LeapClientMessage{
 			Command: "create",
-			Document: &lib.Document{
+			Document: &store.Document{
 				Content: story.Content,
 			},
 		})

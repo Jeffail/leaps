@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+package store
 
 import (
 	"database/sql"
@@ -44,9 +44,9 @@ type TableConfig struct {
 }
 
 /*
-DefaultTableConfig - Default table configuration.
+NewTableConfig - Default table configuration.
 */
-func DefaultTableConfig() TableConfig {
+func NewTableConfig() TableConfig {
 	return TableConfig{
 		Name:       "leaps_documents",
 		IDCol:      "ID",
@@ -63,12 +63,12 @@ type SQLConfig struct {
 }
 
 /*
-DefaultSQLConfig - A default SQL configuration.
+NewSQLConfig - A default SQL configuration.
 */
-func DefaultSQLConfig() SQLConfig {
+func NewSQLConfig() SQLConfig {
 	return SQLConfig{
 		DSN:         "",
-		TableConfig: DefaultTableConfig(),
+		TableConfig: NewTableConfig(),
 	}
 }
 
@@ -79,7 +79,7 @@ func DefaultSQLConfig() SQLConfig {
 SQLStore - A document store implementation for an SQL database.
 */
 type SQLStore struct {
-	config     DocumentStoreConfig
+	config     Config
 	db         *sql.DB
 	createStmt *sql.Stmt
 	updateStmt *sql.Stmt
@@ -123,7 +123,7 @@ func (m *SQLStore) Fetch(id string) (Document, error) {
 /*
 GetSQLStore - Just a func that returns an SQLStore
 */
-func GetSQLStore(config DocumentStoreConfig) (DocumentStore, error) {
+func GetSQLStore(config Config) (Store, error) {
 	var (
 		db                            *sql.DB
 		createStr, updateStr, readStr string

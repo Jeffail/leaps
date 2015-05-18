@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+package store
 
 import (
 	"errors"
@@ -31,9 +31,9 @@ import (
  */
 
 /*
-DocumentStoreConfig - Holds generic configuration options for a document storage solution.
+Config - Holds generic configuration options for a document storage solution.
 */
-type DocumentStoreConfig struct {
+type Config struct {
 	Type           string    `json:"type" yaml:"type"`
 	Name           string    `json:"name" yaml:"name"`
 	StoreDirectory string    `json:"store_directory" yaml:"store_directory"`
@@ -41,31 +41,30 @@ type DocumentStoreConfig struct {
 }
 
 /*
-DefaultDocumentStoreConfig - Returns a default generic configuration.
+NewConfig - Returns a default generic configuration.
 */
-func DefaultDocumentStoreConfig() DocumentStoreConfig {
-	return DocumentStoreConfig{
+func NewConfig() Config {
+	return Config{
 		Type:           "memory",
 		Name:           "",
 		StoreDirectory: "",
-		SQLConfig:      DefaultSQLConfig(),
+		SQLConfig:      NewSQLConfig(),
 	}
 }
 
 /*--------------------------------------------------------------------------------------------------
  */
 
-// Errors for the DocumentStore type.
+// Errors for the  type.
 var (
 	ErrInvalidDocumentType = errors.New("invalid document store type")
 )
 
 /*
-DocumentStore - Implemented by types able to acquire and store documents. This is abstracted in
-order to accommodate for multiple storage strategies. These methods should be asynchronous if
-possible.
+Store - Implemented by types able to acquire and store documents. This is abstracted in order to
+accommodate for multiple storage strategies. These methods should be asynchronous if possible.
 */
-type DocumentStore interface {
+type Store interface {
 	Create(string, Document) error
 	Store(string, Document) error
 	Fetch(string) (Document, error)
@@ -75,9 +74,9 @@ type DocumentStore interface {
  */
 
 /*
-DocumentStoreFactory - Returns a document store object based on a configuration object.
+Factory - Returns a document store object based on a configuration object.
 */
-func DocumentStoreFactory(config DocumentStoreConfig) (DocumentStore, error) {
+func Factory(config Config) (Store, error) {
 	switch config.Type {
 	case "file":
 		return GetFileStore(config)
@@ -100,7 +99,7 @@ var (
 )
 
 /*
-MemoryStore - Most basic implementation of DocumentStore, simply keeps the document in memory. Has
+MemoryStore - Most basic implementation of , simply keeps the document in memory. Has
 zero persistence across sessions.
 */
 type MemoryStore struct {
@@ -143,7 +142,7 @@ func (s *MemoryStore) Fetch(id string) (Document, error) {
 /*
 GetMemoryStore - Just a func that returns a MemoryStore
 */
-func GetMemoryStore(config DocumentStoreConfig) (DocumentStore, error) {
+func GetMemoryStore(config Config) (Store, error) {
 	return &MemoryStore{
 		documents: make(map[string]Document),
 	}, nil
@@ -156,7 +155,7 @@ func GetMemoryStore(config DocumentStoreConfig) (DocumentStore, error) {
 GetMockStore - returns a MemoryStore with a document already created for testing purposes. The
 document has the ID of the config value 'Name'.
 */
-func GetMockStore(config DocumentStoreConfig) (DocumentStore, error) {
+func GetMockStore(config Config) (Store, error) {
 	memStore := &MemoryStore{
 		documents: make(map[string]Document),
 	}

@@ -20,13 +20,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+package auth
 
 import (
 	"errors"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/jeffail/leaps/lib/register"
 	"github.com/jeffail/util/log"
 )
 
@@ -34,9 +35,9 @@ import (
  */
 
 /*
-RedisAuthenticatorConfig - A config object for the redis authentication object.
+RedisConfig - A config object for the redis authentication object.
 */
-type RedisAuthenticatorConfig struct {
+type RedisConfig struct {
 	URL          string `json:"url" yaml:"url"`
 	Password     string `json:"password" yaml:"password"`
 	PoolIdleTOut int64  `json:"pool_idle_s" yaml:"pool_idle_s"`
@@ -44,10 +45,10 @@ type RedisAuthenticatorConfig struct {
 }
 
 /*
-DefaultRedisAuthenticatorConfig - Returns a default config object for a RedisAuthenticator.
+NewRedisConfig - Returns a default config object for a Redis.
 */
-func DefaultRedisAuthenticatorConfig() RedisAuthenticatorConfig {
-	return RedisAuthenticatorConfig{
+func NewRedisConfig() RedisConfig {
+	return RedisConfig{
 		URL:          ":6379",
 		Password:     "",
 		PoolIdleTOut: 240,
@@ -58,7 +59,7 @@ func DefaultRedisAuthenticatorConfig() RedisAuthenticatorConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
-func newPool(config RedisAuthenticatorConfig) *redis.Pool {
+func newPool(config RedisConfig) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     config.PoolMaxIdle,
 		IdleTimeout: time.Duration(config.PoolIdleTOut) * time.Second,
@@ -85,25 +86,25 @@ func newPool(config RedisAuthenticatorConfig) *redis.Pool {
 /*--------------------------------------------------------------------------------------------------
  */
 
-// Errors for the RedisAuthenticator type.
+// Errors for the Redis type.
 var (
 	ErrNoKey = errors.New("key did not exist")
 )
 
 /*
-RedisAuthenticator - A wrapper around the Redis client that acts as an authenticator.
+Redis - A wrapper around the Redis client that acts as an authenticator.
 */
-type RedisAuthenticator struct {
+type Redis struct {
 	logger *log.Logger
-	config TokenAuthenticatorConfig
+	config Config
 	pool   *redis.Pool
 }
 
 /*
-NewRedisAuthenticator - Creates a RedisAuthenticator using the provided configuration.
+NewRedis - Creates a Redis using the provided configuration.
 */
-func NewRedisAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *RedisAuthenticator {
-	return &RedisAuthenticator{
+func NewRedis(config Config, logger *log.Logger) *Redis {
+	return &Redis{
 		logger: logger.NewModule(":redis_auth"),
 		config: config,
 		pool:   newPool(config.RedisConfig),
@@ -117,7 +118,7 @@ func NewRedisAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) 
 AuthoriseCreate - Checks whether a specific key exists in Redis and that the value matches our user
 ID.
 */
-func (s *RedisAuthenticator) AuthoriseCreate(token, userID string) bool {
+func (s *Redis) AuthoriseCreate(token, userID string) bool {
 	if !s.config.AllowCreate {
 		return false
 	}
@@ -141,7 +142,7 @@ func (s *RedisAuthenticator) AuthoriseCreate(token, userID string) bool {
 AuthoriseJoin - Checks whether a specific key exists in Redis and that the value matches a document
 ID.
 */
-func (s *RedisAuthenticator) AuthoriseJoin(token, documentID string) bool {
+func (s *Redis) AuthoriseJoin(token, documentID string) bool {
 	docKey, err := s.ReadKey(token)
 	if err != nil {
 		s.logger.Errorf("failed to get authorise join token: %v\n", err)
@@ -161,14 +162,14 @@ func (s *RedisAuthenticator) AuthoriseJoin(token, documentID string) bool {
 /*
 RegisterHandlers - Nothing to register.
 */
-func (s *RedisAuthenticator) RegisterHandlers(PubPrivEndpointRegister) error {
+func (s *Redis) RegisterHandlers(register.PubPrivEndpointRegister) error {
 	return nil
 }
 
 /*
 ReadKey - Simply return the value of a particular key, or an error.
 */
-func (s *RedisAuthenticator) ReadKey(key string) (string, error) {
+func (s *Redis) ReadKey(key string) (string, error) {
 	conn := s.pool.Get()
 	defer conn.Close()
 
@@ -182,7 +183,7 @@ func (s *RedisAuthenticator) ReadKey(key string) (string, error) {
 /*
 DeleteKey - Deletes an existing key.
 */
-func (s *RedisAuthenticator) DeleteKey(key string) error {
+func (s *Redis) DeleteKey(key string) error {
 	conn := s.pool.Get()
 	defer conn.Close()
 

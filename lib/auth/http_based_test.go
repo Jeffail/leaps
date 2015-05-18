@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+package auth
 
 import (
 	"bytes"
@@ -28,8 +28,22 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
+
+	"github.com/jeffail/leaps/lib/util"
+	"github.com/jeffail/util/log"
 )
+
+func loggerAndStats() (*log.Logger, *log.Stats) {
+	logConf := log.DefaultLoggerConfig()
+	logConf.LogLevel = "OFF"
+
+	logger := log.NewLogger(os.Stdout, logConf)
+	stats := log.NewStats(log.DefaultStatsConfig())
+
+	return logger, stats
+}
 
 type dummyRegister struct {
 	createHandler http.HandlerFunc
@@ -62,13 +76,13 @@ func (d *dummyRegister) RegisterPrivate(endpoint, description string, handler ht
 func TestRegister(t *testing.T) {
 	dummyRegister := dummyRegister{errors: []error{}}
 
-	config := DefaultTokenAuthenticatorConfig()
+	config := NewConfig()
 	config.AllowCreate = true
 	config.HTTPConfig.Path = "/test"
 
-	log, stats := getLoggerAndStats()
+	log, stats := loggerAndStats()
 
-	httpAuth := NewHTTPAuthenticator(config, log, stats)
+	httpAuth := NewHTTP(config, log, stats)
 
 	if err := httpAuth.RegisterHandlers(&dummyRegister); err != nil {
 		t.Errorf("Failed to register HTTP auth endpoints: %v", err)
@@ -106,14 +120,14 @@ func (d *dummyWriter) WriteHeader(int) {
 func TestTokens(t *testing.T) {
 	dummyRegister := dummyRegister{errors: []error{}}
 
-	config := DefaultTokenAuthenticatorConfig()
+	config := NewConfig()
 	config.AllowCreate = true
 	config.HTTPConfig.Path = "/test"
 	config.HTTPConfig.ExpiryPeriod = 300
 
-	log, stats := getLoggerAndStats()
+	log, stats := loggerAndStats()
 
-	httpAuth := NewHTTPAuthenticator(config, log, stats)
+	httpAuth := NewHTTP(config, log, stats)
 
 	if err := httpAuth.RegisterHandlers(&dummyRegister); err != nil {
 		t.Errorf("Failed to register HTTP auth endpoints: %v", err)
@@ -162,14 +176,14 @@ func TestTokens(t *testing.T) {
 }
 
 func TestTokenCleanup(t *testing.T) {
-	config := DefaultTokenAuthenticatorConfig()
+	config := NewConfig()
 	config.AllowCreate = true
 	config.HTTPConfig.Path = "/test"
 	config.HTTPConfig.ExpiryPeriod = 0
 
-	log, stats := getLoggerAndStats()
+	log, stats := loggerAndStats()
 
-	httpAuth := NewHTTPAuthenticator(config, log, stats)
+	httpAuth := NewHTTP(config, log, stats)
 
 	testKeys := []string{
 		"test1",
@@ -196,17 +210,17 @@ func TestTokenCleanup(t *testing.T) {
 }
 
 func TestBadKeys(t *testing.T) {
-	config := DefaultTokenAuthenticatorConfig()
+	config := NewConfig()
 	config.AllowCreate = true
 	config.HTTPConfig.Path = "/test"
 	config.HTTPConfig.ExpiryPeriod = 300
 
-	log, stats := getLoggerAndStats()
+	log, stats := loggerAndStats()
 
-	httpAuth := NewHTTPAuthenticator(config, log, stats)
+	httpAuth := NewHTTP(config, log, stats)
 
 	for i := 0; i < 1000; i++ {
-		uuid := GenerateStampedUUID()
+		uuid := util.GenerateStampedUUID()
 
 		bodyReader := bytes.NewReader([]byte(fmt.Sprintf(`{"key_value":"%v"}`, uuid)))
 		req, _ := http.NewRequest("POST", "http://localhost:8001/test/create", bodyReader)
@@ -221,7 +235,7 @@ func TestBadKeys(t *testing.T) {
 
 	// Check existing tokens with random values
 	for token, key := range httpAuth.tokens {
-		randomKey := GenerateStampedUUID()
+		randomKey := util.GenerateStampedUUID()
 
 		if httpAuth.AuthoriseJoin(token, randomKey) {
 			if key.value != randomKey {
@@ -237,8 +251,8 @@ func TestBadKeys(t *testing.T) {
 
 	// Check random tokens and values
 	for i := 0; i < 1000; i++ {
-		randomToken := GenerateStampedUUID()
-		randomKey := GenerateStampedUUID()
+		randomToken := util.GenerateStampedUUID()
+		randomKey := util.GenerateStampedUUID()
 
 		if httpAuth.AuthoriseJoin(randomToken, randomKey) {
 			t.Errorf("Authorised join random key/token: %v %v", randomToken, randomKey)

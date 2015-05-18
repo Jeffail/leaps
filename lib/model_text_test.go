@@ -27,10 +27,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"testing"
+
+	"github.com/jeffail/leaps/lib/store"
 )
 
 func TestTextModelSimpleTransforms(t *testing.T) {
-	doc, err := NewDocument("hello world")
+	doc, err := store.NewDocument("hello world")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -75,7 +77,7 @@ func TestTextModelSimpleTransforms(t *testing.T) {
 func TestPushPullTransforms(t *testing.T) {
 	numTransforms := 100
 	arrTransforms := make([]OTransform, numTransforms)
-	doc, err := NewDocument("hello world")
+	doc, err := store.NewDocument("hello world")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -133,7 +135,7 @@ func TestTransformStories(t *testing.T) {
 	for _, story := range scont.Stories {
 		stages := []byte("Stages of story:\n")
 
-		doc, err := NewDocument(story.Content)
+		doc, err := store.NewDocument(story.Content)
 		if err != nil {
 			t.Errorf("Error: %v", err)
 			return
@@ -179,7 +181,7 @@ func TestTransformStories(t *testing.T) {
 }
 
 func TestTextModelUnicodeTransforms(t *testing.T) {
-	doc, err := NewDocument("hello world 我今天要学习")
+	doc, err := store.NewDocument("hello world 我今天要学习")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -223,7 +225,7 @@ func TestTextModelUnicodeTransforms(t *testing.T) {
 }
 
 func TestLimits(t *testing.T) {
-	doc, err := NewDocument("1")
+	doc, err := store.NewDocument("1")
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return

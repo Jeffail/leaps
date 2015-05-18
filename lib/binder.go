@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 )
 
@@ -74,7 +76,7 @@ type Binder struct {
 	ID     string
 	config BinderConfig
 	model  Model
-	block  DocumentStore
+	block  store.Store
 	log    *log.Logger
 	stats  *log.Stats
 
@@ -93,11 +95,11 @@ type Binder struct {
 
 /*
 NewBinder - Creates a binder targeting an existing document determined via an ID. Must provide a
-DocumentStore to acquire the document and apply future updates to.
+store.Store to acquire the document and apply future updates to.
 */
 func NewBinder(
 	id string,
-	block DocumentStore,
+	block store.Store,
 	config BinderConfig,
 	errorChan chan<- BinderError,
 	log *log.Logger,
@@ -208,7 +210,7 @@ the subscription was unsuccessful the BinderPortal will contain an error.
 */
 func (b *Binder) Subscribe(token string) BinderPortal {
 	if len(token) == 0 {
-		token = GenerateStampedUUID()
+		token = util.GenerateStampedUUID()
 	}
 	retChan := make(chan BinderPortal, 1)
 	bundle := BinderSubscribeBundle{
@@ -397,11 +399,11 @@ func (b *Binder) processMessage(request MessageSubmission) {
 flush - Obtain latest document content, flush current changes to document, and store the updated
 version.
 */
-func (b *Binder) flush() (Document, error) {
+func (b *Binder) flush() (store.Document, error) {
 	var (
 		errStore, errFlush error
 		changed            bool
-		doc                Document
+		doc                store.Document
 	)
 	doc, errStore = b.block.Fetch(b.ID)
 	if errStore != nil {

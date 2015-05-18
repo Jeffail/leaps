@@ -28,7 +28,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/jeffail/leaps/lib"
+	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/util/log"
 	binpath "github.com/jeffail/util/path"
 	"golang.org/x/net/websocket"
@@ -103,11 +103,11 @@ LeapClientMessage - A structure that defines a message format to expect from cli
 be 'create' (init with new document) or 'find' (init with existing document).
 */
 type LeapClientMessage struct {
-	Command  string        `json:"command" yaml:"command"`
-	Token    string        `json:"token" yaml:"token"`
-	DocID    string        `json:"document_id,omitempty" yaml:"document_id,omitempty"`
-	UserID   string        `json:"user_id,omitempty" yaml:"user_id,omitempty"`
-	Document *lib.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
+	Command  string          `json:"command" yaml:"command"`
+	Token    string          `json:"token" yaml:"token"`
+	DocID    string          `json:"document_id,omitempty" yaml:"document_id,omitempty"`
+	UserID   string          `json:"user_id,omitempty" yaml:"user_id,omitempty"`
+	Document *store.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
 }
 
 /*
@@ -115,10 +115,10 @@ LeapServerMessage - A structure that defines a response message from the server 
 can be 'document' (init response) or 'error' (an error message to display to the client).
 */
 type LeapServerMessage struct {
-	Type     string        `json:"response_type" yaml:"response_type"`
-	Document *lib.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
-	Version  *int          `json:"version,omitempty" yaml:"version,omitempty"`
-	Error    string        `json:"error,omitempty" yaml:"error,omitempty"`
+	Type     string          `json:"response_type" yaml:"response_type"`
+	Document *store.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
+	Version  *int            `json:"version,omitempty" yaml:"version,omitempty"`
+	Error    string          `json:"error,omitempty" yaml:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------

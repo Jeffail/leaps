@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+package store
 
 import (
 	"errors"
@@ -47,7 +47,7 @@ For example, with StoreDirectory set to /var/www, a document can be given the ID
 create and edit the file /var/www/css/main.css
 */
 type FileStore struct {
-	config DocumentStoreConfig
+	config Config
 }
 
 /*
@@ -89,7 +89,7 @@ func (s *FileStore) Fetch(id string) (Document, error) {
 /*
 GetFileStore - Just a func that returns a FileStore
 */
-func GetFileStore(config DocumentStoreConfig) (DocumentStore, error) {
+func GetFileStore(config Config) (Store, error) {
 	if len(config.StoreDirectory) == 0 {
 		return nil, ErrInvalidDirectory
 	}

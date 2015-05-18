@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+package auth
 
 import (
 	"encoding/json"
@@ -30,6 +30,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jeffail/leaps/lib/register"
+	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 )
 
@@ -37,18 +39,18 @@ import (
  */
 
 /*
-HTTPAuthenticatorConfig - A config object for the HTTP API authentication object.
+HTTPConfig - A config object for the HTTP API authentication object.
 */
-type HTTPAuthenticatorConfig struct {
+type HTTPConfig struct {
 	Path         string `json:"path" yaml:"path"`
 	ExpiryPeriod int64  `json:"expiry_period_s" yaml:"expiry_period_s"`
 }
 
 /*
-NewHTTPAuthenticatorConfig - Returns a default config object for a HTTPAuthenticator.
+NewHTTPConfig - Returns a default config object for a HTTP.
 */
-func NewHTTPAuthenticatorConfig() HTTPAuthenticatorConfig {
-	return HTTPAuthenticatorConfig{
+func NewHTTPConfig() HTTPConfig {
+	return HTTPConfig{
 		Path:         "auth",
 		ExpiryPeriod: 60,
 	}
@@ -57,7 +59,7 @@ func NewHTTPAuthenticatorConfig() HTTPAuthenticatorConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
-func (h *HTTPAuthenticator) serveGenerateToken(w http.ResponseWriter, r *http.Request) {
+func (h *HTTP) serveGenerateToken(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "POST endpoint only", http.StatusMethodNotAllowed)
 		return
@@ -85,7 +87,7 @@ func (h *HTTPAuthenticator) serveGenerateToken(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	token := GenerateStampedUUID()
+	token := util.GenerateStampedUUID()
 
 	h.mutex.Lock()
 
@@ -123,22 +125,22 @@ type tokenMapValue struct {
 type tokensMap map[string]tokenMapValue
 
 /*
-HTTPAuthenticator - Uses the admin HTTP server to expose an endpoint for submitting authentication
+HTTP - Uses the admin HTTP server to expose an endpoint for submitting authentication
 tokens.
 */
-type HTTPAuthenticator struct {
+type HTTP struct {
 	logger *log.Logger
 	stats  *log.Stats
-	config TokenAuthenticatorConfig
+	config Config
 	mutex  sync.RWMutex
 	tokens tokensMap
 }
 
 /*
-NewHTTPAuthenticator - Creates an HTTPAuthenticator using the provided configuration.
+NewHTTP - Creates an HTTP using the provided configuration.
 */
-func NewHTTPAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger, stats *log.Stats) *HTTPAuthenticator {
-	return &HTTPAuthenticator{
+func NewHTTP(config Config, logger *log.Logger, stats *log.Stats) *HTTP {
+	return &HTTP{
 		logger: logger.NewModule(":http_auth"),
 		stats:  stats,
 		config: config,
@@ -153,7 +155,7 @@ func NewHTTPAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger, s
 /*
 clearExpiredTokens - Purges our expired tokens from the map.
 */
-func (h *HTTPAuthenticator) clearExpiredTokens() {
+func (h *HTTP) clearExpiredTokens() {
 	expiredTokens := []string{}
 
 	h.mutex.RLock()
@@ -180,7 +182,7 @@ func (h *HTTPAuthenticator) clearExpiredTokens() {
 AuthoriseCreate - Checks whether a specific token has been generated for a user through the HTTP
 authentication endpoint for creating a new document.
 */
-func (h *HTTPAuthenticator) AuthoriseCreate(token, userID string) bool {
+func (h *HTTP) AuthoriseCreate(token, userID string) bool {
 	if !h.config.AllowCreate {
 		return false
 	}
@@ -201,7 +203,7 @@ func (h *HTTPAuthenticator) AuthoriseCreate(token, userID string) bool {
 AuthoriseJoin - Checks whether a specific token has been generated for a document through the HTTP
 authentication endpoint for joining that aforementioned document.
 */
-func (h *HTTPAuthenticator) AuthoriseJoin(token, documentID string) bool {
+func (h *HTTP) AuthoriseJoin(token, documentID string) bool {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
@@ -217,7 +219,7 @@ func (h *HTTPAuthenticator) AuthoriseJoin(token, documentID string) bool {
 /*
 RegisterHandlers - Register endpoints for adding new auth tokens.
 */
-func (h *HTTPAuthenticator) RegisterHandlers(register PubPrivEndpointRegister) error {
+func (h *HTTP) RegisterHandlers(register register.PubPrivEndpointRegister) error {
 	if err := register.RegisterPrivate(
 		path.Join(h.config.HTTPConfig.Path, "create"),
 		`Generate an authentication token for creating a new document, POST: {"key_value":"<user_id>"}`,

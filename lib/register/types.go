@@ -20,7 +20,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+/*
+Package register - A collection of types used for registering endpoints across the leaps library.
+*/
+package register
 
 import "net/http"
 

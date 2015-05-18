@@ -6,7 +6,7 @@ of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+furnished to do so, sub to the following conditions:
 
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
@@ -20,26 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
-
-import "testing"
-
-func TestIDGenerator(t *testing.T) {
-	num := 10000
-	ids := make(map[string]bool, num)
-	collisions := 0
-	for i := 0; i < num; i++ {
-		newdoc, err := NewDocument("hello world")
-		if err != nil {
-			t.Errorf("Error: %v", err)
-		} else {
-			if ids[newdoc.ID] {
-				collisions++
-			}
-			ids[newdoc.ID] = true
-		}
-	}
-	if collisions > 0 {
-		t.Errorf("There were %v ID collisions out of %v documents generated.", collisions, num)
-	}
-}
+/*
+Package store - Contains multiple solutions for Reading/Writing leaps documents.
+*/
+package store

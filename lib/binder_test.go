@@ -26,31 +26,60 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/jeffail/util/log"
+	"github.com/jeffail/leaps/lib/store"
 )
 
-func getLoggerAndStats() (*log.Logger, *log.Stats) {
-	logConf := log.DefaultLoggerConfig()
-	logConf.LogLevel = "OFF"
+/*
+testStore - Just stores documents in a map.
+*/
+type testStore struct {
+	documents map[string]store.Document
+	mutex     sync.RWMutex
+}
 
-	logger := log.NewLogger(os.Stdout, logConf)
-	stats := log.NewStats(log.DefaultStatsConfig())
+/*
+Create - Store document in memory.
+*/
+func (s *testStore) Create(id string, doc store.Document) error {
+	return s.Store(id, doc)
+}
 
-	return logger, stats
+/*
+Store - Store document in memory.
+*/
+func (s *testStore) Store(id string, doc store.Document) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.documents[id] = doc
+	return nil
+}
+
+/*
+Fetch - Fetch document from memory.
+*/
+func (s *testStore) Fetch(id string) (store.Document, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	doc, ok := s.documents[id]
+	if !ok {
+		return doc, store.ErrDocumentNotExist
+	}
+	return doc, nil
 }
 
 func TestGracefullShutdown(t *testing.T) {
 	errChan := make(chan BinderError, 10)
 
-	logger, stats := getLoggerAndStats()
-	doc, _ := NewDocument("hello world")
+	logger, stats := loggerAndStats()
+	doc, _ := store.NewDocument("hello world")
 
-	store := MemoryStore{documents: map[string]Document{
+	store := testStore{documents: map[string]store.Document{
 		"KILL_ME": *doc,
 	}}
 
@@ -71,10 +100,10 @@ func TestGracefullShutdown(t *testing.T) {
 func TestClientAdminTasks(t *testing.T) {
 	errChan := make(chan BinderError, 10)
 
-	logger, stats := getLoggerAndStats()
-	doc, _ := NewDocument("hello world")
+	logger, stats := loggerAndStats()
+	doc, _ := store.NewDocument("hello world")
 
-	store := MemoryStore{documents: map[string]Document{
+	store := testStore{documents: map[string]store.Document{
 		"KILL_ME": *doc,
 	}}
 
@@ -136,12 +165,12 @@ func TestClientAdminTasks(t *testing.T) {
 
 func TestUpdates(t *testing.T) {
 	errChan := make(chan BinderError)
-	doc, _ := NewDocument("hello world")
-	logger, stats := getLoggerAndStats()
+	doc, _ := store.NewDocument("hello world")
+	logger, stats := loggerAndStats()
 
 	binder, err := NewBinder(
 		doc.ID,
-		&MemoryStore{documents: map[string]Document{doc.ID: *doc}},
+		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -178,12 +207,12 @@ func TestUpdates(t *testing.T) {
 
 func TestNewBinder(t *testing.T) {
 	errChan := make(chan BinderError)
-	doc, _ := NewDocument("hello world")
-	logger, stats := getLoggerAndStats()
+	doc, _ := store.NewDocument("hello world")
+	logger, stats := loggerAndStats()
 
 	binder, err := NewBinder(
 		doc.ID,
-		&MemoryStore{documents: map[string]Document{doc.ID: *doc}},
+		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -265,8 +294,8 @@ func goodClient(b BinderPortal, expecting int, t *testing.T, wg *sync.WaitGroup)
 
 func TestClients(t *testing.T) {
 	errChan := make(chan BinderError)
-	doc, _ := NewDocument("hello world")
-	logger, stats := getLoggerAndStats()
+	doc, _ := store.NewDocument("hello world")
+	logger, stats := loggerAndStats()
 
 	config := DefaultBinderConfig()
 	config.FlushPeriod = 5000
@@ -275,7 +304,7 @@ func TestClients(t *testing.T) {
 
 	binder, err := NewBinder(
 		doc.ID,
-		&MemoryStore{documents: map[string]Document{doc.ID: *doc}},
+		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
 		DefaultBinderConfig(),
 		errChan,
 		logger,
@@ -365,7 +394,7 @@ func goodStoryClient(b BinderPortal, bstory *binderStory, wg *sync.WaitGroup, t 
 
 func TestBinderStories(t *testing.T) {
 	nClients := 10
-	logger, stats := getLoggerAndStats()
+	logger, stats := loggerAndStats()
 
 	bytes, err := ioutil.ReadFile("../test/stories/binder_stories.js")
 	if err != nil {
@@ -380,7 +409,7 @@ func TestBinderStories(t *testing.T) {
 	}
 
 	for _, story := range scont.Stories {
-		doc, err := NewDocument(story.Content)
+		doc, err := store.NewDocument(story.Content)
 		if err != nil {
 			t.Errorf("error: %v", err)
 			continue
@@ -398,7 +427,7 @@ func TestBinderStories(t *testing.T) {
 
 		binder, err := NewBinder(
 			doc.ID,
-			&MemoryStore{documents: map[string]Document{doc.ID: *doc}},
+			&testStore{documents: map[string]store.Document{doc.ID: *doc}},
 			config,
 			errChan,
 			logger,

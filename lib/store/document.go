@@ -20,44 +20,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package net
+package store
 
-import (
-	"time"
-
-	"github.com/jeffail/leaps/lib"
-	"github.com/jeffail/leaps/lib/store"
-)
+import "github.com/jeffail/leaps/lib/util"
 
 /*--------------------------------------------------------------------------------------------------
  */
 
 /*
-LeapLocator - An interface capable of locating and creating leaps documents. This can either be a
-curator, which deals with documents on the local service, or a TBD, which load balances between
-servers of curators.
+Document - A representation of a leap document.
 */
-type LeapLocator interface {
-	// FindDocument - Find and return a binder portal to an existing document
-	FindDocument(string, string) (lib.BinderPortal, error)
-
-	// CreateDocument - Create and return a binder portal to a new document
-	CreateDocument(string, string, store.Document) (lib.BinderPortal, error)
-
-	// Close - Close the LeapLocator
-	Close()
+type Document struct {
+	ID      string `json:"id" yaml:"id"`
+	Content string `json:"content" yaml:"content"`
 }
 
-/*
-LeapAdmin - An interface for performing privileged actions around the curation of leaps documents
-such as user kicking and getting full lists of connected users per document.
-*/
-type LeapAdmin interface {
-	// Kick a user from a document, needs the documentID and userID.
-	KickUser(documentID, userID string, timeout time.Duration) error
+/*--------------------------------------------------------------------------------------------------
+ */
 
-	// Get the list of all users connected to all open binders.
-	GetUsers(timeout time.Duration) (map[string][]string, error)
+/*
+NewDocument - Create a fresh leap document with a title, description, type and the initial content.
+*/
+func NewDocument(content string) (*Document, error) {
+	doc := &Document{
+		ID:      util.GenerateStampedUUID(),
+		Content: content,
+	}
+	return doc, nil
 }
 
 /*--------------------------------------------------------------------------------------------------

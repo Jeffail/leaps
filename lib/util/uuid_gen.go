@@ -20,7 +20,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+/*
+Package util - Various miscellanious utilities used throughout leaps lib.
+*/
+package util
 
 import (
 	"encoding/hex"

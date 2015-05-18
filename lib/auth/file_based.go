@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package lib
+package auth
 
 import (
 	"encoding/json"
@@ -32,6 +32,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jeffail/leaps/lib/register"
 	"github.com/jeffail/util/log"
 )
 
@@ -39,9 +40,9 @@ import (
  */
 
 /*
-FileAuthenticatorConfig - A config object for the file system authentication object.
+FileConfig - A config object for the file system authentication object.
 */
-type FileAuthenticatorConfig struct {
+type FileConfig struct {
 	SharePath     string `json:"share_directory" yaml:"share_path"`
 	Path          string `json:"path" yaml:"path"`
 	ShowHidden    bool   `json:"show_hidden" yaml:"show_hidden"`
@@ -49,10 +50,10 @@ type FileAuthenticatorConfig struct {
 }
 
 /*
-DefaultFileAuthenticatorConfig - Returns a default config object for a FileAuthenticator.
+NewFileConfig - Returns a default config object for a File.
 */
-func DefaultFileAuthenticatorConfig() FileAuthenticatorConfig {
-	return FileAuthenticatorConfig{
+func NewFileConfig() FileConfig {
+	return FileConfig{
 		SharePath:     "",
 		Path:          "",
 		ShowHidden:    false,
@@ -63,7 +64,7 @@ func DefaultFileAuthenticatorConfig() FileAuthenticatorConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
-func (f *FileAuthenticator) getPaths() ([]string, error) {
+func (f *File) getPaths() ([]string, error) {
 	paths := []string{}
 	if len(f.config.FileConfig.SharePath) == 0 {
 		return paths, nil
@@ -100,7 +101,7 @@ func (f *FileAuthenticator) getPaths() ([]string, error) {
 	return paths, nil
 }
 
-func (f *FileAuthenticator) servePaths(w http.ResponseWriter, r *http.Request) {
+func (f *File) servePaths(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Supports GET verb only", http.StatusMethodNotAllowed)
 		return
@@ -125,28 +126,28 @@ func (f *FileAuthenticator) servePaths(w http.ResponseWriter, r *http.Request) {
  */
 
 /*
-FileAuthenticator - A utility for using the filesystem as a way of validating that a document exists
+File - A utility for using the filesystem as a way of validating that a document exists
 and is available to edit. This is intended to be used in tandem with the file based document store.
 
-The FileAuthenticator takes a directory as a config option. When a client wishes to connect to a
+The File takes a directory as a config option. When a client wishes to connect to a
 file the user token and document ID are given, where the document ID is the relative path to the
 target file.
 
-The FileAuthenticator will then verify that this file exists within the configured directory. This
+The File will then verify that this file exists within the configured directory. This
 is an attempt to isolate leaps, and avoid users connecting to paths such as ../../../etc/passwd.
 */
-type FileAuthenticator struct {
+type File struct {
 	logger *log.Logger
-	config TokenAuthenticatorConfig
+	config Config
 	paths  []string
 	mutex  *sync.RWMutex
 }
 
 /*
-NewFileAuthenticator - Creates an FileAuthenticator using the provided configuration.
+NewFile - Creates an File using the provided configuration.
 */
-func NewFileAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *FileAuthenticator {
-	fa := FileAuthenticator{
+func NewFile(config Config, logger *log.Logger) *File {
+	fa := File{
 		logger: logger.NewModule(":fs_auth"),
 		config: config,
 		paths:  []string{},
@@ -156,7 +157,7 @@ func NewFileAuthenticator(config TokenAuthenticatorConfig, logger *log.Logger) *
 	return &fa
 }
 
-func (f *FileAuthenticator) loop() {
+func (f *File) loop() {
 	var err error
 	for {
 		f.mutex.Lock()
@@ -176,14 +177,14 @@ func (f *FileAuthenticator) loop() {
 /*
 AuthoriseCreate - Always returns false.
 */
-func (f *FileAuthenticator) AuthoriseCreate(token, userID string) bool {
+func (f *File) AuthoriseCreate(token, userID string) bool {
 	return false
 }
 
 /*
 AuthoriseJoin - Checks whether the documentID file exists, returns true if it does, otherwise false.
 */
-func (f *FileAuthenticator) AuthoriseJoin(token, documentID string) bool {
+func (f *File) AuthoriseJoin(token, documentID string) bool {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
@@ -199,7 +200,7 @@ func (f *FileAuthenticator) AuthoriseJoin(token, documentID string) bool {
 /*
 RegisterHandlers - Register an endpoint for obtaining a list of available files.
 */
-func (f *FileAuthenticator) RegisterHandlers(register PubPrivEndpointRegister) error {
+func (f *File) RegisterHandlers(register register.PubPrivEndpointRegister) error {
 	if len(f.config.FileConfig.Path) > 0 {
 		return register.RegisterPublic(
 			f.config.FileConfig.Path,

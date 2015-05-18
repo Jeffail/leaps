@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib"
+	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/util/log"
 	"golang.org/x/net/websocket"
 )
@@ -109,7 +110,7 @@ func (w *WebsocketServer) Launch() {
 	bindTOut := time.Duration(w.config.BindSendTimeout) * time.Millisecond
 
 	// TODO: Preserve reference of doc ID?
-	w.binder.Document = lib.Document{}
+	w.binder.Document = store.Document{}
 
 	defer func() {
 		w.binder.Exit(bindTOut)
