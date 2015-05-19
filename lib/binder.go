@@ -223,6 +223,28 @@ func (b *Binder) Subscribe(token string) BinderPortal {
 }
 
 /*
+SubscribeReadOnly - Returns a BinderPortal, which represents a contract between a client and the
+binder. If the subscription was unsuccessful the BinderPortal will contain an error. This is a read
+only version of a BinderPortal and means transforms will be received but cannot be submitted.
+*/
+func (b *Binder) SubscribeReadOnly(token string) BinderPortal {
+	if len(token) == 0 {
+		token = util.GenerateStampedUUID()
+	}
+	retChan := make(chan BinderPortal, 1)
+	bundle := BinderSubscribeBundle{
+		PortalRcvChan: retChan,
+		Token:         token,
+	}
+	b.subscribeChan <- bundle
+
+	portal := <-retChan
+	portal.TransformSndChan = nil
+
+	return portal
+}
+
+/*
 Close - Close the binder, before closing the client channels the binder will flush changes and
 store the document.
 */

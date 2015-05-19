@@ -24,6 +24,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -150,6 +151,28 @@ func (s *Redis) AuthoriseJoin(token, documentID string) bool {
 	}
 	if docKey != documentID {
 		s.logger.Warnf("join token invalid, provided: %v, actual: %v\n", documentID, docKey)
+		return false
+	}
+	err = s.DeleteKey(token)
+	if err != nil {
+		s.logger.Errorf("failed to delete key: %v\n", token)
+	}
+	return true
+}
+
+/*
+AuthoriseReadOnly - Checks whether a specific key exists in Redis and that the value matches a
+document ID.
+*/
+func (s *Redis) AuthoriseReadOnly(token, documentID string) bool {
+	docKey, err := s.ReadKey(token)
+	if err != nil {
+		s.logger.Errorf("failed to get authorise join token: %v\n", err)
+		return false
+	}
+	expectedKey := fmt.Sprintf("%v:%v", "READ-ONLY", documentID)
+	if docKey != expectedKey {
+		s.logger.Warnf("join token invalid, provided: %v, actual: %v\n", expectedKey, docKey)
 		return false
 	}
 	err = s.DeleteKey(token)

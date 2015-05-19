@@ -48,6 +48,9 @@ type Authenticator interface {
 	// AuthoriseJoin - Validate that a `join action` token corresponds to a particular document.
 	AuthoriseJoin(token, documentID string) bool
 
+	// AuthoriseReadOnly - Validate that a `read only` token corresponds to a particular document.
+	AuthoriseReadOnly(token, documentID string) bool
+
 	// RegisterHandlers - Allow the Auth to register any API endpoints it needs.
 	RegisterHandlers(register register.PubPrivEndpointRegister) error
 }

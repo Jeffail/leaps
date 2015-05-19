@@ -262,6 +262,70 @@ func TestNewBinder(t *testing.T) {
 	}
 }
 
+func TestReadOnlyPortals(t *testing.T) {
+	errChan := make(chan BinderError)
+	doc, _ := store.NewDocument("hello world")
+	logger, stats := loggerAndStats()
+
+	binder, err := NewBinder(
+		doc.ID,
+		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
+		DefaultBinderConfig(),
+		errChan,
+		logger,
+		stats,
+	)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	go func() {
+		for err := range errChan {
+			t.Errorf("From error channel: %v", err.Err)
+		}
+	}()
+
+	portal1, portal2 := binder.Subscribe(""), binder.Subscribe("")
+	portalReadOnly := binder.SubscribeReadOnly("")
+
+	if v, err := portal1.SendTransform(
+		OTransform{
+			Position: 6,
+			Version:  2,
+			Delete:   5,
+			Insert:   "universe",
+		},
+		time.Second,
+	); v != 2 || err != nil {
+		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
+	}
+	if v, err := portal2.SendTransform(
+		OTransform{
+			Position: 0,
+			Version:  3,
+			Delete:   0,
+			Insert:   "super ",
+		},
+		time.Second,
+	); v != 3 || err != nil {
+		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
+	}
+
+	<-portal1.TransformRcvChan
+	<-portal2.TransformRcvChan
+	<-portalReadOnly.TransformRcvChan
+
+	if _, err := portalReadOnly.SendTransform(OTransform{}, time.Second); err != ErrReadOnlyPortal {
+		t.Errorf("Read only portal unexpected result: %v", err)
+	}
+
+	portal3 := binder.Subscribe("")
+	if exp, rec := "super hello universe", portal3.Document.Content; exp != rec {
+		t.Errorf("Wrong content, expected %v, received %v", exp, rec)
+	}
+}
+
 /*func badClient(b *BinderPortal, t *testing.T, wg *sync.WaitGroup) {
 	// Do nothing, LOLOLOLOLOL AHAHAHAHAHAHAHAHAHA! TIME WASTTTTIIINNNGGGG!!!!
 	time.Sleep(500 * time.Millisecond)

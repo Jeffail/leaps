@@ -198,6 +198,14 @@ func (f *File) AuthoriseJoin(token, documentID string) bool {
 }
 
 /*
+AuthoriseReadOnly - Performs the same action as AuthoriseJoin since this authenticator only
+validates that the file exists.
+*/
+func (f *File) AuthoriseReadOnly(token, documentID string) bool {
+	return f.AuthoriseJoin(token, documentID)
+}
+
+/*
 RegisterHandlers - Register an endpoint for obtaining a list of available files.
 */
 func (f *File) RegisterHandlers(register register.PubPrivEndpointRegister) error {

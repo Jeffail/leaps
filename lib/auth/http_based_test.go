@@ -65,6 +65,8 @@ func (d *dummyRegister) RegisterPrivate(endpoint, description string, handler ht
 		d.createHandler = handler
 	} else if endpoint == "/test/join" {
 		d.joinHandler = handler
+	} else if endpoint == "/test/read" {
+		d.joinHandler = handler
 	} else {
 		err := fmt.Errorf("unrecognised endpoint: %v", endpoint)
 		d.errors = append(d.errors, err)
@@ -149,13 +151,13 @@ func TestTokens(t *testing.T) {
 
 		dWriter := dummyWriter{header: http.Header{}, Token: ""}
 
-		httpAuth.serveGenerateToken(&dWriter, req)
+		httpAuth.joinHandler(&dWriter, req)
 		testTokens = append(testTokens, dWriter.Token)
 
-		stored, ok := httpAuth.tokens[dWriter.Token]
+		stored, ok := httpAuth.tokensJoin[dWriter.Token]
 		if !ok {
 			t.Errorf("Token not stored for key: %v, %v", dWriter.Token, key)
-			t.Errorf("Map: %v", httpAuth.tokens)
+			t.Errorf("Map: %v", httpAuth.tokensJoin)
 		}
 		if stored.value != key {
 			t.Errorf("key mismatch: %v, %v", stored.value, key)
@@ -169,7 +171,7 @@ func TestTokens(t *testing.T) {
 	}
 
 	for _, token := range testTokens {
-		if _, ok := httpAuth.tokens[token]; ok {
+		if _, ok := httpAuth.tokensJoin[token]; ok {
 			t.Errorf("Key not deleted: %v", token)
 		}
 	}
@@ -198,14 +200,14 @@ func TestTokenCleanup(t *testing.T) {
 
 		dWriter := dummyWriter{header: http.Header{}, Token: ""}
 
-		httpAuth.serveGenerateToken(&dWriter, req)
-		if _, ok := httpAuth.tokens[dWriter.Token]; ok {
+		httpAuth.joinHandler(&dWriter, req)
+		if _, ok := httpAuth.tokensJoin[dWriter.Token]; ok {
 			t.Errorf("Token not cleaned up: %v, %v", dWriter.Token, key)
 		}
 	}
 
-	if len(httpAuth.tokens) > 0 {
-		t.Errorf("Keys not cleaned up: %v", httpAuth.tokens)
+	if len(httpAuth.tokensJoin) > 0 {
+		t.Errorf("Keys not cleaned up: %v", httpAuth.tokensJoin)
 	}
 }
 
@@ -227,14 +229,27 @@ func TestBadKeys(t *testing.T) {
 
 		dWriter := dummyWriter{header: http.Header{}, Token: ""}
 
-		httpAuth.serveGenerateToken(&dWriter, req)
-		if _, ok := httpAuth.tokens[dWriter.Token]; !ok {
-			t.Errorf("Token not added: %v", dWriter.Token)
+		switch i % 3 {
+		case 0:
+			httpAuth.joinHandler(&dWriter, req)
+			if _, ok := httpAuth.tokensJoin[dWriter.Token]; !ok {
+				t.Errorf("Token not added: %v", dWriter.Token)
+			}
+		case 1:
+			httpAuth.createHandler(&dWriter, req)
+			if _, ok := httpAuth.tokensCreate[dWriter.Token]; !ok {
+				t.Errorf("Token not added: %v", dWriter.Token)
+			}
+		default:
+			httpAuth.readOnlyHandler(&dWriter, req)
+			if _, ok := httpAuth.tokensReadOnly[dWriter.Token]; !ok {
+				t.Errorf("Token not added: %v", dWriter.Token)
+			}
 		}
 	}
 
 	// Check existing tokens with random values
-	for token, key := range httpAuth.tokens {
+	for token, key := range httpAuth.tokensJoin {
 		randomKey := util.GenerateStampedUUID()
 
 		if httpAuth.AuthoriseJoin(token, randomKey) {
@@ -243,6 +258,11 @@ func TestBadKeys(t *testing.T) {
 			}
 		}
 		if httpAuth.AuthoriseCreate(token, randomKey) {
+			if key.value != randomKey {
+				t.Errorf("Authorised create random key: %v %v", token, randomKey)
+			}
+		}
+		if httpAuth.AuthoriseReadOnly(token, randomKey) {
 			if key.value != randomKey {
 				t.Errorf("Authorised create random key: %v %v", token, randomKey)
 			}
@@ -258,6 +278,9 @@ func TestBadKeys(t *testing.T) {
 			t.Errorf("Authorised join random key/token: %v %v", randomToken, randomKey)
 		}
 		if httpAuth.AuthoriseCreate(randomToken, randomKey) {
+			t.Errorf("Authorised create random key/token: %v %v", randomToken, randomKey)
+		}
+		if httpAuth.AuthoriseReadOnly(randomToken, randomKey) {
 			t.Errorf("Authorised create random key/token: %v %v", randomToken, randomKey)
 		}
 	}

@@ -23,6 +23,7 @@ THE SOFTWARE.
 package lib
 
 import (
+	"errors"
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
@@ -65,6 +66,14 @@ type BinderSubscribeBundle struct {
 /*--------------------------------------------------------------------------------------------------
  */
 
+// Errors for the binder portal type.
+var (
+	ErrReadOnlyPortal = errors.New("attempting to send transforms through a READ ONLY portal")
+)
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 /*
 BinderPortal - A container that holds all data necessary to begin an open portal with the binder,
 allowing fresh transforms to be submitted and returned as they come. Also carries the token of the
@@ -87,6 +96,10 @@ SendTransform - Submits a transform to the binder. The binder responds with eith
 corrected version number for the transform. This is safe to call from any goroutine.
 */
 func (p *BinderPortal) SendTransform(ot OTransform, timeout time.Duration) (int, error) {
+	// Check if we are READ ONLY
+	if nil == p.TransformSndChan {
+		return 0, ErrReadOnlyPortal
+	}
 	// Buffered channels because the server skips blocked sends
 	errChan := make(chan error, 1)
 	verChan := make(chan int, 1)

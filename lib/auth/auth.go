@@ -104,6 +104,13 @@ func (a *Anarchy) AuthoriseJoin(_, _ string) bool {
 }
 
 /*
+AuthoriseReadOnly - Always returns true, because anarchy.
+*/
+func (a *Anarchy) AuthoriseReadOnly(_, _ string) bool {
+	return true
+}
+
+/*
 RegisterHandlers - Nothing to register.
 */
 func (a *Anarchy) RegisterHandlers(register.PubPrivEndpointRegister) error {

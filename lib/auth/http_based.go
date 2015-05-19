@@ -59,59 +59,61 @@ func NewHTTPConfig() HTTPConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
-func (h *HTTP) serveGenerateToken(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "POST endpoint only", http.StatusMethodNotAllowed)
-		return
+func (h *HTTP) createGenerateTokenHandler(tokens tokensMap) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "POST endpoint only", http.StatusMethodNotAllowed)
+			return
+		}
+
+		bytes, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			h.logger.Errorf("Failed to read request body: %v\n", err)
+			http.Error(w, "Bad request: could not read body", http.StatusBadRequest)
+			return
+		}
+
+		var bodyObj struct {
+			Key string `json:"key_value"`
+		}
+		if err = json.Unmarshal(bytes, &bodyObj); err != nil {
+			h.logger.Errorf("Failed to parse request body: %v\n", err)
+			http.Error(w, "Bad request: could not parse body", http.StatusBadRequest)
+			return
+		}
+
+		if 0 == len(bodyObj.Key) {
+			h.logger.Errorln("User ID not found in request body")
+			http.Error(w, "Bad request: no user id found", http.StatusBadRequest)
+			return
+		}
+
+		token := util.GenerateStampedUUID()
+
+		h.mutex.Lock()
+
+		tokens[token] = tokenMapValue{
+			value:   bodyObj.Key,
+			expires: time.Now().Add(time.Second * time.Duration(h.config.HTTPConfig.ExpiryPeriod)),
+		}
+		h.mutex.Unlock()
+
+		resBytes, err := json.Marshal(struct {
+			Token string `json:"token"`
+		}{
+			Token: token,
+		})
+		if err != nil {
+			h.logger.Errorf("Failed to generate JSON response: %v\n", err)
+			http.Error(w, "Failed to generate response", http.StatusInternalServerError)
+			return
+		}
+
+		w.Write(resBytes)
+		w.Header().Add("Content-Type", "application/json")
+
+		h.clearExpiredTokens(tokens)
 	}
-
-	bytes, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		h.logger.Errorf("Failed to read request body: %v\n", err)
-		http.Error(w, "Bad request: could not read body", http.StatusBadRequest)
-		return
-	}
-
-	var bodyObj struct {
-		Key string `json:"key_value"`
-	}
-	if err = json.Unmarshal(bytes, &bodyObj); err != nil {
-		h.logger.Errorf("Failed to parse request body: %v\n", err)
-		http.Error(w, "Bad request: could not parse body", http.StatusBadRequest)
-		return
-	}
-
-	if 0 == len(bodyObj.Key) {
-		h.logger.Errorln("User ID not found in request body")
-		http.Error(w, "Bad request: no user id found", http.StatusBadRequest)
-		return
-	}
-
-	token := util.GenerateStampedUUID()
-
-	h.mutex.Lock()
-
-	h.tokens[token] = tokenMapValue{
-		value:   bodyObj.Key,
-		expires: time.Now().Add(time.Second * time.Duration(h.config.HTTPConfig.ExpiryPeriod)),
-	}
-	h.mutex.Unlock()
-
-	resBytes, err := json.Marshal(struct {
-		Token string `json:"token"`
-	}{
-		Token: token,
-	})
-	if err != nil {
-		h.logger.Errorf("Failed to generate JSON response: %v\n", err)
-		http.Error(w, "Failed to generate response", http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(resBytes)
-	w.Header().Add("Content-Type", "application/json")
-
-	h.clearExpiredTokens()
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -132,34 +134,54 @@ type HTTP struct {
 	logger *log.Logger
 	stats  *log.Stats
 	config Config
-	mutex  sync.RWMutex
-	tokens tokensMap
+
+	// Lock for token reading/writing
+	mutex sync.RWMutex
+
+	// Stored tokens for various actions
+	tokensCreate   tokensMap
+	tokensJoin     tokensMap
+	tokensReadOnly tokensMap
+
+	// HTTP handlers for various actions
+	createHandler   http.HandlerFunc
+	joinHandler     http.HandlerFunc
+	readOnlyHandler http.HandlerFunc
 }
 
 /*
 NewHTTP - Creates an HTTP using the provided configuration.
 */
 func NewHTTP(config Config, logger *log.Logger, stats *log.Stats) *HTTP {
-	return &HTTP{
+	authorizer := HTTP{
 		logger: logger.NewModule(":http_auth"),
 		stats:  stats,
 		config: config,
 		mutex:  sync.RWMutex{},
-		tokens: tokensMap{},
+
+		tokensCreate:   tokensMap{},
+		tokensJoin:     tokensMap{},
+		tokensReadOnly: tokensMap{},
 	}
+
+	authorizer.createHandler = authorizer.createGenerateTokenHandler(authorizer.tokensCreate)
+	authorizer.joinHandler = authorizer.createGenerateTokenHandler(authorizer.tokensJoin)
+	authorizer.readOnlyHandler = authorizer.createGenerateTokenHandler(authorizer.tokensReadOnly)
+
+	return &authorizer
 }
 
 /*--------------------------------------------------------------------------------------------------
  */
 
 /*
-clearExpiredTokens - Purges our expired tokens from the map.
+clearExpiredTokens - Purges our expired tokens from a map.
 */
-func (h *HTTP) clearExpiredTokens() {
+func (h *HTTP) clearExpiredTokens(tokens tokensMap) {
 	expiredTokens := []string{}
 
 	h.mutex.RLock()
-	for token, val := range h.tokens {
+	for token, val := range tokens {
 		if val.expires.Before(time.Now()) {
 			expiredTokens = append(expiredTokens, token)
 		}
@@ -169,7 +191,7 @@ func (h *HTTP) clearExpiredTokens() {
 	if len(expiredTokens) > 0 {
 		h.mutex.Lock()
 		for _, token := range expiredTokens {
-			delete(h.tokens, token)
+			delete(tokens, token)
 		}
 		h.mutex.Unlock()
 	}
@@ -190,9 +212,9 @@ func (h *HTTP) AuthoriseCreate(token, userID string) bool {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
-	if tObj, ok := h.tokens[token]; ok {
+	if tObj, ok := h.tokensCreate[token]; ok {
 		if tObj.value == userID {
-			delete(h.tokens, token)
+			delete(h.tokensCreate, token)
 			return true
 		}
 	}
@@ -207,9 +229,26 @@ func (h *HTTP) AuthoriseJoin(token, documentID string) bool {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
-	if tObj, ok := h.tokens[token]; ok {
+	if tObj, ok := h.tokensJoin[token]; ok {
 		if tObj.value == documentID {
-			delete(h.tokens, token)
+			delete(h.tokensJoin, token)
+			return true
+		}
+	}
+	return false
+}
+
+/*
+AuthoriseReadOnly - Checks whether a specific token has been generated for a document through the HTTP
+authentication endpoint for joining that aforementioned document in read only mode.
+*/
+func (h *HTTP) AuthoriseReadOnly(token, documentID string) bool {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+
+	if tObj, ok := h.tokensReadOnly[token]; ok {
+		if tObj.value == documentID {
+			delete(h.tokensReadOnly, token)
 			return true
 		}
 	}
@@ -223,14 +262,21 @@ func (h *HTTP) RegisterHandlers(register register.PubPrivEndpointRegister) error
 	if err := register.RegisterPrivate(
 		path.Join(h.config.HTTPConfig.Path, "create"),
 		`Generate an authentication token for creating a new document, POST: {"key_value":"<user_id>"}`,
-		h.serveGenerateToken,
+		h.createHandler,
+	); err != nil {
+		return err
+	}
+	if err := register.RegisterPrivate(
+		path.Join(h.config.HTTPConfig.Path, "read"),
+		`Generate an authentication token for joining an existing document in read only mode, POST: {"key_value":"<document_id>"}`,
+		h.readOnlyHandler,
 	); err != nil {
 		return err
 	}
 	return register.RegisterPrivate(
 		path.Join(h.config.HTTPConfig.Path, "join"),
 		`Generate an authentication token for joining an existing document, POST: {"key_value":"<document_id>"}`,
-		h.serveGenerateToken,
+		h.joinHandler,
 	)
 }
 
