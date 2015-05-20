@@ -18,8 +18,6 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 #THE SOFTWARE.
 
-.PHONY: all deps build lint check clean install example multiplat package
-
 PROJECT := leaps
 JS_PATH := ./client
 JS_CLIENT := $(JS_PATH)/leapclient.js
@@ -33,6 +31,7 @@ DATE := $(shell date +"%c" | tr ' :' '__')
 GOFLAGS := -ldflags "-X github.com/jeffail/util.version $(VERSION) \
 	-X github.com/jeffail/util.dateBuilt $(DATE)"
 
+.PHONY: help
 help:
 	@echo "The $(PROJECT) build system, run one of the following commands:"
 	@echo ""
@@ -41,7 +40,8 @@ help:
 	@echo "    make build    : Build the service and generate client libraries"
 	@echo ""
 	@echo "    make lint     : Lint your code"
-	@echo "    make check    : Run unit tests"
+	@echo "    make test     : Run unit tests"
+	@echo "    make qa       : Run all linters and unit tests"
 	@echo ""
 	@echo "    make package  : Package the service, scripts and client libraries"
 	@echo "                    into a .tar.gz archive for all supported operating"
@@ -49,10 +49,12 @@ help:
 	@echo ""
 	@echo "    make clean    : Clean the repository of any built/generated files"
 
+.PHONY: deps
 deps:
 	@go get -d -u ./...
 
-build: check
+.PHONY: build
+build:
 	@mkdir -p $(JS_BIN)
 	@echo ""; echo " -- Building $(BIN)/$(PROJECT) -- ";
 	@go build -o $(BIN)/$(PROJECT) $(GOFLAGS)
@@ -62,6 +64,7 @@ build: check
 		cat $(JS_PATH)/LICENSE > "$(JS_BIN)/$(PROJECT)-min.js"; \
 		uglifyjs "$(JS_BIN)/$(PROJECT).js" >> "$(JS_BIN)/$(PROJECT)-min.js";
 
+.PHONY: lint
 lint:
 	@echo ""; echo " -- Linting code -- ";
 	@gofmt -w .
@@ -69,12 +72,17 @@ lint:
 	@golint ./...
 	@jshint $(JS_PATH)/*.js
 
-check: lint
+.PHONY: test
+test:
 	@echo ""; echo " -- Running unit tests -- ";
 	@go test -race ./...
 	@cd $(JS_PATH); find . -maxdepth 1 -name "test_*" -exec nodeunit {} \;
 	@echo ""; echo " -- Testing complete -- ";
 
+.PHONY: qa
+qa: lint test
+
+.PHONY: clean
 clean:
 	@find $(GOPATH)/pkg/*/github.com/jeffail -name $(PROJECT).a -delete
 	@rm -rf $(BIN)
@@ -90,6 +98,7 @@ multiplatform_builds = $(foreach platform, $(PLATFORMS), \
 		GOOS=$$GOOS GOARCH=$$GOARCH GOARM=$$GOARM go build -o "$$exepath" $(GOFLAGS); \
 	)
 
+.PHONY: multiplat
 multiplat: build
 	@echo ""; echo " -- Building multiplatform binaries -- ";
 	@$(multiplatform_builds)
@@ -113,6 +122,7 @@ package_builds = $(foreach platform, $(PLATFORMS), \
 		cd ../..; \
 	)
 
+.PHONY: package
 package: multiplat
 	@echo ""; echo " -- Packaging multiplatform archives -- ";
 	@$(package_builds)
