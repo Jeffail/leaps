@@ -232,17 +232,17 @@ func (c *Curator) GetUsers(timeout time.Duration) (map[string][]string, error) {
 }
 
 /*
-FindDocument - Locates or creates a Binder for an existing document and returns that Binder for
+EditDocument - Locates or creates a Binder for an existing document and returns that Binder for
 subscribing to. Returns an error if there was a problem locating the document.
 */
-func (c *Curator) FindDocument(token, id string) (BinderPortal, error) {
+func (c *Curator) EditDocument(token, id string) (BinderPortal, error) {
 	c.log.Debugf("finding document %v, with token %v\n", id, token)
 
 	if !c.authenticator.AuthoriseJoin(token, id) {
-		c.stats.Incr("curator.find.rejected_client", 1)
+		c.stats.Incr("curator.edit.rejected_client", 1)
 		return BinderPortal{}, fmt.Errorf("failed to authorise join of document id: %v with token: %v\n", id, token)
 	}
-	c.stats.Incr("curator.find.accepted_client", 1)
+	c.stats.Incr("curator.edit.accepted_client", 1)
 
 	c.binderMutex.Lock()
 
@@ -265,6 +265,44 @@ func (c *Curator) FindDocument(token, id string) (BinderPortal, error) {
 
 	c.stats.Incr("curator.open_binders", 1)
 	return binder.Subscribe(token), nil
+}
+
+/*
+ReadDocument - Locates or creates a Binder for an existing document and returns that Binder for
+subscribing to with read only privileges. Returns an error if there was a problem locating the
+document.
+*/
+func (c *Curator) ReadDocument(token, id string) (BinderPortal, error) {
+	c.log.Debugf("finding document %v, with token %v\n", id, token)
+
+	if !c.authenticator.AuthoriseReadOnly(token, id) {
+		c.stats.Incr("curator.read.rejected_client", 1)
+		return BinderPortal{},
+			fmt.Errorf("failed to authorise read only join of document id: %v with token: %v\n", id, token)
+	}
+	c.stats.Incr("curator.read.accepted_client", 1)
+
+	c.binderMutex.Lock()
+
+	// Check for existing binder
+	if binder, ok := c.openBinders[id]; ok {
+		c.binderMutex.Unlock()
+
+		return binder.SubscribeReadOnly(token), nil
+	}
+	binder, err := NewBinder(id, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
+	if err != nil {
+		c.binderMutex.Unlock()
+
+		c.stats.Incr("curator.bind_existing.failed", 1)
+		c.log.Errorf("Failed to bind to document %v: %v\n", id, err)
+		return BinderPortal{}, err
+	}
+	c.openBinders[id] = binder
+	c.binderMutex.Unlock()
+
+	c.stats.Incr("curator.open_binders", 1)
+	return binder.SubscribeReadOnly(token), nil
 }
 
 /*

@@ -38,8 +38,12 @@ curator, which deals with documents on the local service, or a TBD, which load b
 servers of curators.
 */
 type LeapLocator interface {
-	// FindDocument - Find and return a binder portal to an existing document
-	FindDocument(string, string) (lib.BinderPortal, error)
+	// EditDocument - Find and return a binder portal to an existing document
+	EditDocument(string, string) (lib.BinderPortal, error)
+
+	// ReadDocument - Find and return a binder portal to an existing document with read only
+	// priviledges
+	ReadDocument(string, string) (lib.BinderPortal, error)
 
 	// CreateDocument - Create and return a binder portal to a new document
 	CreateDocument(string, string, store.Document) (lib.BinderPortal, error)

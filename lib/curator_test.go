@@ -63,6 +63,43 @@ func TestNewCurator(t *testing.T) {
 	cur.Close()
 }
 
+func TestReadOnlyCurator(t *testing.T) {
+	log, stats := loggerAndStats()
+	auth, storage := authAndStore(log, stats)
+
+	curator, err := NewCurator(DefaultCuratorConfig(), log, stats, auth, storage)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	doc, err := store.NewDocument("hello world")
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	portal, err := curator.CreateDocument("", "", *doc)
+	*doc = portal.Document
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	readOnlyPortal, err := curator.ReadDocument("", doc.ID)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	if _, err := readOnlyPortal.SendTransform(OTransform{}, time.Second); err != ErrReadOnlyPortal {
+		t.Errorf("read only portal unexpected error: %v", err)
+		return
+	}
+
+	curator.Close()
+}
+
 func TestCuratorClients(t *testing.T) {
 	log, stats := loggerAndStats()
 	auth, storage := authAndStore(log, stats)
@@ -107,12 +144,12 @@ func TestCuratorClients(t *testing.T) {
 	tformSending := 50
 
 	for i := 0; i < 10; i++ {
-		if b, e := curator.FindDocument("", doc.ID); e != nil {
+		if b, e := curator.EditDocument("", doc.ID); e != nil {
 			t.Errorf("error: %v", e)
 		} else {
 			go goodClient(b, tformSending, t, &wg)
 		}
-		/*if b, e := curator.FindDocument("", doc.ID); e != nil {
+		/*if b, e := curator.EditDocument("", doc.ID); e != nil {
 			t.Errorf("error: %v", e)
 		} else {
 			go badClient(b, t, &wg)
@@ -123,12 +160,12 @@ func TestCuratorClients(t *testing.T) {
 
 	for i := 0; i < 50; i++ {
 		if i%2 == 0 {
-			if b, e := curator.FindDocument("", doc.ID); e != nil {
+			if b, e := curator.EditDocument("", doc.ID); e != nil {
 				t.Errorf("error: %v", e)
 			} else {
 				go goodClient(b, tformSending-i, t, &wg)
 			}
-			/*if b, e := curator.FindDocument("", doc.ID); e != nil {
+			/*if b, e := curator.EditDocument("", doc.ID); e != nil {
 				t.Errorf("error: %v", e)
 			} else {
 				go badClient(b, t, &wg)

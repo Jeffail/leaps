@@ -257,13 +257,33 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 				handleInitError(err)
 			}
 			return
+		case "read":
+			if len(clientMsg.DocID) <= 0 {
+				handleInitError(ErrInvalidDocument)
+				return
+			}
+			h.logger.Infof("Attempting to read only bind to document: %v\n", clientMsg.DocID)
+			if binder, err := h.locator.ReadDocument(clientMsg.Token, clientMsg.DocID); err == nil {
+				h.logger.Infof("Client read only bound to document %v\n", binder.Document.ID)
+
+				websocket.JSON.Send(ws, LeapServerMessage{
+					Type:     "document",
+					Document: &binder.Document,
+					Version:  &binder.Version,
+				})
+				socketRouter := NewWebsocketServer(h.config.Binder, ws, binder, h.closeChan, h.logger, h.stats)
+				socketRouter.Launch()
+			} else {
+				handleInitError(err)
+			}
+			return
 		case "find":
 			if len(clientMsg.DocID) <= 0 {
 				handleInitError(ErrInvalidDocument)
 				return
 			}
 			h.logger.Infof("Attempting to bind to document: %v\n", clientMsg.DocID)
-			if binder, err := h.locator.FindDocument(clientMsg.Token, clientMsg.DocID); err == nil {
+			if binder, err := h.locator.EditDocument(clientMsg.Token, clientMsg.DocID); err == nil {
 				h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
 
 				websocket.JSON.Send(ws, LeapServerMessage{
