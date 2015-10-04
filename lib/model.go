@@ -54,6 +54,9 @@ type Model interface {
 	 */
 	PushTransform(ot OTransform) (OTransform, int, error)
 
+	/* Returns true, if the model have unapplied transforms that can be flushed */
+	IsDirty() bool
+
 	/* FlushTransforms - apply all unapplied transforms to content, and delete old applied
 	 * in accordance with our retention period. Returns a bool indicating whether any changes
 	 * were applied, and an error in case a fatal problem was encountered.
