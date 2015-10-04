@@ -11,7 +11,7 @@ import (
 )
 
 /*
-Azure Blob Storage configuration
+AzureStorageConfig - Azure Blob Storage configuration.
 */
 type AzureStorageConfig struct {
 	Account    string `json:"account" yaml:"account"`
@@ -20,11 +20,17 @@ type AzureStorageConfig struct {
 	AccessType string `json:"access_type" yaml:"access_type"`
 }
 
+/*
+AzureBlobStore - Contains configuration and logic for CRUD operations on Azure.
+*/
 type AzureBlobStore struct {
 	config      AzureStorageConfig
 	blobStorage azure.BlobStorageClient
 }
 
+/*
+GetAzureBlobStore - Create a new AzureBlobStore.
+*/
 func GetAzureBlobStore(config Config) (*AzureBlobStore, error) {
 	client, err := azure.NewClient(
 		config.AzureBlobStore.Account,
@@ -74,14 +80,14 @@ func GetAzureBlobStore(config Config) (*AzureBlobStore, error) {
 /*
 Create - Create a new document in azure blob storage
 */
-func (m *AzureBlobStore) Create(id string, doc Document) error {
-	return m.Store(id, doc)
+func (m *AzureBlobStore) Create(doc Document) error {
+	return m.Update(doc)
 }
 
 /*
-Store - Store document in azure blob storage
+Update - Update document in azure blob storage
 */
-func (m *AzureBlobStore) Store(id string, doc Document) error {
+func (m *AzureBlobStore) Update(doc Document) error {
 	b := backoff.NewExponentialBackOff()
 	b.InitialInterval = 500 * time.Second
 	b.RandomizationFactor = 0.5
@@ -90,14 +96,14 @@ func (m *AzureBlobStore) Store(id string, doc Document) error {
 	b.MaxElapsedTime = 15 * time.Minute
 	return backoff.Retry(func() error {
 		r := strings.NewReader(doc.Content)
-		return m.blobStorage.CreateBlockBlobFromReader(m.config.Container, id, uint64(r.Len()), r)
+		return m.blobStorage.CreateBlockBlobFromReader(m.config.Container, doc.ID, uint64(r.Len()), r)
 	}, b)
 }
 
 /*
-Fetch - Fetch document from a azure blob storage
+Read - Read document from a azure blob storage
 */
-func (m *AzureBlobStore) Fetch(id string) (Document, error) {
+func (m *AzureBlobStore) Read(id string) (Document, error) {
 	doc := Document{
 		ID: id,
 	}
