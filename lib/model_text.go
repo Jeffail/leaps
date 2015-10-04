@@ -125,7 +125,7 @@ func (m *OModel) PushTransform(ot OTransform) (OTransform, int, error) {
  */
 
 /*
-Check if there is any unapplied transforms
+IsDirty - Check if there is any unapplied transforms.
 */
 func (m *OModel) IsDirty() bool {
 	return len(m.Unapplied) > 0
