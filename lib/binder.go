@@ -520,10 +520,12 @@ func (b *Binder) loop() {
 				running = false
 			}
 		case <-flushTimer.C:
-			if _, err := b.flush(); err != nil {
-				b.log.Errorf("Flush error: %v, shutting down\n", err)
-				b.errorChan <- BinderError{ID: b.ID, Err: err}
-				running = false
+			if b.model.IsDirty() {
+				if _, err := b.flush(); err != nil {
+					b.log.Errorf("Flush error: %v, shutting down\n", err)
+					b.errorChan <- BinderError{ID: b.ID, Err: err}
+					running = false
+				}
 			}
 			flushTimer.Reset(flushPeriod)
 		case <-closeTimer.C:
@@ -547,8 +549,10 @@ func (b *Binder) loop() {
 				close(client.MessageChan)
 			}
 			b.log.Infof("Attempting final flush of %v\n", b.ID)
-			if _, err := b.flush(); err != nil {
-				b.errorChan <- BinderError{ID: b.ID, Err: err}
+			if b.model.IsDirty() {
+				if _, err := b.flush(); err != nil {
+					b.errorChan <- BinderError{ID: b.ID, Err: err}
+				}
 			}
 			close(b.closedChan)
 			return
