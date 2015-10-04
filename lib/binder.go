@@ -427,14 +427,14 @@ func (b *Binder) flush() (store.Document, error) {
 		changed            bool
 		doc                store.Document
 	)
-	doc, errStore = b.block.Fetch(b.ID)
+	doc, errStore = b.block.Read(b.ID)
 	if errStore != nil {
 		b.stats.Incr("binder.block_fetch.error", 1)
 		return doc, errStore
 	}
 	changed, errFlush = b.model.FlushTransforms(&doc.Content, b.config.RetentionPeriod)
 	if changed {
-		errStore = b.block.Store(b.ID, doc)
+		errStore = b.block.Update(doc)
 	}
 	if errStore != nil || errFlush != nil {
 		b.stats.Incr("binder.flush.error", 1)

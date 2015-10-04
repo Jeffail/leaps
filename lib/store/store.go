@@ -65,9 +65,14 @@ Store - Implemented by types able to acquire and store documents. This is abstra
 accommodate for multiple storage strategies. These methods should be asynchronous if possible.
 */
 type Store interface {
-	Create(string, Document) error
-	Store(string, Document) error
-	Fetch(string) (Document, error)
+	// Create - Create a new document.
+	Create(Document) error
+
+	// Update - Update an existing document.
+	Update(Document) error
+
+	// Read - Read a document.
+	Read(ID string) (Document, error)
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -110,25 +115,25 @@ type MemoryStore struct {
 /*
 Create - Store document in memory.
 */
-func (s *MemoryStore) Create(id string, doc Document) error {
-	return s.Store(id, doc)
+func (s *MemoryStore) Create(doc Document) error {
+	return s.Update(doc)
 }
 
 /*
-Store - Store document in memory.
+Update - Update document in memory.
 */
-func (s *MemoryStore) Store(id string, doc Document) error {
+func (s *MemoryStore) Update(doc Document) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.documents[id] = doc
+	s.documents[doc.ID] = doc
 	return nil
 }
 
 /*
-Fetch - Fetch document from memory.
+Read - Read document from memory.
 */
-func (s *MemoryStore) Fetch(id string) (Document, error) {
+func (s *MemoryStore) Read(id string) (Document, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 

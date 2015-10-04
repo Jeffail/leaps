@@ -44,25 +44,25 @@ type testStore struct {
 /*
 Create - Store document in memory.
 */
-func (s *testStore) Create(id string, doc store.Document) error {
-	return s.Store(id, doc)
+func (s *testStore) Create(doc store.Document) error {
+	return s.Update(doc)
 }
 
 /*
-Store - Store document in memory.
+Update - Store document in memory.
 */
-func (s *testStore) Store(id string, doc store.Document) error {
+func (s *testStore) Update(doc store.Document) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.documents[id] = doc
+	s.documents[doc.ID] = doc
 	return nil
 }
 
 /*
-Fetch - Fetch document from memory.
+Read - Fetch document from memory.
 */
-func (s *testStore) Fetch(id string) (store.Document, error) {
+func (s *testStore) Read(id string) (store.Document, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 

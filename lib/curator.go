@@ -322,7 +322,7 @@ func (c *Curator) CreateDocument(token string, userID string, doc store.Document
 	// Always generate a fresh ID
 	doc.ID = util.GenerateStampedUUID()
 
-	if err := c.store.Create(doc.ID, doc); err != nil {
+	if err := c.store.Create(doc); err != nil {
 		c.stats.Incr("curator.create_new.failed", 1)
 		c.log.Errorf("Failed to create new document: %v\n", err)
 		return BinderPortal{}, err

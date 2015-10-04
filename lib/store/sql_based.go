@@ -89,23 +89,23 @@ type SQLStore struct {
 /*
 Create - Create a new document in a database table.
 */
-func (m *SQLStore) Create(id string, doc Document) error {
-	_, err := m.createStmt.Exec(id, doc.Content)
+func (m *SQLStore) Create(doc Document) error {
+	_, err := m.createStmt.Exec(doc.ID, doc.Content)
 	return err
 }
 
 /*
-Store - Store document in a database table.
+Update - Update document in a database table.
 */
-func (m *SQLStore) Store(id string, doc Document) error {
-	_, err := m.updateStmt.Exec(doc.Content, id)
+func (m *SQLStore) Update(doc Document) error {
+	_, err := m.updateStmt.Exec(doc.Content, doc.ID)
 	return err
 }
 
 /*
-Fetch - Fetch document from a database table.
+Read - Read document from a database table.
 */
-func (m *SQLStore) Fetch(id string) (Document, error) {
+func (m *SQLStore) Read(id string) (Document, error) {
 	var document Document
 	document.ID = id
 

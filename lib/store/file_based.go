@@ -51,31 +51,31 @@ type FileStore struct {
 }
 
 /*
-Create - Store document in a file location
+Create - Create a new document in a file location
 */
-func (s *FileStore) Create(id string, doc Document) error {
-	return s.Store(id, doc)
+func (s *FileStore) Create(doc Document) error {
+	return s.Update(doc)
 }
 
 /*
-Store - Store document in its file location.
+Update - Update a document in its file location.
 */
-func (s *FileStore) Store(id string, doc Document) error {
-	filePath := filepath.Join(s.config.StoreDirectory, id)
+func (s *FileStore) Update(doc Document) error {
+	filePath := filepath.Join(s.config.StoreDirectory, doc.ID)
 	fileDir := filepath.Dir(filePath)
 
 	if _, err := os.Stat(fileDir); os.IsNotExist(err) {
 		if err = os.MkdirAll(fileDir, os.ModePerm); err != nil {
-			return fmt.Errorf("cannot create file path for document: %v, err: %v", id, err)
+			return fmt.Errorf("cannot create file path for document: %v, err: %v", doc.ID, err)
 		}
 	}
 	return ioutil.WriteFile(filePath, []byte(doc.Content), 0666)
 }
 
 /*
-Fetch - Fetch document from its file location.
+Read - Read document from its file location.
 */
-func (s *FileStore) Fetch(id string) (Document, error) {
+func (s *FileStore) Read(id string) (Document, error) {
 	bytes, err := ioutil.ReadFile(filepath.Join(s.config.StoreDirectory, id))
 	if err != nil {
 		return Document{}, fmt.Errorf("failed to read content from document file: %v", err)
