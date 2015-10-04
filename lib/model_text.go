@@ -125,6 +125,13 @@ func (m *OModel) PushTransform(ot OTransform) (OTransform, int, error) {
  */
 
 /*
+IsDirty - Check if there is any unapplied transforms.
+*/
+func (m *OModel) IsDirty() bool {
+	return len(m.Unapplied) > 0
+}
+
+/*
 GetVersion - returns the current version of the document.
 */
 func (m *OModel) GetVersion() int {
