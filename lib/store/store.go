@@ -34,10 +34,11 @@ import (
 Config - Holds generic configuration options for a document storage solution.
 */
 type Config struct {
-	Type           string    `json:"type" yaml:"type"`
-	Name           string    `json:"name" yaml:"name"`
-	StoreDirectory string    `json:"store_directory" yaml:"store_directory"`
-	SQLConfig      SQLConfig `json:"sql" yaml:"sql"`
+	Type           string             `json:"type" yaml:"type"`
+	Name           string             `json:"name" yaml:"name"`
+	StoreDirectory string             `json:"store_directory" yaml:"store_directory"`
+	SQLConfig      SQLConfig          `json:"sql" yaml:"sql"`
+	AzureBlobStore AzureStorageConfig `json:"azure" yaml:"azure"`
 }
 
 /*
@@ -91,6 +92,8 @@ func Factory(config Config) (Store, error) {
 		return GetMockStore(config)
 	case "mysql", "postgres":
 		return GetSQLStore(config)
+	case "azureblobstorage":
+		return GetAzureBlobStore(config)
 	}
 	return nil, ErrInvalidDocumentType
 }
