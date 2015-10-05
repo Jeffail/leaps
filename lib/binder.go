@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
-	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 )
 
@@ -223,14 +222,11 @@ func (b *Binder) KickUser(userId string, timeout time.Duration) error {
 Subscribe - Returns a BinderPortal, which represents a contract between a client and the binder. If
 the subscription was unsuccessful the BinderPortal will contain an error.
 */
-func (b *Binder) Subscribe(token string) BinderPortal {
-	if len(token) == 0 {
-		token = util.GenerateStampedUUID()
-	}
+func (b *Binder) Subscribe(userId string) BinderPortal {
 	retChan := make(chan BinderPortal, 1)
 	bundle := BinderSubscribeBundle{
 		PortalRcvChan: retChan,
-		Token:         token,
+		UserId:        userId,
 	}
 	b.subscribeChan <- bundle
 
@@ -242,14 +238,11 @@ SubscribeReadOnly - Returns a BinderPortal, which represents a contract between 
 binder. If the subscription was unsuccessful the BinderPortal will contain an error. This is a read
 only version of a BinderPortal and means transforms will be received but cannot be submitted.
 */
-func (b *Binder) SubscribeReadOnly(token string) BinderPortal {
-	if len(token) == 0 {
-		token = util.GenerateStampedUUID()
-	}
+func (b *Binder) SubscribeReadOnly(userId string) BinderPortal {
 	retChan := make(chan BinderPortal, 1)
 	bundle := BinderSubscribeBundle{
 		PortalRcvChan: retChan,
-		Token:         token,
+		UserId:        userId,
 	}
 	b.subscribeChan <- bundle
 
@@ -286,12 +279,10 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 		return err
 	}
 	client := BinderClient{
-		token:         request.Token,
 		transformChan: transformSndChan,
 		messageChan:   messageSndChan,
 	}
 	portal := BinderPortal{
-		Token:            request.Token,
 		Client:           &client,
 		Version:          b.model.GetVersion(),
 		Document:         doc,
@@ -305,14 +296,14 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 	select {
 	case request.PortalRcvChan <- portal:
 		b.stats.Incr("binder.subscribed_clients", 1)
-		b.log.Debugf("Subscribed new client %v\n", request.Token)
+		b.log.Debugf("Subscribed new client %v\n", request.UserId)
 		b.clients = append(b.clients, &client)
 	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
 		/* We're not bothered if you suck, you just don't get enrolled, and this isn't
 		 * considered an error. Deal with it.
 		 */
 		b.stats.Incr("binder.rejected_client", 1)
-		b.log.Infof("Rejected client request %v\n", request.Token)
+		b.log.Infof("Rejected client request %v\n", request.UserId)
 	}
 
 	return nil
