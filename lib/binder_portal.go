@@ -34,11 +34,11 @@ import (
 
 /*
 TransformSubmission - A struct used to submit a transform to a binder. The submission must contain
-the token of the client, as well as two channels for returning either the corrected version of the
+the client, as well as two channels for returning either the corrected version of the
 transform if successful, or an error if the submit was unsuccessful.
 */
 type TransformSubmission struct {
-	Token       string
+	Client      *BinderClient
 	Transform   OTransform
 	VersionChan chan<- int
 	ErrorChan   chan<- error
@@ -49,7 +49,7 @@ MessageSubmission - A struct used to submit a message to a binder. The submissio
 token of the client in order to avoid the message being sent back to the same client.
 */
 type MessageSubmission struct {
-	Token   string
+	Client  *BinderClient
 	Message ClientMessage
 }
 
@@ -76,11 +76,13 @@ var (
 
 /*
 BinderPortal - A container that holds all data necessary to begin an open portal with the binder,
-allowing fresh transforms to be submitted and returned as they come. Also carries the token of the
-client.
+allowing fresh transforms to be submitted and returned as they come. Also carries the BinderClient
+of the client.
 */
 type BinderPortal struct {
 	Token            string
+	UserId           string
+	Client           *BinderClient
 	Document         store.Document
 	Version          int
 	Error            error
@@ -88,7 +90,7 @@ type BinderPortal struct {
 	MessageRcvChan   <-chan ClientMessage
 	TransformSndChan chan<- TransformSubmission
 	MessageSndChan   chan<- MessageSubmission
-	ExitChan         chan<- string
+	ExitChan         chan<- *BinderClient
 }
 
 /*
@@ -104,7 +106,7 @@ func (p *BinderPortal) SendTransform(ot OTransform, timeout time.Duration) (int,
 	errChan := make(chan error, 1)
 	verChan := make(chan int, 1)
 	p.TransformSndChan <- TransformSubmission{
-		Token:       p.Token,
+		Client:      p.Client,
 		Transform:   ot,
 		VersionChan: verChan,
 		ErrorChan:   errChan,
@@ -125,7 +127,7 @@ This is safe to call from any goroutine.
 */
 func (p *BinderPortal) SendMessage(message ClientMessage) {
 	p.MessageSndChan <- MessageSubmission{
-		Token:   p.Token,
+		Client:  p.Client,
 		Message: message,
 	}
 }
@@ -135,7 +137,7 @@ Exit - Inform the binder that this client is shutting down.
 */
 func (p *BinderPortal) Exit(timeout time.Duration) {
 	select {
-	case p.ExitChan <- p.Token:
+	case p.ExitChan <- p.Client:
 	case <-time.After(timeout):
 	}
 }

@@ -81,14 +81,15 @@ type Binder struct {
 	stats  *log.Stats
 
 	// Clients
-	clients       map[string]BinderClient
+	clients       []*BinderClient
 	subscribeChan chan BinderSubscribeBundle
 
 	// Control channels
 	transformChan    chan TransformSubmission
 	messageChan      chan MessageSubmission
 	usersRequestChan chan usersRequestObj
-	exitChan         chan string
+	exitChan         chan *BinderClient
+	kickChan         chan kickRequest
 	errorChan        chan<- BinderError
 	closedChan       chan struct{}
 }
@@ -113,12 +114,13 @@ func NewBinder(
 		block:            block,
 		log:              log.NewModule(":binder"),
 		stats:            stats,
-		clients:          make(map[string]BinderClient),
+		clients:          make([]*BinderClient, 0),
 		subscribeChan:    make(chan BinderSubscribeBundle),
 		transformChan:    make(chan TransformSubmission),
 		messageChan:      make(chan MessageSubmission),
 		usersRequestChan: make(chan usersRequestObj),
-		exitChan:         make(chan string),
+		exitChan:         make(chan *BinderClient),
+		kickChan:         make(chan kickRequest),
 		errorChan:        errorChan,
 		closedChan:       make(chan struct{}),
 	}
@@ -153,9 +155,10 @@ BinderClient - A struct containing information about a connected client and chan
 binder to push transforms and user updates out.
 */
 type BinderClient struct {
-	Token         string
-	TransformChan chan<- OTransform
-	MessageChan   chan<- ClientMessage
+	token         string
+	userId        string
+	transformChan chan<- OTransform
+	messageChan   chan<- ClientMessage
 }
 
 /*
@@ -191,17 +194,29 @@ func (b *Binder) GetUsers(timeout time.Duration) ([]string, error) {
 	return []string{}, ErrTimeout
 }
 
+type kickRequest struct {
+	userId string
+	result chan error
+}
+
 /*
 KickUser - Signals the binder to remove a particular user. Currently doesn't confirm removal, this
 ought to be a blocking call until the removal is validated.
 */
-func (b *Binder) KickUser(userID string, timeout time.Duration) error {
+func (b *Binder) KickUser(userId string, timeout time.Duration) error {
+	result := make(chan error)
+	timer := time.After(timeout)
 	select {
-	case b.exitChan <- userID:
-	case <-time.After(timeout):
+	case b.kickChan <- kickRequest{userId: userId, result: result}:
+	case <-timer:
 		return ErrTimeout
 	}
-	return nil
+	select {
+	case err := <-result:
+		return err
+	case <-timer:
+		return ErrTimeout
+	}
 }
 
 /*
@@ -262,12 +277,6 @@ involves flushing the model in order to obtain a clean version of the document, 
 we return false to flag the binder loop that we should shut down.
 */
 func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
-	if _, ok := b.clients[request.Token]; ok {
-		b.stats.Incr("binder.rejected_client", 1)
-		b.log.Warnf("Rejected client due to duplicate token: %v\n", request.Token)
-		return ErrDuplicateClientToken
-	}
-
 	transformSndChan := make(chan OTransform, 1)
 	messageSndChan := make(chan ClientMessage, 1)
 
@@ -276,9 +285,14 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 	if err != nil {
 		return err
 	}
-	select {
-	case request.PortalRcvChan <- BinderPortal{
+	client := BinderClient{
+		token:         request.Token,
+		transformChan: transformSndChan,
+		messageChan:   messageSndChan,
+	}
+	portal := BinderPortal{
 		Token:            request.Token,
+		Client:           &client,
 		Version:          b.model.GetVersion(),
 		Document:         doc,
 		Error:            nil,
@@ -287,14 +301,12 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 		TransformSndChan: b.transformChan,
 		MessageSndChan:   b.messageChan,
 		ExitChan:         b.exitChan,
-	}:
+	}
+	select {
+	case request.PortalRcvChan <- portal:
 		b.stats.Incr("binder.subscribed_clients", 1)
 		b.log.Debugf("Subscribed new client %v\n", request.Token)
-		b.clients[request.Token] = BinderClient{
-			Token:         request.Token,
-			TransformChan: transformSndChan,
-			MessageChan:   messageSndChan,
-		}
+		b.clients = append(b.clients, &client)
 	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
 		/* We're not bothered if you suck, you just don't get enrolled, and this isn't
 		 * considered an error. Deal with it.
@@ -324,8 +336,8 @@ processUsersRequest - Processes a request for the list of connected clients.
 */
 func (b *Binder) processUsersRequest(request usersRequestObj) {
 	var clients []string
-	for k := range b.clients {
-		clients = append(clients, k)
+	for _, client := range b.clients {
+		clients = append(clients, client.userId)
 	}
 	select {
 	case request.responseChan <- clients:
@@ -365,13 +377,13 @@ func (b *Binder) processTransform(request TransformSubmission) {
 
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
-	for key, c := range b.clients {
-		// Skip sends for clients with matching tokens
-		if key == request.Token {
+	for i, c := range b.clients {
+		// Skip sends for client from which the message came
+		if c == request.Client {
 			continue
 		}
 		select {
-		case c.TransformChan <- dispatch:
+		case c.transformChan <- dispatch:
 		case <-time.After(clientKickPeriod):
 			/* The client may have stopped listening, or is just being slow.
 			 * Either way, we have a strict policy here of no time wasters.
@@ -379,11 +391,11 @@ func (b *Binder) processTransform(request TransformSubmission) {
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
 
-			b.log.Debugf("Kicking client (%v) for blocked transform send\n", key)
+			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userId)
 
-			delete(b.clients, key)
-			close(c.TransformChan)
-			close(c.MessageChan)
+			b.clients = append(b.clients[:i], b.clients[i+1:]...)
+			close(c.transformChan)
+			close(c.messageChan)
 		}
 	}
 }
@@ -394,13 +406,13 @@ processMessage - Sends a clients message out to other clients.
 func (b *Binder) processMessage(request MessageSubmission) {
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
-	for key, c := range b.clients {
-		// Skip sends for clients with matching tokens
-		if key == request.Token {
+	for i, c := range b.clients {
+		// Skip sends for client from which the message came
+		if c == request.Client {
 			continue
 		}
 		select {
-		case c.MessageChan <- request.Message:
+		case c.messageChan <- request.Message:
 		case <-time.After(clientKickPeriod):
 			/* The client may have stopped listening, or is just being slow.
 			 * Either way, we have a strict policy here of no time wasters.
@@ -408,11 +420,11 @@ func (b *Binder) processMessage(request MessageSubmission) {
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
 
-			b.log.Debugf("Kicking client (%v) for blocked message send\n", key)
+			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userId)
 
-			delete(b.clients, key)
-			close(c.TransformChan)
-			close(c.MessageChan)
+			b.clients = append(b.clients[:i], b.clients[i+1:]...)
+			close(c.transformChan)
+			close(c.messageChan)
 		}
 	}
 }
@@ -505,15 +517,35 @@ func (b *Binder) loop() {
 				b.log.Infoln("Users request channel closed, shutting down")
 				running = false
 			}
-		case exitKey, open := <-b.exitChan:
+		case kickRequest, open := <-b.kickChan:
 			if running && open {
-				b.log.Debugf("Received exit request for: %v\n", exitKey)
-				if c, ok := b.clients[exitKey]; ok {
-					b.stats.Decr("binder.subscribed_clients", 1)
-
-					delete(b.clients, exitKey)
-					close(c.TransformChan)
-					close(c.MessageChan)
+				b.log.Debugf("Received kick request for: %v\n", kickRequest.userId)
+				for i, c := range b.clients {
+					if c.userId == kickRequest.userId {
+						b.stats.Decr("binder.subscribed_clients", 1)
+						b.clients = append(b.clients[:i], b.clients[i+1:]...)
+						close(c.transformChan)
+						close(c.messageChan)
+						close(kickRequest.result)
+						break
+					}
+				}
+				kickRequest.result <- fmt.Errorf("No such userId: %s", kickRequest.userId)
+			} else {
+				b.log.Infoln("Exit channel closed, shutting down")
+				running = false
+				close(kickRequest.result)
+			}
+		case client, open := <-b.exitChan:
+			if running && open {
+				b.log.Debugf("Received exit request for: %v\n", client.userId)
+				for i, c := range b.clients {
+					if c == client {
+						b.stats.Decr("binder.subscribed_clients", 1)
+						b.clients = append(b.clients[:i], b.clients[i+1:]...)
+						close(c.transformChan)
+						close(c.messageChan)
+					}
 				}
 			} else {
 				b.log.Infoln("Exit channel closed, shutting down")
@@ -543,10 +575,10 @@ func (b *Binder) loop() {
 			b.stats.Incr("binder.closing", 1)
 			b.log.Infoln("Closing, shutting down client channels")
 			oldClients := b.clients
-			b.clients = make(map[string]BinderClient)
+			b.clients = make([]*BinderClient, 0)
 			for _, client := range oldClients {
-				close(client.TransformChan)
-				close(client.MessageChan)
+				close(client.transformChan)
+				close(client.messageChan)
 			}
 			b.log.Infof("Attempting final flush of %v\n", b.ID)
 			if b.model.IsDirty() {
