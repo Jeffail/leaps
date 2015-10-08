@@ -134,14 +134,14 @@ func (w *WebsocketServer) Launch() {
 		<-outgoingClosedChan
 		w.binder.SendMessage(lib.ClientMessage{
 			Active: false,
-			Token:  w.binder.Token,
+			UserID: w.binder.UserID,
 		})
 	case <-outgoingClosedChan:
 		close(incomingCloseChan)
 		<-incomingClosedChan
 		w.binder.SendMessage(lib.ClientMessage{
 			Active: false,
-			Token:  w.binder.Token,
+			UserID: w.binder.UserID,
 		})
 	case <-w.closeChan:
 		close(incomingCloseChan)
@@ -206,7 +206,7 @@ func (w *WebsocketServer) loopIncoming(closeSignalChan chan<- struct{}, closeCmd
 						Message:  msg.Message,
 						Position: msg.Position,
 						Active:   true,
-						Token:    w.binder.Token,
+						UserID:   w.binder.UserID,
 					})
 				}
 			case "ping":
