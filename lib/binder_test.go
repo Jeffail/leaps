@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/leaps/lib/util"
 )
 
 /*
@@ -119,12 +120,12 @@ func TestClientAdminTasks(t *testing.T) {
 	clientIDs := make([]string, nClients)
 
 	for i := 0; i < nClients; i++ {
-		portals[i] = binder.Subscribe("")
+		clientIDs[i] = util.GenerateStampedUUID()
+		portals[i] = binder.Subscribe(clientIDs[i])
 		if portals[i].Error != nil {
 			t.Errorf("Subscribe error: %v\n", portals[i].Error)
 			return
 		}
-		clientIDs[i] = portals[i].Token
 	}
 
 	for i := 0; i < nClients; i++ {
@@ -187,20 +188,20 @@ func TestUpdates(t *testing.T) {
 		}
 	}()
 
-	portal1, portal2 := binder.Subscribe(""), binder.Subscribe("")
+	portal1, portal2 := binder.Subscribe(util.GenerateStampedUUID()), binder.Subscribe(util.GenerateStampedUUID())
 	for i := 0; i < 100; i++ {
-		portal1.SendMessage(ClientMessage{Token: portal1.Token})
+		portal1.SendMessage(ClientMessage{UserID: portal1.UserID})
 
 		message := <-portal2.MessageRcvChan
-		if message.Token != portal1.Token {
-			t.Errorf("Received incorrect token: %v", message.Token)
+		if message.UserID != portal1.UserID {
+			t.Errorf("Received incorrect token: %v", message.UserID)
 		}
 
-		portal2.SendMessage(ClientMessage{Token: portal2.Token})
+		portal2.SendMessage(ClientMessage{UserID: portal2.UserID})
 
 		message2 := <-portal1.MessageRcvChan
-		if message2.Token != portal2.Token {
-			t.Errorf("Received incorrect token: %v", message2.Token)
+		if message2.UserID != portal2.UserID {
+			t.Errorf("Received incorrect token: %v", message2.UserID)
 		}
 	}
 }

@@ -505,17 +505,23 @@ func (b *Binder) loop() {
 		case kickRequest, open := <-b.kickChan:
 			if running && open {
 				b.log.Debugf("Received kick request for: %v\n", kickRequest.userID)
+
+				// TODO: Refactor and improve kick API
+				kicked := 0
 				for i, c := range b.clients {
 					if c.userID == kickRequest.userID {
 						b.stats.Decr("binder.subscribed_clients", 1)
 						b.clients = append(b.clients[:i], b.clients[i+1:]...)
 						close(c.transformChan)
 						close(c.messageChan)
-						close(kickRequest.result)
-						break
+						kicked++
 					}
 				}
-				kickRequest.result <- fmt.Errorf("No such userID: %s", kickRequest.userID)
+				if kicked > 0 {
+					close(kickRequest.result)
+				} else {
+					kickRequest.result <- fmt.Errorf("No such userID: %s", kickRequest.userID)
+				}
 			} else {
 				b.log.Infoln("Exit channel closed, shutting down")
 				running = false
