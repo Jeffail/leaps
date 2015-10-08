@@ -23,7 +23,6 @@ THE SOFTWARE.
 package lib
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -61,11 +60,6 @@ func DefaultBinderConfig() BinderConfig {
 
 /*--------------------------------------------------------------------------------------------------
  */
-
-// Errors for the Binder type.
-var (
-	ErrDuplicateClientToken = errors.New("duplicate client token")
-)
 
 /*
 Binder - Contains a single document and acts as a broker between multiple readers, writers and the
@@ -146,7 +140,7 @@ type ClientMessage struct {
 	Message  string `json:"message,omitempty"`
 	Position *int64 `json:"position,omitempty"`
 	Active   bool   `json:"active"`
-	Token    string `json:"user_id"`
+	UserID   string `json:"user_id"`
 }
 
 /*
@@ -154,8 +148,7 @@ BinderClient - A struct containing information about a connected client and chan
 binder to push transforms and user updates out.
 */
 type BinderClient struct {
-	token         string
-	userId        string
+	userID        string
 	transformChan chan<- OTransform
 	messageChan   chan<- ClientMessage
 }
@@ -194,7 +187,7 @@ func (b *Binder) GetUsers(timeout time.Duration) ([]string, error) {
 }
 
 type kickRequest struct {
-	userId string
+	userID string
 	result chan error
 }
 
@@ -202,11 +195,11 @@ type kickRequest struct {
 KickUser - Signals the binder to remove a particular user. Currently doesn't confirm removal, this
 ought to be a blocking call until the removal is validated.
 */
-func (b *Binder) KickUser(userId string, timeout time.Duration) error {
+func (b *Binder) KickUser(userID string, timeout time.Duration) error {
 	result := make(chan error)
 	timer := time.After(timeout)
 	select {
-	case b.kickChan <- kickRequest{userId: userId, result: result}:
+	case b.kickChan <- kickRequest{userID: userID, result: result}:
 	case <-timer:
 		return ErrTimeout
 	}
@@ -222,11 +215,11 @@ func (b *Binder) KickUser(userId string, timeout time.Duration) error {
 Subscribe - Returns a BinderPortal, which represents a contract between a client and the binder. If
 the subscription was unsuccessful the BinderPortal will contain an error.
 */
-func (b *Binder) Subscribe(userId string) BinderPortal {
+func (b *Binder) Subscribe(userID string) BinderPortal {
 	retChan := make(chan BinderPortal, 1)
 	bundle := BinderSubscribeBundle{
 		PortalRcvChan: retChan,
-		UserId:        userId,
+		UserID:        userID,
 	}
 	b.subscribeChan <- bundle
 
@@ -238,11 +231,11 @@ SubscribeReadOnly - Returns a BinderPortal, which represents a contract between 
 binder. If the subscription was unsuccessful the BinderPortal will contain an error. This is a read
 only version of a BinderPortal and means transforms will be received but cannot be submitted.
 */
-func (b *Binder) SubscribeReadOnly(userId string) BinderPortal {
+func (b *Binder) SubscribeReadOnly(userID string) BinderPortal {
 	retChan := make(chan BinderPortal, 1)
 	bundle := BinderSubscribeBundle{
 		PortalRcvChan: retChan,
-		UserId:        userId,
+		UserID:        userID,
 	}
 	b.subscribeChan <- bundle
 
@@ -279,6 +272,7 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 		return err
 	}
 	client := BinderClient{
+		userID:        request.UserID,
 		transformChan: transformSndChan,
 		messageChan:   messageSndChan,
 	}
@@ -296,14 +290,14 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 	select {
 	case request.PortalRcvChan <- portal:
 		b.stats.Incr("binder.subscribed_clients", 1)
-		b.log.Debugf("Subscribed new client %v\n", request.UserId)
+		b.log.Debugf("Subscribed new client %v\n", request.UserID)
 		b.clients = append(b.clients, &client)
 	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
 		/* We're not bothered if you suck, you just don't get enrolled, and this isn't
 		 * considered an error. Deal with it.
 		 */
 		b.stats.Incr("binder.rejected_client", 1)
-		b.log.Infof("Rejected client request %v\n", request.UserId)
+		b.log.Infof("Rejected client request %v\n", request.UserID)
 	}
 
 	return nil
@@ -328,7 +322,7 @@ processUsersRequest - Processes a request for the list of connected clients.
 func (b *Binder) processUsersRequest(request usersRequestObj) {
 	var clients []string
 	for _, client := range b.clients {
-		clients = append(clients, client.userId)
+		clients = append(clients, client.userID)
 	}
 	select {
 	case request.responseChan <- clients:
@@ -382,7 +376,7 @@ func (b *Binder) processTransform(request TransformSubmission) {
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
 
-			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userId)
+			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
 
 			b.clients = append(b.clients[:i], b.clients[i+1:]...)
 			close(c.transformChan)
@@ -411,7 +405,7 @@ func (b *Binder) processMessage(request MessageSubmission) {
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
 
-			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userId)
+			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
 
 			b.clients = append(b.clients[:i], b.clients[i+1:]...)
 			close(c.transformChan)
@@ -510,9 +504,9 @@ func (b *Binder) loop() {
 			}
 		case kickRequest, open := <-b.kickChan:
 			if running && open {
-				b.log.Debugf("Received kick request for: %v\n", kickRequest.userId)
+				b.log.Debugf("Received kick request for: %v\n", kickRequest.userID)
 				for i, c := range b.clients {
-					if c.userId == kickRequest.userId {
+					if c.userID == kickRequest.userID {
 						b.stats.Decr("binder.subscribed_clients", 1)
 						b.clients = append(b.clients[:i], b.clients[i+1:]...)
 						close(c.transformChan)
@@ -521,7 +515,7 @@ func (b *Binder) loop() {
 						break
 					}
 				}
-				kickRequest.result <- fmt.Errorf("No such userId: %s", kickRequest.userId)
+				kickRequest.result <- fmt.Errorf("No such userID: %s", kickRequest.userID)
 			} else {
 				b.log.Infoln("Exit channel closed, shutting down")
 				running = false
@@ -529,7 +523,7 @@ func (b *Binder) loop() {
 			}
 		case client, open := <-b.exitChan:
 			if running && open {
-				b.log.Debugf("Received exit request for: %v\n", client.userId)
+				b.log.Debugf("Received exit request for: %v\n", client.userID)
 				for i, c := range b.clients {
 					if c == client {
 						b.stats.Decr("binder.subscribed_clients", 1)

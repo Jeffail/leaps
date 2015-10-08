@@ -28,8 +28,8 @@ JS_BIN := $(BIN)/js
 VERSION := $(shell git describe --tags || echo "v0.0.0")
 DATE := $(shell date +"%c" | tr ' :' '__')
 
-GOFLAGS := -ldflags "-X github.com/jeffail/util.version $(VERSION) \
-	-X github.com/jeffail/util.dateBuilt $(DATE)"
+GOFLAGS := -ldflags "-X github.com/jeffail/util.version=$(VERSION) \
+	-X github.com/jeffail/util.dateBuilt=$(DATE)"
 
 .PHONY: help
 help:

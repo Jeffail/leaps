@@ -55,11 +55,11 @@ type MessageSubmission struct {
 
 /*
 BinderSubscribeBundle - A container that holds all data necessary to provide a binder that you
-wish to subscribe to. Contains a user userId for identifying the client and a channel for
+wish to subscribe to. Contains a user userID for identifying the client and a channel for
 receiving the resultant BinderPortal.
 */
 type BinderSubscribeBundle struct {
-	UserId        string
+	UserID        string
 	PortalRcvChan chan<- BinderPortal
 }
 
@@ -80,7 +80,7 @@ allowing fresh transforms to be submitted and returned as they come. Also carrie
 of the client.
 */
 type BinderPortal struct {
-	UserId           string
+	UserID           string
 	Client           *BinderClient
 	Document         store.Document
 	Version          int
