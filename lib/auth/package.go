@@ -37,19 +37,24 @@ var (
 	ErrInvalidAuthType = errors.New("invalid token authenticator type")
 )
 
+// AccessLevel - A unit of access to a particular document ID.
+type AccessLevel int
+
+// Units of AccessLevel for expressing a users access to a document.
+const (
+	CreateAccess AccessLevel = iota,
+		EditAccess,
+		ReadAccess,
+		NoAccess
+)
+
 /*
 Authenticator - Implemented by types able to validate tokens for editing or creating documents.
 This is abstracted in order to accommodate for multiple authentication strategies.
 */
 type Authenticator interface {
-	// AuthoriseCreate - Validate that a `create action` token corresponds to a particular user.
-	AuthoriseCreate(token, userID string) bool
-
-	// AuthoriseJoin - Validate that a `join action` token corresponds to a particular document.
-	AuthoriseJoin(token, documentID string) bool
-
-	// AuthoriseReadOnly - Validate that a `read only` token corresponds to a particular document.
-	AuthoriseReadOnly(token, documentID string) bool
+	// Authenticate - Check the access level a user has for a document using a token as authentication.
+	Authenticate(token, documentID, userID string) AccessLevel
 
 	// RegisterHandlers - Allow the Auth to register any API endpoints it needs.
 	RegisterHandlers(register register.PubPrivEndpointRegister) error
