@@ -28,6 +28,7 @@ import (
 
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/util/log"
+	"github.com/leaps/lib/util"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -133,24 +134,15 @@ func NewBinder(
  */
 
 /*
-ClientMessage - A struct containing various updates to a clients' state and an optional message to
-be distributed out to all other clients of a binder.
-*/
-type ClientMessage struct {
-	Message  string `json:"message,omitempty"`
-	Position *int64 `json:"position,omitempty"`
-	Active   bool   `json:"active"`
-	UserID   string `json:"user_id"`
-}
-
-/*
 BinderClient - A struct containing information about a connected client and channels used by the
 binder to push transforms and user updates out.
 */
 type BinderClient struct {
-	userID        string
+	UserID    string `json:"user_id"`
+	SessionID string `json:"session_id"`
+
 	transformChan chan<- OTransform
-	messageChan   chan<- ClientMessage
+	messageChan   chan<- MessageSubmission
 }
 
 /*
@@ -264,7 +256,7 @@ we return false to flag the binder loop that we should shut down.
 */
 func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 	transformSndChan := make(chan OTransform, 1)
-	messageSndChan := make(chan ClientMessage, 1)
+	messageSndChan := make(chan MessageSubmission, 1)
 
 	// We need to read the full document here anyway, so might as well flush.
 	doc, err := b.flush()
@@ -272,7 +264,8 @@ func (b *Binder) processSubscriber(request BinderSubscribeBundle) error {
 		return err
 	}
 	client := BinderClient{
-		userID:        request.UserID,
+		UserID:        request.UserID,
+		SessionID:     util.GenerateStampedUUID(),
 		transformChan: transformSndChan,
 		messageChan:   messageSndChan,
 	}
@@ -322,7 +315,7 @@ processUsersRequest - Processes a request for the list of connected clients.
 func (b *Binder) processUsersRequest(request usersRequestObj) {
 	var clients []string
 	for _, client := range b.clients {
-		clients = append(clients, client.userID)
+		clients = append(clients, client.UserID)
 	}
 	select {
 	case request.responseChan <- clients:
@@ -376,7 +369,7 @@ func (b *Binder) processTransform(request TransformSubmission) {
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
 
-			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
+			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.UserID)
 
 			b.clients = append(b.clients[:i], b.clients[i+1:]...)
 			close(c.transformChan)
@@ -397,7 +390,7 @@ func (b *Binder) processMessage(request MessageSubmission) {
 			continue
 		}
 		select {
-		case c.messageChan <- request.Message:
+		case c.messageChan <- request:
 		case <-time.After(clientKickPeriod):
 			/* The client may have stopped listening, or is just being slow.
 			 * Either way, we have a strict policy here of no time wasters.
@@ -405,7 +398,7 @@ func (b *Binder) processMessage(request MessageSubmission) {
 			b.stats.Decr("binder.subscribed_clients", 1)
 			b.stats.Incr("binder.clients_kicked", 1)
 
-			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
+			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.UserID)
 
 			b.clients = append(b.clients[:i], b.clients[i+1:]...)
 			close(c.transformChan)
@@ -509,7 +502,7 @@ func (b *Binder) loop() {
 				// TODO: Refactor and improve kick API
 				kicked := 0
 				for i, c := range b.clients {
-					if c.userID == kickRequest.userID {
+					if c.UserID == kickRequest.userID {
 						b.stats.Decr("binder.subscribed_clients", 1)
 						b.clients = append(b.clients[:i], b.clients[i+1:]...)
 						close(c.transformChan)
@@ -529,7 +522,7 @@ func (b *Binder) loop() {
 			}
 		case client, open := <-b.exitChan:
 			if running && open {
-				b.log.Debugf("Received exit request for: %v\n", client.userID)
+				b.log.Debugf("Received exit request for: %v\n", client.UserID)
 				for i, c := range b.clients {
 					if c == client {
 						b.stats.Decr("binder.subscribed_clients", 1)

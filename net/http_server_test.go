@@ -35,6 +35,7 @@ import (
 	"github.com/jeffail/leaps/lib/auth"
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/util/log"
+	"github.com/leaps/lib/util"
 	"golang.org/x/net/websocket"
 )
 
@@ -49,10 +50,11 @@ type binderStoriesContainer struct {
 	Stories []binderStory `json:"binder_stories" yaml:"binder_stories"`
 }
 
-func findDocument(id string, ws *websocket.Conn) error {
+func findDocument(docID, userID string, ws *websocket.Conn) error {
 	websocket.JSON.Send(ws, LeapClientMessage{
 		Command: "find",
-		DocID:   id,
+		DocID:   docID,
+		UserID:  userID,
 	})
 
 	var initResponse LeapServerMessage
@@ -76,13 +78,15 @@ func senderClient(id string, feeds <-chan lib.OTransform, t *testing.T) {
 	origin := "http://localhost/"
 	url := "ws://localhost:8254/leaps/socket"
 
+	userID := util.GenerateStampedUUID()
+
 	ws, err := websocket.Dial(url, "", origin)
 	if err != nil {
 		t.Errorf("client connect error: %v", err)
 		return
 	}
 
-	if err = findDocument(id, ws); err != nil {
+	if err = findDocument(id, userID, ws); err != nil {
 		t.Errorf("%v", err)
 		return
 	}
@@ -145,6 +149,8 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 	origin := "http://localhost/"
 	url := "ws://localhost:8254/leaps/socket"
 
+	userID := util.GenerateStampedUUID()
+
 	ws, err := websocket.Dial(url, "", origin)
 	if err != nil {
 		t.Errorf("client connect error: %v", err)
@@ -152,7 +158,7 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 		return
 	}
 
-	if err = findDocument(id, ws); err != nil {
+	if err = findDocument(id, userID, ws); err != nil {
 		t.Errorf("%v", err)
 		wg.Done()
 		return
@@ -279,6 +285,7 @@ func TestHttpServer(t *testing.T) {
 
 		websocket.JSON.Send(ws, LeapClientMessage{
 			Command: "create",
+			UserID:  "test",
 			Document: &store.Document{
 				Content: story.Content,
 			},

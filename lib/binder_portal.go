@@ -45,12 +45,22 @@ type TransformSubmission struct {
 }
 
 /*
+Message - Can contain text content, a cursor position, or a boolean indicator as to whether this
+client is active (connected).
+*/
+type Message struct {
+	Content  string `json:"content,omitempty"`
+	Position *int64 `json:"position,omitempty"`
+	Active   bool   `json:"active"`
+}
+
+/*
 MessageSubmission - A struct used to submit a message to a binder. The submission must contain the
 token of the client in order to avoid the message being sent back to the same client.
 */
 type MessageSubmission struct {
-	Client  *BinderClient
-	Message ClientMessage
+	Client  *BinderClient `json:"client"`
+	Message Message       `json:"message"`
 }
 
 /*
@@ -80,13 +90,12 @@ allowing fresh transforms to be submitted and returned as they come. Also carrie
 of the client.
 */
 type BinderPortal struct {
-	UserID           string
 	Client           *BinderClient
 	Document         store.Document
 	Version          int
 	Error            error
 	TransformRcvChan <-chan OTransform
-	MessageRcvChan   <-chan ClientMessage
+	MessageRcvChan   <-chan MessageSubmission
 	TransformSndChan chan<- TransformSubmission
 	MessageSndChan   chan<- MessageSubmission
 	ExitChan         chan<- *BinderClient
@@ -124,7 +133,7 @@ func (p *BinderPortal) SendTransform(ot OTransform, timeout time.Duration) (int,
 SendMessage - Sends a message to the binder, which is subsequently sent out to all other clients.
 This is safe to call from any goroutine.
 */
-func (p *BinderPortal) SendMessage(message ClientMessage) {
+func (p *BinderPortal) SendMessage(message Message) {
 	p.MessageSndChan <- MessageSubmission{
 		Client:  p.Client,
 		Message: message,

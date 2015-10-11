@@ -190,18 +190,18 @@ func TestUpdates(t *testing.T) {
 
 	portal1, portal2 := binder.Subscribe(util.GenerateStampedUUID()), binder.Subscribe(util.GenerateStampedUUID())
 	for i := 0; i < 100; i++ {
-		portal1.SendMessage(ClientMessage{UserID: portal1.UserID})
+		portal1.SendMessage(Message{})
 
 		message := <-portal2.MessageRcvChan
-		if message.UserID != portal1.UserID {
-			t.Errorf("Received incorrect token: %v", message.UserID)
+		if message.Client.UserID != portal1.Client.UserID {
+			t.Errorf("Received incorrect token: %v != %v", message.Client.UserID, portal1.Client.UserID)
 		}
 
-		portal2.SendMessage(ClientMessage{UserID: portal2.UserID})
+		portal2.SendMessage(Message{})
 
 		message2 := <-portal1.MessageRcvChan
-		if message2.UserID != portal2.UserID {
-			t.Errorf("Received incorrect token: %v", message2.UserID)
+		if message2.Client.UserID != portal2.Client.UserID {
+			t.Errorf("Received incorrect token: %v != %v", message2.Client.UserID, portal2.Client.UserID)
 		}
 	}
 }

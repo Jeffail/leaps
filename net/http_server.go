@@ -103,11 +103,11 @@ LeapClientMessage - A structure that defines a message format to expect from cli
 be 'create' (init with new document) or 'find' (init with existing document).
 */
 type LeapClientMessage struct {
-	Command  string          `json:"command" yaml:"command"`
-	Token    string          `json:"token" yaml:"token"`
-	DocID    string          `json:"document_id,omitempty" yaml:"document_id,omitempty"`
-	UserID   string          `json:"user_id,omitempty" yaml:"user_id,omitempty"`
-	Document *store.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
+	Command  string          `json:"command"`
+	Token    string          `json:"token"`
+	DocID    string          `json:"document_id,omitempty"`
+	UserID   string          `json:"user_id"`
+	Document *store.Document `json:"leap_document,omitempty"`
 }
 
 /*
@@ -115,10 +115,10 @@ LeapServerMessage - A structure that defines a response message from the server 
 can be 'document' (init response) or 'error' (an error message to display to the client).
 */
 type LeapServerMessage struct {
-	Type     string          `json:"response_type" yaml:"response_type"`
-	Document *store.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
-	Version  *int            `json:"version,omitempty" yaml:"version,omitempty"`
-	Error    string          `json:"error,omitempty" yaml:"error,omitempty"`
+	Type     string          `json:"response_type"`
+	Document *store.Document `json:"leap_document,omitempty"`
+	Version  *int            `json:"version,omitempty"`
+	Error    string          `json:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -128,6 +128,7 @@ type LeapServerMessage struct {
 var (
 	ErrInvalidSocketPath = errors.New("invalid config value for socket path")
 	ErrInvalidDocument   = errors.New("invalid document structure")
+	ErrInvalidUserID     = errors.New("invalid user ID")
 )
 
 /*
@@ -234,6 +235,11 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 	for {
 		var clientMsg LeapClientMessage
 		websocket.JSON.Receive(ws, &clientMsg)
+
+		if len(clientMsg.UserID) <= 0 {
+			handleInitError(ErrInvalidUserID)
+			return
+		}
 
 		switch clientMsg.Command {
 		case "create":
