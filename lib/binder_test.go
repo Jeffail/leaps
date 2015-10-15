@@ -31,7 +31,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
-	"github.com/leaps/lib/util"
+	"github.com/jeffail/leaps/lib/util"
 )
 
 /*

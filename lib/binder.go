@@ -27,8 +27,8 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
-	"github.com/leaps/lib/util"
 )
 
 /*--------------------------------------------------------------------------------------------------

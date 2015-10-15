@@ -100,27 +100,46 @@ leap_model.prototype._validate_updates = function(user_updates) {
 	for ( var i = 0, l = user_updates.length; i < l; i++ ) {
 		var update = user_updates[i];
 
-		if ( undefined !== update.position &&
-		    "number" !== typeof(update.position) ) {
-			update.position = parseInt(update.position);
-			if ( isNaN(update.position) ) {
-				return "update contained NaN value for position: " + JSON.stringify(update);
+		if ( undefined === update.client ||
+			"object" !== typeof(update.client) ) {
+			return "update did not contain valid client object: " + JSON.stringify(update);
+		}
+
+		if ( undefined === update.message ||
+			"object" !== typeof(update.message) ) {
+			return "update did not contain valid message object: " + JSON.stringify(update);
+		}
+
+		var message = update.message;
+
+		if ( undefined !== message.position &&
+		    "number" !== typeof(message.position) ) {
+			message.position = parseInt(message.position);
+			if ( isNaN(message.position) ) {
+				return "update message contained NaN value for position: " + JSON.stringify(update);
 			}
 		}
-		if ( undefined !== update.message &&
-		    "string" !== typeof(update.message) ) {
-			return "update contained invalid type for message: " + JSON.stringify(update);
+		if ( undefined !== message.content &&
+		    "string" !== typeof(message.content) ) {
+			return "update message contained invalid type for content: " + JSON.stringify(update);
 		}
-		if ( undefined !== update.active &&
-		    "boolean" !== typeof(update.active) ) {
-			if ("string" !== typeof(update.active)) {
-				return "update contained invalid type for active: " + JSON.stringify(update);
+		if ( undefined !== message.active &&
+		    "boolean" !== typeof(message.active) ) {
+			if ("string" !== typeof(message.active)) {
+				return "update message contained invalid type for active: " + JSON.stringify(update);
 			}
-			update.active = ("true" === update.active);
+			message.active = ("true" === message.active);
 		}
-		if ( undefined === update.user_id ||
-		    "string" !== typeof(update.user_id) ) {
-			return "update contained invalid type for user_id: " + JSON.stringify(update);
+
+		var client = update.client;
+
+		if ( undefined === client.user_id ||
+		    "string" !== typeof(client.user_id) ) {
+			return "update client contained invalid type for user_id: " + JSON.stringify(update);
+		}
+		if ( undefined === client.session_id ||
+		    "string" !== typeof(client.session_id) ) {
+			return "update client contained invalid type for session_id: " + JSON.stringify(update);
 		}
 	}
 };
@@ -437,7 +456,7 @@ leap_client.prototype._process_message = function(message) {
 		}
 		validate_error = this._model._validate_updates(message.user_updates);
 		if ( validate_error !== undefined ) {
-			return "received updatess with error: " + validate_error;
+			return "received updates with error: " + validate_error;
 		}
 		for ( var i = 0, l = message.user_updates.length; i < l; i++ ) {
 			this._dispatch_event(this.EVENT_TYPE.USER, [ message.user_updates[i] ]);
@@ -528,12 +547,20 @@ leap_client.prototype.update_cursor = function(position) {
 /* join_document prompts the client to request to join a document from the server. It will return an
  * error message if there is a problem with the request.
  */
-leap_client.prototype.join_document = function(id, token) {
+leap_client.prototype.join_document = function(user_id, token, document_id) {
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
 		return "leap_client is not currently connected";
 	}
 
-	if ( typeof(id) !== "string" ) {
+	if ( typeof(user_id) !== "string" ) {
+		return "user id was not a string type";
+	}
+
+	if ( typeof(token) !== "string" ) {
+		return "token was not a string type";
+	}
+
+	if ( typeof(document_id) !== "string" ) {
 		return "document id was not a string type";
 	}
 
@@ -541,10 +568,11 @@ leap_client.prototype.join_document = function(id, token) {
 		return "a leap_client can only join a single document";
 	}
 
-	this._document_id = id;
+	this._document_id = document_id;
 
 	this._socket.send(JSON.stringify({
 		command : "find",
+		user_id : user_id,
 		token : token,
 		document_id : this._document_id
 	}));
@@ -553,9 +581,17 @@ leap_client.prototype.join_document = function(id, token) {
 /* create_document submits content to be created into a fresh document and then binds to that
  * document.
  */
-leap_client.prototype.create_document = function(content, token) {
+leap_client.prototype.create_document = function(user_id, token, content) {
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
 		return "leap_client is not currently connected";
+	}
+
+	if ( typeof(user_id) !== "string" ) {
+		return "user id was not a string type";
+	}
+
+	if ( typeof(token) !== "string" ) {
+		return "token was not a string type";
 	}
 
 	if ( typeof(content) !== "string" ) {
@@ -568,6 +604,7 @@ leap_client.prototype.create_document = function(content, token) {
 
 	this._socket.send(JSON.stringify({
 		command : "create",
+		user_id : user_id,
 		token : token,
 		leap_document : {
 			content : content

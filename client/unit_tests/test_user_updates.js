@@ -51,7 +51,7 @@ module.exports = function(test) {
 		test.ok(false, "client error: " + JSON.stringify(err));
 	});
 
-	client.create_document("random content");
+	client.create_document("test_id", "test_token", "random content");
 	// Should now be primed and ready.
 
 	client.on("user", function(user) {
@@ -63,11 +63,20 @@ module.exports = function(test) {
 
 	socket.send = function(data) {
 		var update = JSON.parse(data);
-		update.user_id = "hello world";
-		update.active = true;
+
 		socket.onmessage({ data : JSON.stringify({
 			response_type: "update",
-			user_updates: [ update ]
+			user_updates: [ {
+				client: {
+					user_id    : "test",
+					session_id : "test"
+				},
+				message: {
+					active   : true,
+					position : update.position,
+					content  : update.message
+				},
+			} ]
 		}) });
 	};
 
@@ -77,7 +86,7 @@ module.exports = function(test) {
 
 	test.ok(updates.length === n_loops, "wrong updates count: " + updates.length + " !== " + n_loops);
 	for ( var i = 0, l = updates.length; i < l; i++ ) {
-		test.ok(updates[i].position === i, "wrong position for update: " + updates[i].position + " != " + i);
+		test.ok(updates[i].message.position === i, "wrong position for update: " + updates[i].message.position + " != " + i);
 	}
 
 	test.done();

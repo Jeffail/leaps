@@ -34,8 +34,8 @@ import (
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/leaps/lib/auth"
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
-	"github.com/leaps/lib/util"
 	"golang.org/x/net/websocket"
 )
 
