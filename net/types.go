@@ -39,14 +39,14 @@ servers of curators.
 */
 type LeapLocator interface {
 	// EditDocument - Find and return a binder portal to an existing document
-	EditDocument(string, string) (lib.BinderPortal, error)
+	EditDocument(userID, token, documentID string) (lib.BinderPortal, error)
 
 	// ReadDocument - Find and return a binder portal to an existing document with read only
 	// priviledges
-	ReadDocument(string, string) (lib.BinderPortal, error)
+	ReadDocument(userID, token, documentID string) (lib.BinderPortal, error)
 
 	// CreateDocument - Create and return a binder portal to a new document
-	CreateDocument(string, string, store.Document) (lib.BinderPortal, error)
+	CreateDocument(userID, token string, document store.Document) (lib.BinderPortal, error)
 
 	// Close - Close the LeapLocator
 	Close()
