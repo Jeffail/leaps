@@ -86,7 +86,7 @@ func TestReadOnlyCurator(t *testing.T) {
 		return
 	}
 
-	readOnlyPortal, err := curator.ReadDocument("", doc.ID)
+	readOnlyPortal, err := curator.ReadDocument("test", "", doc.ID)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -144,7 +144,7 @@ func TestCuratorClients(t *testing.T) {
 	tformSending := 50
 
 	for i := 0; i < 10; i++ {
-		if b, e := curator.EditDocument("", doc.ID); e != nil {
+		if b, e := curator.EditDocument("test", "", doc.ID); e != nil {
 			t.Errorf("error: %v", e)
 		} else {
 			go goodClient(b, tformSending, t, &wg)
@@ -160,7 +160,7 @@ func TestCuratorClients(t *testing.T) {
 
 	for i := 0; i < 50; i++ {
 		if i%2 == 0 {
-			if b, e := curator.EditDocument("", doc.ID); e != nil {
+			if b, e := curator.EditDocument(fmt.Sprintf("test%v", i), "", doc.ID); e != nil {
 				t.Errorf("error: %v", e)
 			} else {
 				go goodClient(b, tformSending-i, t, &wg)
