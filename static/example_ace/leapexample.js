@@ -80,11 +80,11 @@ window.onload = function() {
 			positionStyle = "position: absolute; top: " + top + "px; left: " + left + "px;";
 			nameBar = "<div style='position: absolute; top: " + (top + (height - 18) ) +
 				"px; left: " + left + "px; background-color: " + colorStyle +
-				"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_id.substr(0, 8) + "...</div>";
+				"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_id.substr(0, 8) + "</div>";
 		} else {
 			positionStyle = "position: absolute; top: " + ( top - height + lineHeight ) + "px; left: " + left + "px;";
 			nameBar = "<div style='" + positionStyle + " background-color: " + colorStyle +
-				"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_id.substr(0, 8) + "...</div>";
+				"; color: #f0f0f0; padding: 4px; font-size: 10px;'>" + user_id.substr(0, 8) + "</div>";
 		}
 
 		var markerLine = "<div style='" + positionStyle + " height: " + height + "px; border-left: " + width +

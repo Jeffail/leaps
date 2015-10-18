@@ -276,19 +276,14 @@ var ACE_cursor_clear_handler = function() {
 	oob_elements = [];
 };
 
-var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
-	var colorStyle = user_id_to_color(user_id);
+var ACE_cursor_handler = function(user_id, session_id, lineHeight, top, left, row, column) {
+	var colorStyle = user_id_to_color(session_id);
 
 	// Needs IE9
 	var editor_bounds = ace_editor.container.getBoundingClientRect();
 
 	var editor_width = ace_editor.getSession().getScreenWidth();
 	var editor_height = ace_editor.getSession().getScreenLength();
-
-	var user_tag = user_id;
-	if ( 'string' === typeof users[user_id] ) {
-		user_tag = users[user_id];
-	}
 
 	var triangle_height = 20;
 	var triangle_opacity = 0.5;
@@ -345,7 +340,7 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
 	}
 	var tag_obj = '<div style="background-color: ' + colorStyle +
 		'; opacity: 0.5; z-index: 99; position: absolute; top: ' + (top - tag_height) + 'px; padding: 2px; left: ' +
-		(left + ball_width) + 'px; color: #f0f0f0;">' + user_tag + '</div>';
+		(left + ball_width) + 'px; color: #f0f0f0;">' + user_id + '</div>';
 
 	return left_ptr_obj + tag_obj +
 		'<div style="position: absolute; top: ' + (top - extra_height) + 'px; left: ' + left + 'px; color: ' +
@@ -411,7 +406,7 @@ var join_new_document = function(document_id) {
 	});
 
 	leaps_client.on("connect", function() {
-		leaps_client.join_document(document_id);
+		leaps_client.join_document(username, "", document_id);
 	});
 
 	leaps_client.on("document", function() {
@@ -419,24 +414,17 @@ var join_new_document = function(document_id) {
 	});
 
 	leaps_client.on("user", function(user_update) {
-		var refresh_user_list = false;
-		var metadata = user_update.message;
 
-		if ( 'string' === typeof metadata ) {
-			var data = JSON.parse(metadata);
-			if ( 'string' === typeof data.text ) {
-				chat_message(user_update.user_id, data.username, data.text);
-			}
-			if ( 'string' === typeof data.username ) {
-				refresh_user_list = refresh_user_list ||
-						!users.hasOwnProperty(user_update.user_id) ||
-						users[user_update.user_id] !== data.username;
-				users[user_update.user_id] = data.username;
-			}
+		if ( 'string' === typeof user_update.message.content ) {
+			chat_message(user_update.client.session_id, user_update.client.user_id, user_update.message.content);
 		}
-		if ( typeof user_update.active === 'boolean' && !user_update.active ) {
+
+		var refresh_user_list = !users.hasOwnProperty(user_update.client.session_id);
+		users[user_update.client.session_id] = user_update.client.user_id;
+
+		if ( typeof user_update.message.active === 'boolean' && !user_update.message.active ) {
 			refresh_user_list = true;
-			delete users[user_update.user_id]
+			delete users[user_update.client.session_id]
 		}
 
 		if ( refresh_user_list ) {
@@ -772,6 +760,7 @@ window.onload = function() {
 /*--------------------------------------------------------------------------------------------------
                                        Username Input
 --------------------------------------------------------------------------------------------------*/
+	/*
 	var username_bar = document.getElementById("username-bar");
 	if ( docCookies.hasItem("username") ) {
 		username_bar.value = docCookies.getItem("username");
@@ -783,6 +772,7 @@ window.onload = function() {
 		refresh_users_list();
 	};
 	refresh_users_list();
+	*/
 
 /*--------------------------------------------------------------------------------------------------
                                      Use Tabs Checkbox
@@ -898,18 +888,6 @@ window.onload = function() {
 	info_window.onclick = function() {
 		chat_bar.focus();
 	};
-
-	/* We're using our own implementation of usernames by sending JSON objects in leaps messages,
-	 * so to keep all clients up to date across name changes lets just send it every second. It's a
-	 * painless job so why not?
-	 */
-	setInterval(function() {
-		if ( leaps_client !== null ) {
-			leaps_client.send_message(JSON.stringify({
-				username: username
-			}));
-		}
-	}, 1000);
 
 	// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
 	if ( window.location.hash.length > 0 &&
