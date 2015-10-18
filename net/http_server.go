@@ -236,11 +236,6 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 		var clientMsg LeapClientMessage
 		websocket.JSON.Receive(ws, &clientMsg)
 
-		if len(clientMsg.UserID) <= 0 {
-			handleInitError(ErrInvalidUserID)
-			return
-		}
-
 		switch clientMsg.Command {
 		case "create":
 			if clientMsg.Document == nil {
@@ -251,6 +246,7 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 			if binder, err := h.locator.CreateDocument(
 				clientMsg.UserID, clientMsg.Token, *clientMsg.Document); err == nil {
 				h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
+				h.logger.Tracef("With binder client: %v\n", *binder.Client)
 
 				websocket.JSON.Send(ws, LeapServerMessage{
 					Type:     "document",
@@ -269,8 +265,11 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 				return
 			}
 			h.logger.Infof("Attempting to read only bind to document: %v\n", clientMsg.DocID)
+			h.logger.Infof("With user_id: %v and token: %v\n", clientMsg.UserID, clientMsg.Token)
+
 			if binder, err := h.locator.ReadDocument(clientMsg.UserID, clientMsg.Token, clientMsg.DocID); err == nil {
 				h.logger.Infof("Client read only bound to document %v\n", binder.Document.ID)
+				h.logger.Tracef("With binder client: %v\n", *binder.Client)
 
 				websocket.JSON.Send(ws, LeapServerMessage{
 					Type:     "document",
@@ -289,8 +288,11 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 				return
 			}
 			h.logger.Infof("Attempting to bind to document: %v\n", clientMsg.DocID)
+			h.logger.Infof("With user_id: %v and token: %v\n", clientMsg.UserID, clientMsg.Token)
+
 			if binder, err := h.locator.EditDocument(clientMsg.UserID, clientMsg.Token, clientMsg.DocID); err == nil {
 				h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
+				h.logger.Tracef("With binder client: %v\n", *binder.Client)
 
 				websocket.JSON.Send(ws, LeapServerMessage{
 					Type:     "document",

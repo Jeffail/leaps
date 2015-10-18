@@ -188,20 +188,94 @@ func TestUpdates(t *testing.T) {
 		}
 	}()
 
-	portal1, portal2 := binder.Subscribe(util.GenerateStampedUUID()), binder.Subscribe(util.GenerateStampedUUID())
+	userID1, userID2 := util.GenerateStampedUUID(), util.GenerateStampedUUID()
+
+	portal1, portal2 := binder.Subscribe(userID1), binder.Subscribe(userID2)
+
+	if userID1 != portal1.Client.UserID {
+		t.Errorf("Binder portal wrong user ID: %v != %v", userID1, portal1.Client.UserID)
+	}
+	if userID2 != portal2.Client.UserID {
+		t.Errorf("Binder portal wrong user ID: %v != %v", userID2, portal2.Client.UserID)
+	}
+
 	for i := 0; i < 100; i++ {
 		portal1.SendMessage(Message{})
 
 		message := <-portal2.MessageRcvChan
-		if message.Client.UserID != portal1.Client.UserID {
-			t.Errorf("Received incorrect token: %v != %v", message.Client.UserID, portal1.Client.UserID)
+		if message.Client.UserID != userID1 {
+			t.Errorf("Received incorrect user ID: %v != %v", message.Client.UserID, portal1.Client.UserID)
+		}
+		if message.Client.SessionID != portal1.Client.SessionID {
+			t.Errorf("Received incorrect session ID: %v != %v", message.Client.SessionID, portal1.Client.SessionID)
 		}
 
 		portal2.SendMessage(Message{})
 
 		message2 := <-portal1.MessageRcvChan
-		if message2.Client.UserID != portal2.Client.UserID {
+		if message2.Client.UserID != userID2 {
+			t.Errorf("Received incorrect user ID: %v != %v", message2.Client.UserID, portal2.Client.UserID)
+		}
+		if message2.Client.SessionID != portal2.Client.SessionID {
+			t.Errorf("Received incorrect session ID: %v != %v", message2.Client.SessionID, portal2.Client.SessionID)
+		}
+	}
+}
+
+func TestUpdatesSameUserID(t *testing.T) {
+	errChan := make(chan BinderError)
+	doc, _ := store.NewDocument("hello world")
+	logger, stats := loggerAndStats()
+
+	binder, err := NewBinder(
+		doc.ID,
+		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
+		DefaultBinderConfig(),
+		errChan,
+		logger,
+		stats,
+	)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	go func() {
+		for e := range errChan {
+			t.Errorf("From error channel: %v", e.Err)
+		}
+	}()
+
+	userID := util.GenerateStampedUUID()
+
+	portal1, portal2 := binder.Subscribe(userID), binder.Subscribe(userID)
+
+	if userID != portal1.Client.UserID {
+		t.Errorf("Binder portal wrong user ID: %v != %v", userID, portal1.Client.UserID)
+	}
+	if userID != portal2.Client.UserID {
+		t.Errorf("Binder portal wrong user ID: %v != %v", userID, portal2.Client.UserID)
+	}
+
+	for i := 0; i < 100; i++ {
+		portal1.SendMessage(Message{})
+
+		message := <-portal2.MessageRcvChan
+		if message.Client.UserID != userID {
+			t.Errorf("Received incorrect user ID: %v != %v", message.Client.UserID, portal1.Client.UserID)
+		}
+		if message.Client.SessionID != portal1.Client.SessionID {
+			t.Errorf("Received incorrect session ID: %v != %v", message.Client.SessionID, portal1.Client.SessionID)
+		}
+
+		portal2.SendMessage(Message{})
+
+		message2 := <-portal1.MessageRcvChan
+		if message2.Client.UserID != userID {
 			t.Errorf("Received incorrect token: %v != %v", message2.Client.UserID, portal2.Client.UserID)
+		}
+		if message2.Client.SessionID != portal2.Client.SessionID {
+			t.Errorf("Received incorrect session ID: %v != %v", message2.Client.SessionID, portal2.Client.SessionID)
 		}
 	}
 }

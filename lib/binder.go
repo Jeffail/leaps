@@ -384,6 +384,8 @@ processMessage - Sends a clients message out to other clients.
 func (b *Binder) processMessage(request MessageSubmission) {
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
+	b.log.Tracef("Received message: %v %v\n", *request.Client, request.Message)
+
 	for i, c := range b.clients {
 		// Skip sends for client from which the message came
 		if c == request.Client {
@@ -391,6 +393,7 @@ func (b *Binder) processMessage(request MessageSubmission) {
 		}
 		select {
 		case c.messageChan <- request:
+			b.stats.Incr("binder.sent_message", 1)
 		case <-time.After(clientKickPeriod):
 			/* The client may have stopped listening, or is just being slow.
 			 * Either way, we have a strict policy here of no time wasters.

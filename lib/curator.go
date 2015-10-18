@@ -251,7 +251,7 @@ func (c *Curator) EditDocument(userID, token, documentID string) (BinderPortal, 
 	if binder, ok := c.openBinders[documentID]; ok {
 		c.binderMutex.Unlock()
 
-		return binder.Subscribe(token), nil
+		return binder.Subscribe(userID), nil
 	}
 	binder, err := NewBinder(documentID, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {
@@ -289,7 +289,7 @@ func (c *Curator) ReadDocument(userID, token, documentID string) (BinderPortal, 
 	if binder, ok := c.openBinders[documentID]; ok {
 		c.binderMutex.Unlock()
 
-		return binder.SubscribeReadOnly(token), nil
+		return binder.SubscribeReadOnly(userID), nil
 	}
 	binder, err := NewBinder(documentID, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {

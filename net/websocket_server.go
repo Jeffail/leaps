@@ -246,7 +246,7 @@ func (w *WebsocketServer) loopOutgoing(closeSignalChan chan<- struct{}, closeCmd
 				closeSignalChan <- struct{}{}
 				return
 			}
-			w.logger.Traceln("Sending update to client")
+			w.logger.Tracef("Sending update from client: %v, update: %v\n", *msg.Client, msg.Message)
 			websocket.JSON.Send(w.socket, LeapSocketServerMessage{
 				Type:    "update",
 				Updates: []lib.MessageSubmission{msg},
