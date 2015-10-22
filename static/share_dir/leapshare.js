@@ -355,6 +355,9 @@ var ACE_cursor_handler = function(user_id, session_id, lineHeight, top, left, ro
 /*--------------------------------------------------------------------------------------------------
                                  Leaps Editor Bootstrapping
 --------------------------------------------------------------------------------------------------*/
+
+var last_document_joined = "";
+
 var join_new_document = function(document_id) {
 	if ( leaps_client !== null ) {
 		leaps_client.close();
@@ -401,6 +404,7 @@ var join_new_document = function(document_id) {
 
 	leaps_client.on("disconnect", function(err) {
 		if ( leaps_client !== null ) {
+			last_document_joined = "";
 			system_message(document_id + " closed", "red");
 		}
 	});
@@ -410,6 +414,7 @@ var join_new_document = function(document_id) {
 	});
 
 	leaps_client.on("document", function() {
+		last_document_joined = document_id;
 		system_message("Opened document " + document_id, "blue");
 	});
 
@@ -436,6 +441,13 @@ var join_new_document = function(document_id) {
 
 	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
 	leaps_client.connect(protocol + "//" + window.location.host + "/socket");
+};
+
+var refresh_document = function() {
+	if ( last_document_joined.length > 0 ) {
+		system_message("Rejoining document " + last_document_joined, "blue");
+		join_new_document(last_document_joined);
+	}
 };
 
 /*--------------------------------------------------------------------------------------------------
@@ -696,8 +708,8 @@ var refresh_users_list = function() {
 	users_element.innerHTML = "";
 
 	var self_element = document.createElement("div");
-	// var self_text_ele = document.createTextNode(username);
-	var self_text_ele = document.createTextNode("Users");
+	var self_text_ele = document.createTextNode(username);
+	// var self_text_ele = document.createTextNode("Users");
 
 	self_element.className = styles[((style_index++)%styles.length)];
 
@@ -709,7 +721,7 @@ var refresh_users_list = function() {
 			var user_element = document.createElement("div");
 			var user_text_ele = document.createTextNode(users[user]);
 
-			var kick_btn = create_kick_btn(user);
+			// var kick_btn = create_kick_btn(user);
 
 			user_element.className = styles[((style_index++)%styles.length)];
 			user_element.style.color = user_id_to_color(user);
@@ -718,9 +730,11 @@ var refresh_users_list = function() {
 			user_element.style.color = "#f0f0f0";
 			*/
 
+			/*
 			if ( null !== kick_btn ) {
 				user_element.appendChild(kick_btn);
 			}
+			*/
 			user_element.appendChild(user_text_ele);
 			users_element.appendChild(user_element);
 		}
@@ -743,7 +757,7 @@ window.onload = function() {
 /*--------------------------------------------------------------------------------------------------
                                   File Paths Refresh Button
 --------------------------------------------------------------------------------------------------*/
-	var refresh_button = document.getElementById("refresh-button");
+	var refresh_button = document.getElementById("refresh-button") || {};
 	refresh_button.onclick = function() {
 		get_paths();
 	};
@@ -751,7 +765,7 @@ window.onload = function() {
 /*--------------------------------------------------------------------------------------------------
                                     Messages Clear Button
 --------------------------------------------------------------------------------------------------*/
-	var clear_button = document.getElementById("clear-button");
+	var clear_button = document.getElementById("clear-button") || {};
 	clear_button.onclick = function() {
 		var messages = document.getElementById("info-messages");
 		messages.innerHTML = "";
@@ -760,19 +774,24 @@ window.onload = function() {
 /*--------------------------------------------------------------------------------------------------
                                        Username Input
 --------------------------------------------------------------------------------------------------*/
-	/*
 	var username_bar = document.getElementById("username-bar");
 	if ( docCookies.hasItem("username") ) {
 		username_bar.value = docCookies.getItem("username");
 	}
 	username = username_bar.value || "anon";
-	username_bar.onkeyup = function() {
-		username = username_bar.value || "anon";
-		set_cookie_option("username", username_bar.value);
-		refresh_users_list();
+	username_bar.onkeypress = function(e) {
+		if ( typeof e !== 'object' ) {
+			e = window.event;
+		}
+		var keyCode = e.keyCode || e.which;
+		if ( keyCode == '13' ) {
+			username = username_bar.value || "anon";
+			set_cookie_option("username", username_bar.value);
+			refresh_users_list();
+			refresh_document();
+		}
 	};
 	refresh_users_list();
-	*/
 
 /*--------------------------------------------------------------------------------------------------
                                      Use Tabs Checkbox

@@ -176,7 +176,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 .logo {
 	height: 100%;
-	padding: 0px;
+	padding: 5px;
 	margin: 0 0 0 20px;
 }
 
@@ -281,7 +281,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 #users-list div {
-	font-size: 20px;
+	font-size: 15px;
 	font-weight: bold;
 	padding: 4px;
 	padding-left: 1em;
