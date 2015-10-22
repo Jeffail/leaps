@@ -57,7 +57,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 
 			if ( typeof marker.draw_handler === 'function' ) {
 				var content = (marker.draw_handler(
-					cursors[i].user_id, height, top, left, screenPos.row, screenPos.column
+					cursors[i].user_id, cursors[i].session_id, height, top, left, screenPos.row, screenPos.column
 				) || '') + '';
 				html.push(content);
 			} else {
@@ -74,26 +74,27 @@ var _create_leaps_ace_marker = function(ace_editor) {
 		marker.session._signal("changeFrontMarker");
 	};
 
-	marker.updateCursor = function(user) {
+	marker.updateCursor = function(update) {
 		var cursors = marker.cursors, current, i, l;
 		for ( i = 0, l = cursors.length; i < l; i++ ) {
-			if ( cursors[i].user_id === user.user_id ) {
+			if ( cursors[i].session_id === update.client.session_id ) {
 				current = cursors[i];
-				current.position = marker.session.getDocument().indexToPosition(user.position, 0);
+				current.position = marker.session.getDocument().indexToPosition(update.message.position, 0);
 				current.updated = new Date().getTime();
 				break;
 			}
 		}
 		if ( undefined === current ) {
-			if ( user.active ) {
+			if ( update.message.active ) {
 				current = {
-					user_id: user.user_id,
-					position: marker.session.getDocument().indexToPosition(user.position, 0),
+					user_id: update.client.user_id,
+					session_id: update.client.session_id,
+					position: marker.session.getDocument().indexToPosition(update.client.position, 0),
 					updated: new Date().getTime()
 				};
 				cursors.push(current);
 			}
-		} else if ( !user.active ) {
+		} else if ( !update.message.active ) {
 			cursors.splice(i, 1);
 		}
 
@@ -176,8 +177,8 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		}
 	});
 
-	this._leap_client.subscribe_event("user", function(user) {
-		binder._marker.updateCursor.apply(binder._marker, [ user ]);
+	this._leap_client.subscribe_event("user", function(update) {
+		binder._marker.updateCursor.apply(binder._marker, [ update ]);
 	});
 
 	this._leap_client.ACE_set_cursor_handler = function(handler, clear_handler) {

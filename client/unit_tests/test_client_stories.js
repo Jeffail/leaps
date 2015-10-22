@@ -57,7 +57,7 @@ var run_story = function(story, test) {
 		test.ok(false, "client error: " + JSON.stringify(err));
 	});
 
-	client.create_document(story.content);
+	client.create_document("test", "test", story.content);
 
 	for ( var i = 0, l = story.epochs.length; i < l; i++ ) {
 		var epoch_sends = story.epochs[i].send;

@@ -9,7 +9,7 @@ window.onload = function() {
 	});
 
 	client.on("connect", function() {
-		client.join_document("test_document");
+		client.join_document("", "", "test_document");
 	});
 
 	client.connect("ws://" + window.location.host + "/socket");

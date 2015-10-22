@@ -64,6 +64,8 @@ func TestEndpointsEndpoint(t *testing.T) {
 
 	go internalServer.Listen()
 
+	<-time.After(time.Millisecond * 500)
+
 	res, err := http.Get("http://localhost:8767/internal/endpoints")
 	if err != nil {
 		t.Errorf("Error getting endpoints from server: %v\n", err)
@@ -118,6 +120,8 @@ func TestRegisterEndpoint(t *testing.T) {
 	}
 
 	go internalServer.Listen()
+
+	<-time.After(time.Millisecond * 500)
 
 	for _, e := range endpointTests {
 		res, err := http.Get("http://localhost:8768/internal/" + e)

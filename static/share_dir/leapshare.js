@@ -276,19 +276,14 @@ var ACE_cursor_clear_handler = function() {
 	oob_elements = [];
 };
 
-var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
-	var colorStyle = user_id_to_color(user_id);
+var ACE_cursor_handler = function(user_id, session_id, lineHeight, top, left, row, column) {
+	var colorStyle = user_id_to_color(session_id);
 
 	// Needs IE9
 	var editor_bounds = ace_editor.container.getBoundingClientRect();
 
 	var editor_width = ace_editor.getSession().getScreenWidth();
 	var editor_height = ace_editor.getSession().getScreenLength();
-
-	var user_tag = user_id;
-	if ( 'string' === typeof users[user_id] ) {
-		user_tag = users[user_id];
-	}
 
 	var triangle_height = 20;
 	var triangle_opacity = 0.5;
@@ -345,7 +340,7 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
 	}
 	var tag_obj = '<div style="background-color: ' + colorStyle +
 		'; opacity: 0.5; z-index: 99; position: absolute; top: ' + (top - tag_height) + 'px; padding: 2px; left: ' +
-		(left + ball_width) + 'px; color: #f0f0f0;">' + user_tag + '</div>';
+		(left + ball_width) + 'px; color: #f0f0f0;">' + user_id + '</div>';
 
 	return left_ptr_obj + tag_obj +
 		'<div style="position: absolute; top: ' + (top - extra_height) + 'px; left: ' + left + 'px; color: ' +
@@ -360,6 +355,9 @@ var ACE_cursor_handler = function(user_id, lineHeight, top, left, row, column) {
 /*--------------------------------------------------------------------------------------------------
                                  Leaps Editor Bootstrapping
 --------------------------------------------------------------------------------------------------*/
+
+var last_document_joined = "";
+
 var join_new_document = function(document_id) {
 	if ( leaps_client !== null ) {
 		leaps_client.close();
@@ -406,37 +404,32 @@ var join_new_document = function(document_id) {
 
 	leaps_client.on("disconnect", function(err) {
 		if ( leaps_client !== null ) {
+			last_document_joined = "";
 			system_message(document_id + " closed", "red");
 		}
 	});
 
 	leaps_client.on("connect", function() {
-		leaps_client.join_document(document_id);
+		leaps_client.join_document(username, "", document_id);
 	});
 
 	leaps_client.on("document", function() {
+		last_document_joined = document_id;
 		system_message("Opened document " + document_id, "blue");
 	});
 
 	leaps_client.on("user", function(user_update) {
-		var refresh_user_list = false;
-		var metadata = user_update.message;
 
-		if ( 'string' === typeof metadata ) {
-			var data = JSON.parse(metadata);
-			if ( 'string' === typeof data.text ) {
-				chat_message(user_update.user_id, data.username, data.text);
-			}
-			if ( 'string' === typeof data.username ) {
-				refresh_user_list = refresh_user_list ||
-						!users.hasOwnProperty(user_update.user_id) ||
-						users[user_update.user_id] !== data.username;
-				users[user_update.user_id] = data.username;
-			}
+		if ( 'string' === typeof user_update.message.content ) {
+			chat_message(user_update.client.session_id, user_update.client.user_id, user_update.message.content);
 		}
-		if ( typeof user_update.active === 'boolean' && !user_update.active ) {
+
+		var refresh_user_list = !users.hasOwnProperty(user_update.client.session_id);
+		users[user_update.client.session_id] = user_update.client.user_id;
+
+		if ( typeof user_update.message.active === 'boolean' && !user_update.message.active ) {
 			refresh_user_list = true;
-			delete users[user_update.user_id]
+			delete users[user_update.client.session_id]
 		}
 
 		if ( refresh_user_list ) {
@@ -448,6 +441,13 @@ var join_new_document = function(document_id) {
 
 	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
 	leaps_client.connect(protocol + "//" + window.location.host + "/socket");
+};
+
+var refresh_document = function() {
+	if ( last_document_joined.length > 0 ) {
+		system_message("Rejoining document " + last_document_joined, "blue");
+		join_new_document(last_document_joined);
+	}
 };
 
 /*--------------------------------------------------------------------------------------------------
@@ -708,8 +708,8 @@ var refresh_users_list = function() {
 	users_element.innerHTML = "";
 
 	var self_element = document.createElement("div");
-	// var self_text_ele = document.createTextNode(username);
-	var self_text_ele = document.createTextNode("Users");
+	var self_text_ele = document.createTextNode(username);
+	// var self_text_ele = document.createTextNode("Users");
 
 	self_element.className = styles[((style_index++)%styles.length)];
 
@@ -721,7 +721,7 @@ var refresh_users_list = function() {
 			var user_element = document.createElement("div");
 			var user_text_ele = document.createTextNode(users[user]);
 
-			var kick_btn = create_kick_btn(user);
+			// var kick_btn = create_kick_btn(user);
 
 			user_element.className = styles[((style_index++)%styles.length)];
 			user_element.style.color = user_id_to_color(user);
@@ -730,9 +730,11 @@ var refresh_users_list = function() {
 			user_element.style.color = "#f0f0f0";
 			*/
 
+			/*
 			if ( null !== kick_btn ) {
 				user_element.appendChild(kick_btn);
 			}
+			*/
 			user_element.appendChild(user_text_ele);
 			users_element.appendChild(user_element);
 		}
@@ -755,7 +757,7 @@ window.onload = function() {
 /*--------------------------------------------------------------------------------------------------
                                   File Paths Refresh Button
 --------------------------------------------------------------------------------------------------*/
-	var refresh_button = document.getElementById("refresh-button");
+	var refresh_button = document.getElementById("refresh-button") || {};
 	refresh_button.onclick = function() {
 		get_paths();
 	};
@@ -763,7 +765,7 @@ window.onload = function() {
 /*--------------------------------------------------------------------------------------------------
                                     Messages Clear Button
 --------------------------------------------------------------------------------------------------*/
-	var clear_button = document.getElementById("clear-button");
+	var clear_button = document.getElementById("clear-button") || {};
 	clear_button.onclick = function() {
 		var messages = document.getElementById("info-messages");
 		messages.innerHTML = "";
@@ -777,10 +779,17 @@ window.onload = function() {
 		username_bar.value = docCookies.getItem("username");
 	}
 	username = username_bar.value || "anon";
-	username_bar.onkeyup = function() {
-		username = username_bar.value || "anon";
-		set_cookie_option("username", username_bar.value);
-		refresh_users_list();
+	username_bar.onkeypress = function(e) {
+		if ( typeof e !== 'object' ) {
+			e = window.event;
+		}
+		var keyCode = e.keyCode || e.which;
+		if ( keyCode == '13' ) {
+			username = username_bar.value || "anon";
+			set_cookie_option("username", username_bar.value);
+			refresh_users_list();
+			refresh_document();
+		}
 	};
 	refresh_users_list();
 
@@ -898,18 +907,6 @@ window.onload = function() {
 	info_window.onclick = function() {
 		chat_bar.focus();
 	};
-
-	/* We're using our own implementation of usernames by sending JSON objects in leaps messages,
-	 * so to keep all clients up to date across name changes lets just send it every second. It's a
-	 * painless job so why not?
-	 */
-	setInterval(function() {
-		if ( leaps_client !== null ) {
-			leaps_client.send_message(JSON.stringify({
-				username: username
-			}));
-		}
-	}, 1000);
 
 	// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
 	if ( window.location.hash.length > 0 &&

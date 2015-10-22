@@ -235,36 +235,37 @@ func (c *Curator) GetUsers(timeout time.Duration) (map[string][]string, error) {
 EditDocument - Locates or creates a Binder for an existing document and returns that Binder for
 subscribing to. Returns an error if there was a problem locating the document.
 */
-func (c *Curator) EditDocument(token, id string) (BinderPortal, error) {
-	c.log.Debugf("finding document %v, with token %v\n", id, token)
+func (c *Curator) EditDocument(userID, token, documentID string) (BinderPortal, error) {
+	c.log.Debugf("finding document %v, with userID %v token %v\n", documentID, userID, token)
 
-	if !c.authenticator.AuthoriseJoin(token, id) {
+	if !c.authenticator.AuthoriseJoin(token, documentID) {
 		c.stats.Incr("curator.edit.rejected_client", 1)
-		return BinderPortal{}, fmt.Errorf("failed to authorise join of document id: %v with token: %v\n", id, token)
+		return BinderPortal{},
+			fmt.Errorf("failed to authorise join of document id: %v with token: %v\n", documentID, token)
 	}
 	c.stats.Incr("curator.edit.accepted_client", 1)
 
 	c.binderMutex.Lock()
 
 	// Check for existing binder
-	if binder, ok := c.openBinders[id]; ok {
+	if binder, ok := c.openBinders[documentID]; ok {
 		c.binderMutex.Unlock()
 
-		return binder.Subscribe(token), nil
+		return binder.Subscribe(userID), nil
 	}
-	binder, err := NewBinder(id, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
+	binder, err := NewBinder(documentID, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {
 		c.binderMutex.Unlock()
 
 		c.stats.Incr("curator.bind_existing.failed", 1)
-		c.log.Errorf("Failed to bind to document %v: %v\n", id, err)
+		c.log.Errorf("Failed to bind to document %v: %v\n", documentID, err)
 		return BinderPortal{}, err
 	}
-	c.openBinders[id] = binder
+	c.openBinders[documentID] = binder
 	c.binderMutex.Unlock()
 
 	c.stats.Incr("curator.open_binders", 1)
-	return binder.Subscribe(token), nil
+	return binder.Subscribe(userID), nil
 }
 
 /*
@@ -272,37 +273,37 @@ ReadDocument - Locates or creates a Binder for an existing document and returns 
 subscribing to with read only privileges. Returns an error if there was a problem locating the
 document.
 */
-func (c *Curator) ReadDocument(token, id string) (BinderPortal, error) {
-	c.log.Debugf("finding document %v, with token %v\n", id, token)
+func (c *Curator) ReadDocument(userID, token, documentID string) (BinderPortal, error) {
+	c.log.Debugf("finding document %v, with userID %v token %v\n", documentID, userID, token)
 
-	if !c.authenticator.AuthoriseReadOnly(token, id) {
+	if !c.authenticator.AuthoriseReadOnly(token, documentID) {
 		c.stats.Incr("curator.read.rejected_client", 1)
 		return BinderPortal{},
-			fmt.Errorf("failed to authorise read only join of document id: %v with token: %v\n", id, token)
+			fmt.Errorf("failed to authorise read only join of document id: %v with token: %v\n", documentID, token)
 	}
 	c.stats.Incr("curator.read.accepted_client", 1)
 
 	c.binderMutex.Lock()
 
 	// Check for existing binder
-	if binder, ok := c.openBinders[id]; ok {
+	if binder, ok := c.openBinders[documentID]; ok {
 		c.binderMutex.Unlock()
 
-		return binder.SubscribeReadOnly(token), nil
+		return binder.SubscribeReadOnly(userID), nil
 	}
-	binder, err := NewBinder(id, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
+	binder, err := NewBinder(documentID, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats)
 	if err != nil {
 		c.binderMutex.Unlock()
 
 		c.stats.Incr("curator.bind_existing.failed", 1)
-		c.log.Errorf("Failed to bind to document %v: %v\n", id, err)
+		c.log.Errorf("Failed to bind to document %v: %v\n", documentID, err)
 		return BinderPortal{}, err
 	}
-	c.openBinders[id] = binder
+	c.openBinders[documentID] = binder
 	c.binderMutex.Unlock()
 
 	c.stats.Incr("curator.open_binders", 1)
-	return binder.SubscribeReadOnly(token), nil
+	return binder.SubscribeReadOnly(userID), nil
 }
 
 /*
@@ -310,8 +311,8 @@ CreateDocument - Creates a fresh Binder for a new document, which is subsequentl
 error if either the document ID is already currently in use, or if there is a problem storing the
 new document. May require authentication, if so a userID is supplied.
 */
-func (c *Curator) CreateDocument(token string, userID string, doc store.Document) (BinderPortal, error) {
-	c.log.Debugf("Creating new document with token %v\n", token)
+func (c *Curator) CreateDocument(userID, token string, doc store.Document) (BinderPortal, error) {
+	c.log.Debugf("Creating new document with userID %v token %v\n", userID, token)
 
 	if !c.authenticator.AuthoriseCreate(token, userID) {
 		c.stats.Incr("curator.create.rejected_client", 1)
@@ -338,7 +339,7 @@ func (c *Curator) CreateDocument(token string, userID string, doc store.Document
 	c.binderMutex.Unlock()
 	c.stats.Incr("curator.open_binders", 1)
 
-	return binder.Subscribe(token), nil
+	return binder.Subscribe(userID), nil
 }
 
 /*--------------------------------------------------------------------------------------------------

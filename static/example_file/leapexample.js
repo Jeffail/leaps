@@ -9,7 +9,7 @@ window.onload = function() {
 	});
 
 	client.on("connect", function() {
-		client.join_document("leaps.go");
+		client.join_document("", "", "leaps.go");
 	});
 
 	client.connect("ws://" + window.location.host + "/socket");

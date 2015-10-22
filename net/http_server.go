@@ -103,11 +103,11 @@ LeapClientMessage - A structure that defines a message format to expect from cli
 be 'create' (init with new document) or 'find' (init with existing document).
 */
 type LeapClientMessage struct {
-	Command  string          `json:"command" yaml:"command"`
-	Token    string          `json:"token" yaml:"token"`
-	DocID    string          `json:"document_id,omitempty" yaml:"document_id,omitempty"`
-	UserID   string          `json:"user_id,omitempty" yaml:"user_id,omitempty"`
-	Document *store.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
+	Command  string          `json:"command"`
+	Token    string          `json:"token"`
+	DocID    string          `json:"document_id,omitempty"`
+	UserID   string          `json:"user_id"`
+	Document *store.Document `json:"leap_document,omitempty"`
 }
 
 /*
@@ -115,10 +115,10 @@ LeapServerMessage - A structure that defines a response message from the server 
 can be 'document' (init response) or 'error' (an error message to display to the client).
 */
 type LeapServerMessage struct {
-	Type     string          `json:"response_type" yaml:"response_type"`
-	Document *store.Document `json:"leap_document,omitempty" yaml:"leap_document,omitempty"`
-	Version  *int            `json:"version,omitempty" yaml:"version,omitempty"`
-	Error    string          `json:"error,omitempty" yaml:"error,omitempty"`
+	Type     string          `json:"response_type"`
+	Document *store.Document `json:"leap_document,omitempty"`
+	Version  *int            `json:"version,omitempty"`
+	Error    string          `json:"error,omitempty"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -128,6 +128,7 @@ type LeapServerMessage struct {
 var (
 	ErrInvalidSocketPath = errors.New("invalid config value for socket path")
 	ErrInvalidDocument   = errors.New("invalid document structure")
+	ErrInvalidUserID     = errors.New("invalid user ID")
 )
 
 /*
@@ -243,8 +244,9 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 			}
 			h.logger.Infoln("Attempting to create document")
 			if binder, err := h.locator.CreateDocument(
-				clientMsg.Token, clientMsg.UserID, *clientMsg.Document); err == nil {
+				clientMsg.UserID, clientMsg.Token, *clientMsg.Document); err == nil {
 				h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
+				h.logger.Tracef("With binder client: %v\n", *binder.Client)
 
 				websocket.JSON.Send(ws, LeapServerMessage{
 					Type:     "document",
@@ -263,8 +265,11 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 				return
 			}
 			h.logger.Infof("Attempting to read only bind to document: %v\n", clientMsg.DocID)
-			if binder, err := h.locator.ReadDocument(clientMsg.Token, clientMsg.DocID); err == nil {
+			h.logger.Infof("With user_id: %v and token: %v\n", clientMsg.UserID, clientMsg.Token)
+
+			if binder, err := h.locator.ReadDocument(clientMsg.UserID, clientMsg.Token, clientMsg.DocID); err == nil {
 				h.logger.Infof("Client read only bound to document %v\n", binder.Document.ID)
+				h.logger.Tracef("With binder client: %v\n", *binder.Client)
 
 				websocket.JSON.Send(ws, LeapServerMessage{
 					Type:     "document",
@@ -283,8 +288,11 @@ func (h *HTTPServer) websocketHandler(ws *websocket.Conn) {
 				return
 			}
 			h.logger.Infof("Attempting to bind to document: %v\n", clientMsg.DocID)
-			if binder, err := h.locator.EditDocument(clientMsg.Token, clientMsg.DocID); err == nil {
+			h.logger.Infof("With user_id: %v and token: %v\n", clientMsg.UserID, clientMsg.Token)
+
+			if binder, err := h.locator.EditDocument(clientMsg.UserID, clientMsg.Token, clientMsg.DocID); err == nil {
 				h.logger.Infof("Client bound to document %v\n", binder.Document.ID)
+				h.logger.Tracef("With binder client: %v\n", *binder.Client)
 
 				websocket.JSON.Send(ws, LeapServerMessage{
 					Type:     "document",

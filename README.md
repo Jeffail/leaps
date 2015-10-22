@@ -9,7 +9,7 @@ To read more and find examples check out the wiki: [leaps wiki](https://github.c
 Leaps is a single binary, with no runtime dependencies, everything is set through a single config file. Just download a release package for your OS and do the following to run an example:
 
 ```bash
-tar -xvf ./leaps-linux_amd64-v0.4.0.tar.gz
+tar -xvf ./leaps-linux_amd64-v0.5.0.tar.gz
 cd leaps
 ./bin/leaps -c ./config/leaps_example.yaml
 ```
@@ -49,7 +49,7 @@ window.onload = function() {
 	client.bind_textarea(document.getElementById("document"));
 
 	client.on("connect", function() {
-		client.join_document("test_document");
+		client.join_document("username", "auth_token", "test_document");
 	});
 
 	client.connect("ws://" + window.location.host + "/socket");
