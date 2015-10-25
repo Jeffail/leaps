@@ -27,7 +27,7 @@
 
 logger:
   prefix: 'leaps'
-stats:
+metrics:
   prefix: leaps
   retain_internal: true
 storage:

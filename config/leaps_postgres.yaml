@@ -3,7 +3,7 @@ logger:
   prefix: 'leaps'
   log_level: INFO
   add_timestamp: true
-stats:
+metrics:
   prefix: leaps
 storage:
   type: postgres

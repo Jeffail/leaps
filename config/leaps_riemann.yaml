@@ -2,7 +2,7 @@ logger:
   prefix: 'leaps'
   log_level: INFO
   add_timestamp: true
-stats:
+metrics:
   prefix: leaps
 riemann:
   address: localhost:5555

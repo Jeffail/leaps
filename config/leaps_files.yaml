@@ -1,6 +1,6 @@
 logger:
   prefix: 'leaps'
-stats:
+metrics:
   prefix: leaps
 storage:
   type: file
