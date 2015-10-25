@@ -25,6 +25,7 @@ package auth
 import (
 	"github.com/jeffail/leaps/lib/register"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -61,7 +62,7 @@ func NewConfig() Config {
 Factory - Returns a document store object based on a configuration object.
 */
 func Factory(
-	config Config, logger *log.Logger, stats *log.Stats,
+	config Config, logger *log.Logger, stats metrics.Aggregator,
 ) (Authenticator, error) {
 	switch config.Type {
 	case "none":

@@ -4,7 +4,6 @@ logger:
   add_timestamp: true
 stats:
   prefix: leaps
-  retain_internal: true
 riemann:
   address: localhost:5555
 storage:
@@ -18,8 +17,8 @@ http_server:
   socket_path: /socket
   address: :8001
   www_dir: ../static/example
-stats_server:
+admin_server:
   static_path: /
-  stats_path: /stats
-  address: :4040
+  path: /
+  address: localhost:4040
   www_dir: ../static/stats

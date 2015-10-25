@@ -36,6 +36,7 @@ import (
 	"golang.org/x/net/websocket"
 
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 	"github.com/jeffail/util/path"
 )
 
@@ -76,7 +77,7 @@ type AuthMiddleware struct {
 	config   AuthMiddlewareConfig
 	accounts map[string]string
 	logger   *log.Logger
-	stats    *log.Stats
+	stats    metrics.Aggregator
 }
 
 /*
@@ -85,7 +86,7 @@ NewAuthMiddleware - Create a new leaps AuthMiddleware.
 func NewAuthMiddleware(
 	config AuthMiddlewareConfig,
 	logger *log.Logger,
-	stats *log.Stats,
+	stats metrics.Aggregator,
 ) (*AuthMiddleware, error) {
 	auth := AuthMiddleware{
 		config:   config,

@@ -36,6 +36,7 @@ import (
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 	"golang.org/x/net/websocket"
 )
 
@@ -219,17 +220,17 @@ func goodStoryClient(id string, bstory *binderStory, wg *sync.WaitGroup, t *test
 	}
 }
 
-func loggerAndStats() (*log.Logger, *log.Stats) {
+func loggerAndStats() (*log.Logger, metrics.Aggregator) {
 	logConf := log.DefaultLoggerConfig()
 	logConf.LogLevel = "OFF"
 
 	logger := log.NewLogger(os.Stdout, logConf)
-	stats := log.NewStats(log.DefaultStatsConfig())
+	stats := metrics.DudType{}
 
 	return logger, stats
 }
 
-func authAndStore(logger *log.Logger, stats *log.Stats) (auth.Authenticator, store.Store) {
+func authAndStore(logger *log.Logger, stats metrics.Aggregator) (auth.Authenticator, store.Store) {
 	store, _ := store.Factory(store.NewConfig())
 	auth, _ := auth.Factory(auth.NewConfig(), logger, stats)
 	return auth, store

@@ -29,6 +29,7 @@ import (
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -72,7 +73,7 @@ type Binder struct {
 	model  Model
 	block  store.Store
 	log    *log.Logger
-	stats  *log.Stats
+	stats  metrics.Aggregator
 
 	// Clients
 	clients       []*BinderClient
@@ -98,7 +99,7 @@ func NewBinder(
 	config BinderConfig,
 	errorChan chan<- BinderError,
 	log *log.Logger,
-	stats *log.Stats,
+	stats metrics.Aggregator,
 ) (*Binder, error) {
 
 	binder := Binder{

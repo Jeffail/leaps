@@ -29,6 +29,7 @@ import (
 	"github.com/jeffail/leaps/lib"
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 	"golang.org/x/net/websocket"
 )
 
@@ -70,7 +71,7 @@ WebsocketServer - A websocket client that connects a binder of a document to a w
 type WebsocketServer struct {
 	config    HTTPBinderConfig
 	logger    *log.Logger
-	stats     *log.Stats
+	stats     metrics.Aggregator
 	socket    *websocket.Conn
 	binder    lib.BinderPortal
 	closeChan <-chan bool
@@ -85,7 +86,7 @@ func NewWebsocketServer(
 	binder lib.BinderPortal,
 	closeChan <-chan bool,
 	logger *log.Logger,
-	stats *log.Stats,
+	stats metrics.Aggregator,
 ) *WebsocketServer {
 	return &WebsocketServer{
 		config:    config,
@@ -186,7 +187,7 @@ func (w *WebsocketServer) loopIncoming(closeSignalChan chan<- struct{}, closeCmd
 						Version: ver,
 					})
 					w.stats.Incr("http.websocket.submit.success", 1)
-					w.stats.Timing("http.websocket.submit.timer", time.Since(timeStarted).Seconds())
+					w.stats.Timing("http.websocket.submit.timer", int(time.Since(timeStarted).Nanoseconds()/1000))
 				} else {
 					w.logger.Errorf("Transform request failed %v\n", err)
 					websocket.JSON.Send(w.socket, LeapSocketServerMessage{

@@ -32,6 +32,7 @@ import (
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -72,7 +73,7 @@ type Curator struct {
 	config        CuratorConfig
 	store         store.Store
 	log           *log.Logger
-	stats         *log.Stats
+	stats         metrics.Aggregator
 	authenticator auth.Authenticator
 
 	// Binders
@@ -91,7 +92,7 @@ NewCurator - Creates and returns a fresh curator, and launches its internal loop
 func NewCurator(
 	config CuratorConfig,
 	log *log.Logger,
-	stats *log.Stats,
+	stats metrics.Aggregator,
 	auth auth.Authenticator,
 	store store.Store,
 ) (*Curator, error) {

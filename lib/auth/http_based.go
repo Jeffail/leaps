@@ -33,6 +33,7 @@ import (
 	"github.com/jeffail/leaps/lib/register"
 	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -132,7 +133,7 @@ tokens.
 */
 type HTTP struct {
 	logger *log.Logger
-	stats  *log.Stats
+	stats  metrics.Aggregator
 	config Config
 
 	// Lock for token reading/writing
@@ -152,7 +153,7 @@ type HTTP struct {
 /*
 NewHTTP - Creates an HTTP using the provided configuration.
 */
-func NewHTTP(config Config, logger *log.Logger, stats *log.Stats) *HTTP {
+func NewHTTP(config Config, logger *log.Logger, stats metrics.Aggregator) *HTTP {
 	authorizer := HTTP{
 		logger: logger.NewModule(":http_auth"),
 		stats:  stats,

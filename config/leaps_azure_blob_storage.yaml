@@ -4,7 +4,6 @@ logger:
   add_timestamp: true
 stats:
   prefix: leaps
-  retain_internal: true
 storage:
   type: azureblobstorage
   azure:
@@ -16,14 +15,14 @@ authenticator:
   allow_creation: true
 curator:
   binder:
-    flush_period_ms:    60000
+    flush_period_ms: 60000
 http_server:
   static_path: /
   socket_path: /socket
   address: :8001
   www_dir: ../static/example
-stats_server:
+admin_server:
   static_path: /
-  stats_path: /stats
-  address: :4040
+  path: /
+  address: localhost:4040
   www_dir: ../static/stats

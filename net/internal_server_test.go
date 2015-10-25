@@ -78,8 +78,9 @@ func TestEndpointsEndpoint(t *testing.T) {
 		return
 	}
 
-	expectedEndpoints := "/internal/endpoints: <GET> the available endpoints of this leaps API\n" +
-		`/internal/kick_user: <POST> Kick a user from a document {"user_id":"<id>","doc_id":"<id>"}` + "\n" +
+	expectedEndpoints := "/internal/endpoints: <GET> Lists the available endpoints of this leaps API\n" +
+		`/internal/stats: <GET> Returns a JSON blob of the server metrics` + "\n" +
+		// `/internal/kick_user: <POST> Kick a user from a document {"user_id":"<id>","doc_id":"<id>"}` + "\n" +
 		`/internal/get_users: <GET> Get a list of all connected users {"<document_id1>":["<id1>","<id2>"],"<document_id2":["<id3>"]}` + "\n" +
 		"/internal/first: The first endpoint\n" +
 		"/internal/second: The second endpoint\n" +

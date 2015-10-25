@@ -4,7 +4,6 @@ logger:
   add_timestamp: true
 stats:
   prefix: leaps
-  retain_internal: true
 storage:
   type: mysql
   sql:
@@ -32,10 +31,8 @@ http_server:
   www_dir: ../static/example
   binder:
     bind_send_timeout_ms: 10
-stats_server:
+admin_server:
   static_path: /
-  stats_path: /stats
-  address: :4040
+  path: /
+  address: localhost:4040
   www_dir: ../static/stats
-  stat_timeout_ms: 200
-  request_timeout_s: 10

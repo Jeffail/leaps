@@ -33,14 +33,15 @@ import (
 
 	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 )
 
-func loggerAndStats() (*log.Logger, *log.Stats) {
+func loggerAndStats() (*log.Logger, metrics.Aggregator) {
 	logConf := log.DefaultLoggerConfig()
 	logConf.LogLevel = "OFF"
 
 	logger := log.NewLogger(os.Stdout, logConf)
-	stats := log.NewStats(log.DefaultStatsConfig())
+	stats := metrics.DudType{}
 
 	return logger, stats
 }

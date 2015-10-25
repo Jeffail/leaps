@@ -25,12 +25,12 @@ package net
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"time"
 
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 	binpath "github.com/jeffail/util/path"
 )
 
@@ -56,7 +56,7 @@ values for each field.
 func NewInternalServerConfig() InternalServerConfig {
 	return InternalServerConfig{
 		Path:           "/admin",
-		Address:        "",
+		Address:        "localhost:4040",
 		StaticFilePath: "",
 		SSL:            NewSSLConfig(),
 		HTTPAuth:       NewAuthMiddlewareConfig(),
@@ -74,7 +74,7 @@ leaps service. This server is intended to be inaccessible to outside users of th
 type InternalServer struct {
 	config       InternalServerConfig
 	logger       *log.Logger
-	stats        *log.Stats
+	stats        metrics.Aggregator
 	auth         *AuthMiddleware
 	mux          *http.ServeMux
 	apiEndpoints []struct{ endpoint, desc string }
@@ -88,7 +88,7 @@ func NewInternalServer(
 	admin LeapAdmin,
 	config InternalServerConfig,
 	logger *log.Logger,
-	stats *log.Stats,
+	stats metrics.Aggregator,
 ) (*InternalServer, error) {
 	auth, err := NewAuthMiddleware(config.HTTPAuth, logger, stats)
 	if err != nil {
@@ -128,7 +128,7 @@ func NewInternalServer(
 
 func (i *InternalServer) registerEndpoints() {
 	// Register /endpoints endpoint for printing endpoints
-	i.Register("/endpoints", "<GET> the available endpoints of this leaps API",
+	i.Register("/endpoints", "<GET> Lists the available endpoints of this leaps API",
 		func(w http.ResponseWriter, r *http.Request) {
 			for _, epoint := range i.apiEndpoints {
 				fmt.Fprintf(w, "%v: %v\n", epoint.endpoint, epoint.desc)
@@ -136,51 +136,56 @@ func (i *InternalServer) registerEndpoints() {
 			w.Header().Add("Content-Type", "text/plain")
 		})
 
+	// Register /stats for metrics
+	i.Register("/stats", "<GET> Returns a JSON blob of the server metrics", i.stats.JSONHandler())
+
 	// Register /kick_user endpoint for kicking users from documents
-	i.Register("/kick_user", `<POST> Kick a user from a document {"user_id":"<id>","doc_id":"<id>"}`,
-		func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != "POST" {
-				i.stats.Incr("http_admin.kick_user.error", 1)
-				i.logger.Warnf("/kick_user: Wrong method %v\n", r.Method)
-				http.Error(w, "Wrong method", http.StatusMethodNotAllowed)
-				return
-			}
+	/*
+		i.Register("/kick_user", `<POST> Kick a user from a document {"user_id":"<id>","doc_id":"<id>"}`,
+			func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "POST" {
+					i.stats.Incr("http_admin.kick_user.error", 1)
+					i.logger.Warnf("/kick_user: Wrong method %v\n", r.Method)
+					http.Error(w, "Wrong method", http.StatusMethodNotAllowed)
+					return
+				}
 
-			bodyBytes, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				i.stats.Incr("http_admin.kick_user.error", 1)
-				i.logger.Errorf("/kick_user: %v\n", err)
-				http.Error(w, "Bad data", http.StatusBadRequest)
-				return
-			}
+				bodyBytes, err := ioutil.ReadAll(r.Body)
+				if err != nil {
+					i.stats.Incr("http_admin.kick_user.error", 1)
+					i.logger.Errorf("/kick_user: %v\n", err)
+					http.Error(w, "Bad data", http.StatusBadRequest)
+					return
+				}
 
-			dataObj := struct {
-				UserID string `json:"user_id"`
-				DocID  string `json:"doc_id"`
-			}{}
-			if err := json.Unmarshal(bodyBytes, &dataObj); err != nil {
-				i.stats.Incr("http_admin.kick_user.error", 1)
-				i.logger.Errorf("/kick_user: %v\n", err)
-				http.Error(w, "Bad data", http.StatusBadRequest)
-				return
-			}
+				dataObj := struct {
+					UserID string `json:"user_id"`
+					DocID  string `json:"doc_id"`
+				}{}
+				if err := json.Unmarshal(bodyBytes, &dataObj); err != nil {
+					i.stats.Incr("http_admin.kick_user.error", 1)
+					i.logger.Errorf("/kick_user: %v\n", err)
+					http.Error(w, "Bad data", http.StatusBadRequest)
+					return
+				}
 
-			if err := i.admin.KickUser(
-				dataObj.DocID,
-				dataObj.UserID,
-				time.Second*time.Duration(i.config.RequestTimeout),
-			); err != nil {
-				i.stats.Incr("http_admin.kick_user.error", 1)
-				i.logger.Errorf("/kick_user: %v\n", err)
-				http.Error(w, "Error kicking user", http.StatusInternalServerError)
-				return
-			}
+				if err := i.admin.KickUser(
+					dataObj.DocID,
+					dataObj.UserID,
+					time.Second*time.Duration(i.config.RequestTimeout),
+				); err != nil {
+					i.stats.Incr("http_admin.kick_user.error", 1)
+					i.logger.Errorf("/kick_user: %v\n", err)
+					http.Error(w, "Error kicking user", http.StatusInternalServerError)
+					return
+				}
 
-			i.stats.Incr("http_admin.kick_user.success", 1)
-			i.logger.Infof("/kick_user: Kicked user %v from %v\n", dataObj.UserID, dataObj.DocID)
+				i.stats.Incr("http_admin.kick_user.success", 1)
+				i.logger.Infof("/kick_user: Kicked user %v from %v\n", dataObj.UserID, dataObj.DocID)
 
-			fmt.Fprintf(w, "Success")
-		})
+				fmt.Fprintf(w, "Success")
+			})
+	*/
 
 	// Register /get_users endpoint for listing users connected to all open documents
 	i.Register(

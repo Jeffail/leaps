@@ -40,6 +40,7 @@ import (
 	"github.com/jeffail/leaps/net"
 	"github.com/jeffail/util"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 	"github.com/jeffail/util/path"
 )
 
@@ -54,14 +55,12 @@ the only supported role.
 type LeapsConfig struct {
 	NumProcesses         int                      `json:"num_processes" yaml:"num_processes"`
 	LoggerConfig         log.LoggerConfig         `json:"logger" yaml:"logger"`
-	StatsConfig          log.StatsConfig          `json:"stats" yaml:"stats"`
-	RiemannConfig        log.RiemannClientConfig  `json:"riemann" yaml:"riemann"`
+	MetricsConfig        metrics.Config           `json:"metrics" yaml:"metrics"`
 	StoreConfig          store.Config             `json:"storage" yaml:"storage"`
 	AuthenticatorConfig  auth.Config              `json:"authenticator" yaml:"authenticator"`
 	CuratorConfig        lib.CuratorConfig        `json:"curator" yaml:"curator"`
 	HTTPServerConfig     net.HTTPServerConfig     `json:"http_server" yaml:"http_server"`
 	InternalServerConfig net.InternalServerConfig `json:"admin_server" yaml:"admin_server"`
-	StatsServerConfig    log.StatsServerConfig    `json:"stats_server" yaml:"stats_server"`
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -120,14 +119,12 @@ func main() {
 	leapsConfig := LeapsConfig{
 		NumProcesses:         runtime.NumCPU(),
 		LoggerConfig:         log.DefaultLoggerConfig(),
-		StatsConfig:          log.DefaultStatsConfig(),
-		RiemannConfig:        log.NewRiemannClientConfig(),
+		MetricsConfig:        metrics.NewConfig(),
 		StoreConfig:          store.NewConfig(),
 		AuthenticatorConfig:  auth.NewConfig(),
 		CuratorConfig:        lib.DefaultCuratorConfig(),
 		HTTPServerConfig:     net.DefaultHTTPServerConfig(),
 		InternalServerConfig: net.NewInternalServerConfig(),
-		StatsServerConfig:    log.DefaultStatsServerConfig(),
 	}
 
 	// A list of default config paths to check for if not explicitly defined
@@ -163,19 +160,13 @@ func main() {
 		leapsConfig.StoreConfig.StoreDirectory = *sharePathOverride
 	}
 
-	runtime.GOMAXPROCS(leapsConfig.NumProcesses)
-
 	// Logging and stats aggregation
 	logger := log.NewLogger(os.Stdout, leapsConfig.LoggerConfig)
-	stats := log.NewStats(leapsConfig.StatsConfig)
-
-	if riemannClient, err := log.NewRiemannClient(leapsConfig.RiemannConfig); err == nil {
-		logger.UseRiemann(riemannClient)
-		stats.UseRiemann(riemannClient)
-
-		defer riemannClient.Close()
-	} else if err != log.ErrEmptyConfigAddress {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Riemann client error: %v\n", err))
+	var stats metrics.Aggregator
+	if s, err := metrics.New(leapsConfig.MetricsConfig); err == nil {
+		stats = s
+	} else {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Metrics init error: %v\n", err))
 		return
 	}
 	defer stats.Close()
@@ -244,19 +235,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Register authentication endpoints failed: %v\n", err))
 		return
 	}
-
-	// Internal Statistics HTTP API
-	statsServer, err := log.NewStatsServer(leapsConfig.StatsServerConfig, logger, stats)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Stats error: %v\n", err))
-		return
-	}
-
-	go func() {
-		if statserr := statsServer.Listen(); statserr != nil {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("Stats server listen error: %v\n", statserr))
-		}
-	}()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)

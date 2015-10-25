@@ -30,6 +30,7 @@ import (
 
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/util/log"
+	"github.com/jeffail/util/metrics"
 	binpath "github.com/jeffail/util/path"
 	"golang.org/x/net/websocket"
 )
@@ -138,7 +139,7 @@ leap documents) and bind it to http clients.
 type HTTPServer struct {
 	config    HTTPServerConfig
 	logger    *log.Logger
-	stats     *log.Stats
+	stats     metrics.Aggregator
 	auth      *AuthMiddleware
 	locator   LeapLocator
 	closeChan chan bool
@@ -151,7 +152,7 @@ func CreateHTTPServer(
 	locator LeapLocator,
 	config HTTPServerConfig,
 	logger *log.Logger,
-	stats *log.Stats,
+	stats metrics.Aggregator,
 ) (*HTTPServer, error) {
 	auth, err := NewAuthMiddleware(config.HTTPAuth, logger, stats)
 	if err != nil {
