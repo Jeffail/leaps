@@ -23,8 +23,8 @@ THE SOFTWARE.
 package auth
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -93,7 +93,27 @@ var (
 )
 
 /*
-Redis - A wrapper around the Redis client that acts as an authenticator.
+Redis - An authenticator type that uses Redis for passing authentication tokens into leaps.
+
+When leaps is configured to use Redis for authentication any service can provide an access token to
+leaps on behalf of a prospective user by adding a single key to the shared redis instance that
+outlines the type of access to be provided.
+
+The key should be the unique, one-use access token that is also shared with the user. The value is a
+JSON blob that details the credentials and access level of the authentication:
+
+Key:   <token>
+Value: { "access_level":"<access_level>", "user_id":"<user_id>", "document_id":"<document_id>" }
+
+<token>        The shared token that the user is also given and subsequently provides to leaps.
+<access_level> The access level that your service wishes to grant the user.
+<user_id>      The id of the authenticated user.
+<document_id>  The id of the document, omit or leave this blank if you are granting CREATE access.
+
+The options for <access_level> are `CREATE`, `EDIT` and `READ`.
+
+Once leaps has read and verified the auth token it will delete the key. Key/value pairs should have
+a TTL such that they will expire if not used.
 */
 type Redis struct {
 	logger *log.Logger
@@ -116,70 +136,69 @@ func NewRedis(config Config, logger *log.Logger) *Redis {
  */
 
 /*
-AuthoriseCreate - Checks whether a specific key exists in Redis and that the value matches our user
-ID.
+Authenticate - Reads a key (token) from redis and parses the value to check for an access level.
 */
-func (s *Redis) AuthoriseCreate(token, userID string) bool {
-	if !s.config.AllowCreate {
-		return false
-	}
-	userKey, err := s.ReadKey(token)
+func (s *Redis) Authenticate(userID, token, documentID string) AccessLevel {
+	value, err := s.ReadKey(token)
 	if err != nil {
-		s.logger.Errorf("failed to get authorise create token: %v\n", err)
-		return false
+		s.logger.Errorf("Failed to access token: %v\n", err)
+		return NoAccess
 	}
-	if userKey != userID {
-		s.logger.Warnf("create token invalid, provided: %v, actual: %v\n", userID, userKey)
-		return false
-	}
-	err = s.DeleteKey(token)
-	if err != nil {
-		s.logger.Errorf("failed to delete key: %v\n", token)
-	}
-	return true
-}
 
-/*
-AuthoriseJoin - Checks whether a specific key exists in Redis and that the value matches a document
-ID.
-*/
-func (s *Redis) AuthoriseJoin(token, documentID string) bool {
-	docKey, err := s.ReadKey(token)
-	if err != nil {
-		s.logger.Errorf("failed to get authorise join token: %v\n", err)
-		return false
-	}
-	if docKey != documentID {
-		s.logger.Warnf("join token invalid, provided: %v, actual: %v\n", documentID, docKey)
-		return false
-	}
-	err = s.DeleteKey(token)
-	if err != nil {
-		s.logger.Errorf("failed to delete key: %v\n", token)
-	}
-	return true
-}
+	credentials := struct {
+		AccessLevel string `json:"access_level"`
+		UserID      string `json:"user_id"`
+		DocumentID  string `json:"document_id"`
+	}{}
 
-/*
-AuthoriseReadOnly - Checks whether a specific key exists in Redis and that the value matches a
-document ID.
-*/
-func (s *Redis) AuthoriseReadOnly(token, documentID string) bool {
-	docKey, err := s.ReadKey(token)
-	if err != nil {
-		s.logger.Errorf("failed to get authorise join token: %v\n", err)
-		return false
+	if err := json.Unmarshal([]byte(value), &credentials); err != nil {
+		s.logger.Errorf("Token value `%v` could not be parsed: %v\n", value, err)
+		return NoAccess
 	}
-	expectedKey := fmt.Sprintf("%v:%v", "READ-ONLY", documentID)
-	if docKey != expectedKey {
-		s.logger.Warnf("join token invalid, provided: %v, actual: %v\n", expectedKey, docKey)
-		return false
+
+	accessLevel := NoAccess
+	switch credentials.AccessLevel {
+	case "CREATE":
+		accessLevel = CreateAccess
+	case "EDIT":
+		accessLevel = EditAccess
+	case "READ":
+		accessLevel = ReadAccess
 	}
+
+	if accessLevel == NoAccess {
+		s.logger.Errorf("Token value `%v` did not provide valid access level\n", value)
+		return NoAccess
+	}
+
+	if len(credentials.UserID) <= 0 ||
+		len(credentials.DocumentID) <= 0 {
+		s.logger.Errorf("Token value `%v` did not provide valid user ID or document ID\n", value)
+		return NoAccess
+	}
+
+	if credentials.UserID != userID {
+		s.logger.Warnf(
+			"Incorrect user ID provided to authenticator, token contents: `%v`,  provided userID: `%v`\n",
+			value, userID,
+		)
+		return NoAccess
+	}
+
+	if credentials.DocumentID != documentID {
+		s.logger.Warnf(
+			"Incorrect document ID provided to authenticator, token contents: `%v`,  provided documentID: `%v`\n",
+			value, documentID,
+		)
+		return NoAccess
+	}
+
 	err = s.DeleteKey(token)
 	if err != nil {
 		s.logger.Errorf("failed to delete key: %v\n", token)
 	}
-	return true
+
+	return accessLevel
 }
 
 /*

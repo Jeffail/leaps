@@ -39,7 +39,6 @@ type Config struct {
 	AllowCreate bool        `json:"allow_creation" yaml:"allow_creation"`
 	RedisConfig RedisConfig `json:"redis_config" yaml:"redis_config"`
 	FileConfig  FileConfig  `json:"file_config" yaml:"file_config"`
-	HTTPConfig  HTTPConfig  `json:"http_config" yaml:"http_config"`
 }
 
 /*
@@ -51,7 +50,6 @@ func NewConfig() Config {
 		AllowCreate: true,
 		RedisConfig: NewRedisConfig(),
 		FileConfig:  NewFileConfig(),
-		HTTPConfig:  NewHTTPConfig(),
 	}
 }
 
@@ -71,8 +69,6 @@ func Factory(
 		return NewFile(config, logger), nil
 	case "redis":
 		return NewRedis(config, logger), nil
-	case "http":
-		return NewHTTP(config, logger, stats), nil
 	}
 	return nil, ErrInvalidAuthType
 }
@@ -88,27 +84,13 @@ type Anarchy struct {
 }
 
 /*
-AuthoriseCreate - Always returns true, because anarchy.
+Authenticate - Always returns at least edit access, because anarchy.
 */
-func (a *Anarchy) AuthoriseCreate(_, _ string) bool {
+func (a *Anarchy) Authenticate(_, _, _ string) AccessLevel {
 	if !a.config.AllowCreate {
-		return false
+		return EditAccess
 	}
-	return true
-}
-
-/*
-AuthoriseJoin - Always returns true, because anarchy.
-*/
-func (a *Anarchy) AuthoriseJoin(_, _ string) bool {
-	return true
-}
-
-/*
-AuthoriseReadOnly - Always returns true, because anarchy.
-*/
-func (a *Anarchy) AuthoriseReadOnly(_, _ string) bool {
-	return true
+	return CreateAccess
 }
 
 /*
