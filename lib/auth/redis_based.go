@@ -95,7 +95,7 @@ var (
 /*
 Redis - An authenticator type that uses Redis for passing authentication tokens into leaps.
 
-When leaps is configured to use Redis for authentication any service can provide an access token to
+Leaps can be configured to use Redis for authentication. A service can provide an access token to
 leaps on behalf of a prospective user by adding a single key to the shared redis instance that
 outlines the type of access to be provided.
 

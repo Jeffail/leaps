@@ -38,10 +38,10 @@ type AccessLevel int
 
 // Units of AccessLevel for expressing a users access to a document.
 const (
-	CreateAccess AccessLevel = iota
-	EditAccess
+	NoAccess AccessLevel = iota
 	ReadAccess
-	NoAccess
+	EditAccess
+	CreateAccess
 )
 
 /*
