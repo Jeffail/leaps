@@ -175,34 +175,19 @@ func (f *File) loop() {
  */
 
 /*
-AuthoriseCreate - Always returns false.
+Authenticate - Checks whether the documentID (filepath) exists, returns EditAccess if it does.
 */
-func (f *File) AuthoriseCreate(token, userID string) bool {
-	return false
-}
-
-/*
-AuthoriseJoin - Checks whether the documentID file exists, returns true if it does, otherwise false.
-*/
-func (f *File) AuthoriseJoin(token, documentID string) bool {
+func (f *File) Authenticate(_, _, documentID string) AccessLevel {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
 	cleanPath := path.Clean(documentID)
 	for _, p := range f.paths {
 		if cleanPath == p {
-			return true
+			return EditAccess
 		}
 	}
-	return false
-}
-
-/*
-AuthoriseReadOnly - Performs the same action as AuthoriseJoin since this authenticator only
-validates that the file exists.
-*/
-func (f *File) AuthoriseReadOnly(token, documentID string) bool {
-	return f.AuthoriseJoin(token, documentID)
+	return NoAccess
 }
 
 /*

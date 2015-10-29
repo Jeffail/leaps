@@ -25,32 +25,3 @@ Package auth - Contains multiple solutions for introducing token based authentic
 creating and reading internal leaps documents.
 */
 package auth
-
-import (
-	"errors"
-
-	"github.com/jeffail/leaps/lib/register"
-)
-
-// Errors for the auth package.
-var (
-	ErrInvalidAuthType = errors.New("invalid token authenticator type")
-)
-
-/*
-Authenticator - Implemented by types able to validate tokens for editing or creating documents.
-This is abstracted in order to accommodate for multiple authentication strategies.
-*/
-type Authenticator interface {
-	// AuthoriseCreate - Validate that a `create action` token corresponds to a particular user.
-	AuthoriseCreate(token, userID string) bool
-
-	// AuthoriseJoin - Validate that a `join action` token corresponds to a particular document.
-	AuthoriseJoin(token, documentID string) bool
-
-	// AuthoriseReadOnly - Validate that a `read only` token corresponds to a particular document.
-	AuthoriseReadOnly(token, documentID string) bool
-
-	// RegisterHandlers - Allow the Auth to register any API endpoints it needs.
-	RegisterHandlers(register register.PubPrivEndpointRegister) error
-}

@@ -239,7 +239,7 @@ subscribing to. Returns an error if there was a problem locating the document.
 func (c *Curator) EditDocument(userID, token, documentID string) (BinderPortal, error) {
 	c.log.Debugf("finding document %v, with userID %v token %v\n", documentID, userID, token)
 
-	if !c.authenticator.AuthoriseJoin(token, documentID) {
+	if c.authenticator.Authenticate(userID, token, documentID) < auth.EditAccess {
 		c.stats.Incr("curator.edit.rejected_client", 1)
 		return BinderPortal{},
 			fmt.Errorf("failed to authorise join of document id: %v with token: %v\n", documentID, token)
@@ -277,7 +277,7 @@ document.
 func (c *Curator) ReadDocument(userID, token, documentID string) (BinderPortal, error) {
 	c.log.Debugf("finding document %v, with userID %v token %v\n", documentID, userID, token)
 
-	if !c.authenticator.AuthoriseReadOnly(token, documentID) {
+	if c.authenticator.Authenticate(userID, token, documentID) < auth.ReadAccess {
 		c.stats.Incr("curator.read.rejected_client", 1)
 		return BinderPortal{},
 			fmt.Errorf("failed to authorise read only join of document id: %v with token: %v\n", documentID, token)
@@ -315,7 +315,7 @@ new document. May require authentication, if so a userID is supplied.
 func (c *Curator) CreateDocument(userID, token string, doc store.Document) (BinderPortal, error) {
 	c.log.Debugf("Creating new document with userID %v token %v\n", userID, token)
 
-	if !c.authenticator.AuthoriseCreate(token, userID) {
+	if c.authenticator.Authenticate(userID, token, "") < auth.CreateAccess {
 		c.stats.Incr("curator.create.rejected_client", 1)
 		return BinderPortal{}, fmt.Errorf("failed to gain permission to create with token: %v\n", token)
 	}
