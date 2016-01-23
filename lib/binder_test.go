@@ -588,7 +588,7 @@ func TestBinderStories(t *testing.T) {
 
 		bp := binder.Subscribe("")
 		go func() {
-			for _ = range bp.TransformRcvChan {
+			for range bp.TransformRcvChan {
 			}
 		}()
 

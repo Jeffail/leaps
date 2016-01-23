@@ -42,7 +42,7 @@ type LeapLocator interface {
 	EditDocument(userID, token, documentID string) (lib.BinderPortal, error)
 
 	// ReadDocument - Find and return a binder portal to an existing document with read only
-	// priviledges
+	// privileges
 	ReadDocument(userID, token, documentID string) (lib.BinderPortal, error)
 
 	// CreateDocument - Create and return a binder portal to a new document

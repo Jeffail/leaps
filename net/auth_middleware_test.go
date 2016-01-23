@@ -132,13 +132,13 @@ func TestBasicAccess(t *testing.T) {
 	handler := authMiddleware.WrapHandlerFunc(TestHandler)
 
 	userTests := []userTest{
-		userTest{"hello", "world", true},
-		userTest{"noone", "ponies", false},
-		userTest{"test", "account", true},
-		userTest{"nope", "chess", false},
-		userTest{"secure", "password123", true},
-		userTest{"non-user", "doesntmatter", false},
-		userTest{"bcrypt_guy1", "iamlegend", true},
+		{"hello", "world", true},
+		{"noone", "ponies", false},
+		{"test", "account", true},
+		{"nope", "chess", false},
+		{"secure", "password123", true},
+		{"non-user", "doesntmatter", false},
+		{"bcrypt_guy1", "iamlegend", true},
 	}
 	for _, test := range userTests {
 		testBytes := emptyReader{}

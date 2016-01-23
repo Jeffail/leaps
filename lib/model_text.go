@@ -203,7 +203,7 @@ transforms in order to preserve their intention.
 The transform 'sub' is the subject of the update, the transform that was constructed without
 regard to an earlier transform.
 
-The transform 'pre' is the preceeding transform that should be used to alter 'sub' to preserve
+The transform 'pre' is the preceding transform that should be used to alter 'sub' to preserve
 its originally intended change.
 */
 func updateTransform(sub *OTransform, pre *OTransform) {

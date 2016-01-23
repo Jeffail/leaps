@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 
 /*
-Package util - Various miscellanious utilities used throughout leaps lib.
+Package util - Various miscellaneous utilities used throughout leaps lib.
 */
 package util
 
