@@ -6,7 +6,7 @@ of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
-furnished to do so, sub to the following conditions:
+furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
@@ -20,36 +20,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*
-Package util - Various miscellaneous utilities used throughout leaps lib.
-*/
 package util
 
-import (
-	"fmt"
-	"time"
+import "testing"
 
-	"github.com/satori/go.uuid"
-)
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-/*
-GenerateStampedUUID - Generates a UUID and prepends a timestamp to it.
-*/
-func GenerateStampedUUID() string {
-	tstamp := time.Now().Unix()
-
-	return fmt.Sprintf("%v%v", tstamp, GenerateUUID())
+func TestUniqueUUIDs(t *testing.T) {
+	history := map[string]struct{}{}
+	for i := 0; i < 1000; i++ {
+		u := GenerateUUID()
+		if _, exists := history[u]; exists {
+			t.Errorf("Duped key: %v", exists)
+		}
+		history[u] = struct{}{}
+	}
 }
-
-/*
-GenerateUUID - Generates a UUID and returns it as a hex encoded string.
-*/
-func GenerateUUID() string {
-	return uuid.NewV4().String()
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
