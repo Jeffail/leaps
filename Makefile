@@ -48,6 +48,9 @@ help:
 	@echo "                    systems"
 	@echo ""
 	@echo "    make clean    : Clean the repository of any built/generated files"
+	@echo ""
+	@echo "Note: experimental azure blob storage is not included by default"
+	@echo "      include it with tags: 'go install -tags "AZURE" ./...'"
 
 .PHONY: deps
 deps:

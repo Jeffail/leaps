@@ -33,6 +33,13 @@ import (
 /*--------------------------------------------------------------------------------------------------
  */
 
+func init() {
+	constructors["file"] = GetFileStore
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 // Errors for the FileStore type.
 var (
 	ErrInvalidDirectory = errors.New("invalid directory")

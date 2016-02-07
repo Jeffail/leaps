@@ -1,3 +1,5 @@
+// +build AZURE
+
 package store
 
 import (
@@ -10,6 +12,16 @@ import (
 	"github.com/cenkalti/backoff"
 )
 
+/*--------------------------------------------------------------------------------------------------
+ */
+
+func init() {
+	constructors["azureblobstorage"] = GetAzureBlobStore
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 /*
 AzureStorageConfig - Azure Blob Storage configuration.
 */
@@ -19,6 +31,16 @@ type AzureStorageConfig struct {
 	Container  string `json:"container" yaml:"container"`
 	AccessType string `json:"access_type" yaml:"access_type"`
 }
+
+/*
+NewAzureStorageConfig - Returns a default Azure Blob Storage configuration.
+*/
+func NewAzureStorageConfig() AzureStorageConfig {
+	return AzureStorageConfig{} // TODO
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
 
 /*
 AzureBlobStore - Contains configuration and logic for CRUD operations on Azure.

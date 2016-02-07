@@ -30,6 +30,16 @@ import (
 /*--------------------------------------------------------------------------------------------------
  */
 
+var constructors = map[string]func(conf Config) (Store, error){}
+
+func init() {
+	constructors["memory"] = GetMemoryStore
+	constructors["mock"] = GetMockStore
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 /*
 Config - Holds generic configuration options for a document storage solution.
 */
@@ -50,6 +60,7 @@ func NewConfig() Config {
 		Name:           "",
 		StoreDirectory: "",
 		SQLConfig:      NewSQLConfig(),
+		AzureBlobStore: NewAzureStorageConfig(),
 	}
 }
 
@@ -83,17 +94,8 @@ type Store interface {
 Factory - Returns a document store object based on a configuration object.
 */
 func Factory(config Config) (Store, error) {
-	switch config.Type {
-	case "file":
-		return GetFileStore(config)
-	case "memory":
-		return GetMemoryStore(config)
-	case "mock":
-		return GetMockStore(config)
-	case "mysql", "postgres":
-		return GetSQLStore(config)
-	case "azureblobstorage":
-		return GetAzureBlobStore(config)
+	if c, ok := constructors[config.Type]; ok {
+		return c(config)
 	}
 	return nil, ErrInvalidDocumentType
 }

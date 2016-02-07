@@ -31,8 +31,14 @@ import (
 	_ "github.com/lib/pq"
 )
 
-/*--------------------------------------------------------------------------------------------------
- */
+/*-------------------------------------------------------------------------------------------------- */
+
+func init() {
+	constructors["mysql"] = GetSQLStore
+	constructors["postgres"] = GetSQLStore
+}
+
+/*-------------------------------------------------------------------------------------------------- */
 
 /*
 TableConfig - The configuration fields for specifying the table labels of the SQL database target.
