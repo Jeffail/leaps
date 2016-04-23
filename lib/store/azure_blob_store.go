@@ -12,51 +12,35 @@ import (
 	"github.com/cenkalti/backoff"
 )
 
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------
 
-func init() {
-	constructors["azureblobstorage"] = GetAzureBlobStore
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
-
-/*
-AzureStorageConfig - Azure Blob Storage configuration.
-*/
-type AzureStorageConfig struct {
+// AzureConfig - Azure Blob Storage configuration.
+type AzureConfig struct {
 	Account    string `json:"account" yaml:"account"`
 	Secret     string `json:"secret" yaml:"secret"`
 	Container  string `json:"container" yaml:"container"`
 	AccessType string `json:"access_type" yaml:"access_type"`
 }
 
-/*
-NewAzureStorageConfig - Returns a default Azure Blob Storage configuration.
-*/
-func NewAzureStorageConfig() AzureStorageConfig {
-	return AzureStorageConfig{} // TODO
+// NewAzureConfig - Returns a default Azure Blob Storage configuration.
+func NewAzureConfig() AzureConfig {
+	return AzureConfig{}
 }
 
 /*--------------------------------------------------------------------------------------------------
  */
 
-/*
-AzureBlobStore - Contains configuration and logic for CRUD operations on Azure.
-*/
-type AzureBlobStore struct {
-	config      AzureStorageConfig
+// AzureBlob - Contains configuration and logic for CRUD operations on Azure.
+type AzureBlob struct {
+	config      AzureConfig
 	blobStorage azure.BlobStorageClient
 }
 
-/*
-GetAzureBlobStore - Create a new AzureBlobStore.
-*/
-func GetAzureBlobStore(config Config) (*AzureBlobStore, error) {
+// NewAzureBlob - Create a new AzureBlob crud type.
+func NewAzureBlob(config AzureConfig) (Type, error) {
 	client, err := azure.NewClient(
-		config.AzureBlobStore.Account,
-		config.AzureBlobStore.Secret,
+		config.Account,
+		config.Secret,
 		azure.DefaultBaseURL,
 		azure.DefaultAPIVersion,
 		true)
@@ -66,7 +50,7 @@ func GetAzureBlobStore(config Config) (*AzureBlobStore, error) {
 	blobStorage := client.GetBlobService()
 	// Ensure the container exists
 	var accessType azure.ContainerAccessType
-	switch config.AzureBlobStore.AccessType {
+	switch config.AccessType {
 	case "":
 		accessType = azure.ContainerAccessTypePrivate
 	case "blob":
@@ -76,7 +60,7 @@ func GetAzureBlobStore(config Config) (*AzureBlobStore, error) {
 	default:
 		err := fmt.Errorf(
 			"azure container access_type: '%s' is invalid",
-			config.AzureBlobStore.AccessType)
+			config.AccessType)
 		return nil, err
 	}
 	b := backoff.NewExponentialBackOff()
@@ -86,30 +70,26 @@ func GetAzureBlobStore(config Config) (*AzureBlobStore, error) {
 	b.MaxInterval = 20
 	b.MaxElapsedTime = 1 * time.Minute
 	err = backoff.Retry(func() error {
-		_, err := blobStorage.CreateContainerIfNotExists(config.AzureBlobStore.Container, accessType)
+		_, err := blobStorage.CreateContainerIfNotExists(config.Container, accessType)
 		return err
 	}, b)
 	if err != nil {
 		return nil, err
 	}
-	// Return AzureBlobStore
-	return &AzureBlobStore{
-		config:      config.AzureBlobStore,
+	// Return AzureBlob
+	return &AzureBlob{
+		config:      config,
 		blobStorage: blobStorage,
 	}, nil
 }
 
-/*
-Create - Create a new document in azure blob storage
-*/
-func (m *AzureBlobStore) Create(doc Document) error {
+// Create - Create a new document in azure blob storage
+func (m *AzureBlob) Create(doc Document) error {
 	return m.Update(doc)
 }
 
-/*
-Update - Update document in azure blob storage
-*/
-func (m *AzureBlobStore) Update(doc Document) error {
+// Update - Update document in azure blob storage
+func (m *AzureBlob) Update(doc Document) error {
 	b := backoff.NewExponentialBackOff()
 	b.InitialInterval = 500 * time.Second
 	b.RandomizationFactor = 0.5
@@ -118,14 +98,14 @@ func (m *AzureBlobStore) Update(doc Document) error {
 	b.MaxElapsedTime = 15 * time.Minute
 	return backoff.Retry(func() error {
 		r := strings.NewReader(doc.Content)
-		return m.blobStorage.CreateBlockBlobFromReader(m.config.Container, doc.ID, uint64(r.Len()), r)
+		return m.blobStorage.CreateBlockBlobFromReader(
+			m.config.Container, doc.ID, uint64(r.Len()), r,
+		)
 	}, b)
 }
 
-/*
-Read - Read document from a azure blob storage
-*/
-func (m *AzureBlobStore) Read(id string) (Document, error) {
+// Read - Read document from a azure blob storage
+func (m *AzureBlob) Read(id string) (Document, error) {
 	doc := Document{
 		ID: id,
 	}

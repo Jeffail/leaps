@@ -24,6 +24,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	// Blank because SQL driver
@@ -31,27 +32,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
-/*-------------------------------------------------------------------------------------------------- */
+//--------------------------------------------------------------------------------------------------
 
-func init() {
-	constructors["mysql"] = GetSQLStore
-	constructors["postgres"] = GetSQLStore
-}
-
-/*-------------------------------------------------------------------------------------------------- */
-
-/*
-TableConfig - The configuration fields for specifying the table labels of the SQL database target.
-*/
+// TableConfig - Fields for specifying the table labels of the SQL database target.
 type TableConfig struct {
 	Name       string `json:"table" yaml:"table"`
 	IDCol      string `json:"id_column" yaml:"id_column"`
 	ContentCol string `json:"content_column" yaml:"content_column"`
 }
 
-/*
-NewTableConfig - Default table configuration.
-*/
+// NewTableConfig - Default table configuration.
 func NewTableConfig() TableConfig {
 	return TableConfig{
 		Name:       "leaps_documents",
@@ -60,17 +50,13 @@ func NewTableConfig() TableConfig {
 	}
 }
 
-/*
-SQLConfig - The configuration fields for an SQL document store solution.
-*/
+// SQLConfig - The configuration fields for an SQL document store solution.
 type SQLConfig struct {
 	DSN         string      `json:"dsn" yaml:"dsn"`
 	TableConfig TableConfig `json:"db_table" yaml:"db_table"`
 }
 
-/*
-NewSQLConfig - A default SQL configuration.
-*/
+// NewSQLConfig - A default SQL configuration.
 func NewSQLConfig() SQLConfig {
 	return SQLConfig{
 		DSN:         "",
@@ -81,11 +67,9 @@ func NewSQLConfig() SQLConfig {
 /*--------------------------------------------------------------------------------------------------
  */
 
-/*
-SQLStore - A document store implementation for an SQL database.
-*/
-type SQLStore struct {
-	config     Config
+// SQL - A document store implementation for an SQL database.
+type SQL struct {
+	config     SQLConfig
 	db         *sql.DB
 	createStmt *sql.Stmt
 	updateStmt *sql.Stmt
@@ -93,25 +77,122 @@ type SQLStore struct {
 }
 
 /*
-Create - Create a new document in a database table.
+NewMySQL - Returns an SQL store type for connecting to MySQL databases.
+
+DSN Should be of the format:
+[username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
 */
-func (m *SQLStore) Create(doc Document) error {
+func NewMySQL(config SQLConfig) (Type, error) {
+	return newSQL(mysql, config)
+}
+
+/*
+NewPostgreSQL - Returns an SQL store type for connecting to PostgreSQL databases.
+
+DSN Should be of the format:
+postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
+*/
+func NewPostgreQL(config SQLConfig) (Type, error) {
+	return newSQL(postgres, config)
+}
+
+//--------------------------------------------------------------------------------------------------
+
+// Supported SQL DB Types.
+const (
+	postgres = iota
+	mysql    = iota
+)
+
+// SQL Type errors.
+var (
+	ErrMissingDSN          = errors.New("Missing DSN")
+	ErrUnrecognizedSQLType = errors.New("SQL Type not recognized")
+)
+
+func newSQL(dbType int, config SQLConfig) (Type, error) {
+	var (
+		db                            *sql.DB
+		createStr, updateStr, readStr string
+		create, update, read          *sql.Stmt
+		err                           error
+	)
+	if len(config.DSN) == 0 {
+		return nil, ErrMissingDSN
+	}
+
+	/* Now we set up prepared statements. This ensures at initialization that we can successfully
+	 * connect to the database.
+	 */
+
+	switch dbType {
+	case postgres:
+		db, err = sql.Open("postgres", config.DSN)
+		createStr = "INSERT INTO %v (%v, %v) VALUES ($1, $2)"
+		updateStr = "UPDATE %v SET %v = $1 WHERE %v = $2"
+		readStr = "SELECT %v FROM %v WHERE %v = $1"
+	case mysql:
+		db, err = sql.Open("mysql", config.DSN)
+		createStr = "INSERT INTO %v (%v, %v) VALUES (?, ?)"
+		updateStr = "UPDATE %v SET %v = ? WHERE %v = ?"
+		readStr = "SELECT %v FROM %v WHERE %v = ?"
+	default:
+		return nil, ErrUnrecognizedSQLType
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	create, err = db.Prepare(fmt.Sprintf(createStr,
+		config.TableConfig.Name,
+		config.TableConfig.IDCol,
+		config.TableConfig.ContentCol,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare create statement: %v", err)
+	}
+	update, err = db.Prepare(fmt.Sprintf(updateStr,
+		config.TableConfig.Name,
+		config.TableConfig.ContentCol,
+		config.TableConfig.IDCol,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare update statement: %v", err)
+	}
+	read, err = db.Prepare(fmt.Sprintf(readStr,
+		config.TableConfig.ContentCol,
+		config.TableConfig.Name,
+		config.TableConfig.IDCol,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare get statement: %v", err)
+	}
+
+	return &SQL{
+		db:         db,
+		config:     config,
+		createStmt: create,
+		updateStmt: update,
+		readStmt:   read,
+	}, nil
+}
+
+//--------------------------------------------------------------------------------------------------
+
+// Create - Create a new document in a database table.
+func (m *SQL) Create(doc Document) error {
 	_, err := m.createStmt.Exec(doc.ID, doc.Content)
 	return err
 }
 
-/*
-Update - Update document in a database table.
-*/
-func (m *SQLStore) Update(doc Document) error {
+// Update - Update document in a database table.
+func (m *SQL) Update(doc Document) error {
 	_, err := m.updateStmt.Exec(doc.Content, doc.ID)
 	return err
 }
 
-/*
-Read - Read document from a database table.
-*/
-func (m *SQLStore) Read(id string) (Document, error) {
+// Read - Read document from a database table.
+func (m *SQL) Read(id string) (Document, error) {
 	var document Document
 	document.ID = id
 
@@ -126,72 +207,4 @@ func (m *SQLStore) Read(id string) (Document, error) {
 	return document, nil
 }
 
-/*
-GetSQLStore - Just a func that returns an SQLStore
-*/
-func GetSQLStore(config Config) (Store, error) {
-	var (
-		db                            *sql.DB
-		createStr, updateStr, readStr string
-		create, update, read          *sql.Stmt
-		err                           error
-	)
-	if len(config.SQLConfig.DSN) == 0 {
-		return nil, fmt.Errorf("attempted to connect to %v database without a valid DSN", config.Type)
-	}
-	db, err = sql.Open(config.Type, config.SQLConfig.DSN)
-	if err != nil {
-		return nil, err
-	}
-
-	/* Now we set up prepared statements. This ensures at initialization that we can successfully
-	 * connect to the database.
-	 */
-
-	switch config.Type {
-	case "postgres":
-		createStr = "INSERT INTO %v (%v, %v) VALUES ($1, $2)"
-		updateStr = "UPDATE %v SET %v = $1 WHERE %v = $2"
-		readStr = "SELECT %v FROM %v WHERE %v = $1"
-	default:
-		createStr = "INSERT INTO %v (%v, %v) VALUES (?, ?)"
-		updateStr = "UPDATE %v SET %v = ? WHERE %v = ?"
-		readStr = "SELECT %v FROM %v WHERE %v = ?"
-	}
-
-	create, err = db.Prepare(fmt.Sprintf(createStr,
-		config.SQLConfig.TableConfig.Name,
-		config.SQLConfig.TableConfig.IDCol,
-		config.SQLConfig.TableConfig.ContentCol,
-	))
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare create statement: %v", err)
-	}
-	update, err = db.Prepare(fmt.Sprintf(updateStr,
-		config.SQLConfig.TableConfig.Name,
-		config.SQLConfig.TableConfig.ContentCol,
-		config.SQLConfig.TableConfig.IDCol,
-	))
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare update statement: %v", err)
-	}
-	read, err = db.Prepare(fmt.Sprintf(readStr,
-		config.SQLConfig.TableConfig.ContentCol,
-		config.SQLConfig.TableConfig.Name,
-		config.SQLConfig.TableConfig.IDCol,
-	))
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare get statement: %v", err)
-	}
-
-	return &SQLStore{
-		db:         db,
-		config:     config,
-		createStmt: create,
-		updateStmt: update,
-		readStmt:   read,
-	}, nil
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------

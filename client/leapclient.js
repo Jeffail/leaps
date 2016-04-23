@@ -571,7 +571,7 @@ leap_client.prototype.join_document = function(user_id, token, document_id) {
 	this._document_id = document_id;
 
 	this._socket.send(JSON.stringify({
-		command : "find",
+		command : "edit",
 		user_id : user_id,
 		token : token,
 		document_id : this._document_id

@@ -30,45 +30,49 @@ import (
 	"path/filepath"
 )
 
-/*--------------------------------------------------------------------------------------------------
- */
-
-func init() {
-	constructors["file"] = GetFileStore
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------
 
 // Errors for the FileStore type.
 var (
 	ErrInvalidDirectory = errors.New("invalid directory")
 )
 
+//--------------------------------------------------------------------------------------------------
+
 /*
-FileStore - Most basic persistent implementation of DocumentStore. Simply stores each document into
-a file within a configured directory. The ID represents the filepath relative to the configured
-directory.
+File - Most basic persistent implementation of store.Crud. Simply stores each document into a file
+within a configured directory. The ID represents the filepath relative to the configured directory.
 
 For example, with StoreDirectory set to /var/www, a document can be given the ID css/main.css to
 create and edit the file /var/www/css/main.css
 */
-type FileStore struct {
-	config Config
+type File struct {
+	storeDirectory string
 }
 
-/*
-Create - Create a new document in a file location
-*/
-func (s *FileStore) Create(doc Document) error {
+// NewFile - Just a func that returns a File based store type.
+func NewFile(storeDirectory string) (Type, error) {
+	if len(storeDirectory) == 0 {
+		return nil, ErrInvalidDirectory
+	}
+	if _, err := os.Stat(storeDirectory); os.IsNotExist(err) {
+		if err = os.MkdirAll(storeDirectory, os.ModePerm); err != nil {
+			return nil, fmt.Errorf("cannot create file store for documents: %v", err)
+		}
+	}
+	return &File{storeDirectory: storeDirectory}, nil
+}
+
+//--------------------------------------------------------------------------------------------------
+
+// Create - Create a new document in a file location
+func (s *File) Create(doc Document) error {
 	return s.Update(doc)
 }
 
-/*
-Update - Update a document in its file location.
-*/
-func (s *FileStore) Update(doc Document) error {
-	filePath := filepath.Join(s.config.StoreDirectory, doc.ID)
+// Update - Update a document in its file location.
+func (s *File) Update(doc Document) error {
+	filePath := filepath.Join(s.storeDirectory, doc.ID)
 	fileDir := filepath.Dir(filePath)
 
 	if _, err := os.Stat(fileDir); os.IsNotExist(err) {
@@ -79,11 +83,9 @@ func (s *FileStore) Update(doc Document) error {
 	return ioutil.WriteFile(filePath, []byte(doc.Content), 0666)
 }
 
-/*
-Read - Read document from its file location.
-*/
-func (s *FileStore) Read(id string) (Document, error) {
-	bytes, err := ioutil.ReadFile(filepath.Join(s.config.StoreDirectory, id))
+// Read - Read document from its file location.
+func (s *File) Read(id string) (Document, error) {
+	bytes, err := ioutil.ReadFile(filepath.Join(s.storeDirectory, id))
 	if err != nil {
 		return Document{}, fmt.Errorf("failed to read content from document file: %v", err)
 	}
@@ -93,20 +95,4 @@ func (s *FileStore) Read(id string) (Document, error) {
 	}, nil
 }
 
-/*
-GetFileStore - Just a func that returns a FileStore
-*/
-func GetFileStore(config Config) (Store, error) {
-	if len(config.StoreDirectory) == 0 {
-		return nil, ErrInvalidDirectory
-	}
-	if _, err := os.Stat(config.StoreDirectory); os.IsNotExist(err) {
-		if err = os.MkdirAll(config.StoreDirectory, os.ModePerm); err != nil {
-			return nil, fmt.Errorf("cannot create file store for documents: %v", err)
-		}
-	}
-	return &FileStore{config: config}, nil
-}
-
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------

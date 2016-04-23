@@ -1,3 +1,33 @@
-[submodule "docs"]
-	path = docs
-	url = git@github.com:Jeffail/leaps.wiki.git
+[submodule "vendor/github.com/ajaxorg/ace-builds"]
+	path = vendor/github.com/ajaxorg/ace-builds
+	url = https://github.com/ajaxorg/ace-builds
+[submodule "vendor/github.com/amir/raidman"]
+	path = vendor/github.com/amir/raidman
+	url = https://github.com/amir/raidman
+[submodule "vendor/github.com/elazarl/go-bindata-assetfs"]
+	path = vendor/github.com/elazarl/go-bindata-assetfs
+	url = https://github.com/elazarl/go-bindata-assetfs
+[submodule "vendor/github.com/garyburd/redigo"]
+	path = vendor/github.com/garyburd/redigo
+	url = https://github.com/garyburd/redigo
+[submodule "vendor/github.com/golang/protobuf"]
+	path = vendor/github.com/golang/protobuf
+	url = https://github.com/golang/protobuf
+[submodule "vendor/github.com/go-sql-driver/mysql"]
+	path = vendor/github.com/go-sql-driver/mysql
+	url = https://github.com/go-sql-driver/mysql
+[submodule "vendor/github.com/jeffail/gabs"]
+	path = vendor/github.com/jeffail/gabs
+	url = https://github.com/jeffail/gabs
+[submodule "vendor/github.com/jeffail/util"]
+	path = vendor/github.com/jeffail/util
+	url = https://github.com/jeffail/util
+[submodule "vendor/github.com/lib/pq"]
+	path = vendor/github.com/lib/pq
+	url = https://github.com/lib/pq
+[submodule "vendor/github.com/satori/go.uuid"]
+	path = vendor/github.com/satori/go.uuid
+	url = https://github.com/satori/go.uuid
+[submodule "vendor/github.com/jteeuwen/go-bindata"]
+	path = vendor/github.com/jteeuwen/go-bindata
+	url = https://github.com/jteeuwen/go-bindata
