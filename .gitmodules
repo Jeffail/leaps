@@ -31,6 +31,3 @@
 [submodule "vendor/github.com/jteeuwen/go-bindata"]
 	path = vendor/github.com/jteeuwen/go-bindata
 	url = https://github.com/jteeuwen/go-bindata
-[submodule "docs"]
-	path = docs
-	url = https://github.com/jeffail/leaps.wiki
