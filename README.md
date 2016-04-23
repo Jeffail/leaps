@@ -79,5 +79,5 @@ Ashley Jeffs
 * Twitter: [@Jeffail](https://twitter.com/Jeffail "@jeffail")
 * Email: [ash@jeffs.eu](mailto:ash@jeffs.eu)
 
-[1](https://godoc.org/github.com/Jeffail/leaps).
-[2](client/README.md)
+[1]: https://godoc.org/github.com/Jeffail/leaps
+[2]: client/README.md
