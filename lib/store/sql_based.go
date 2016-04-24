@@ -92,7 +92,7 @@ NewPostgreSQL - Returns an SQL store type for connecting to PostgreSQL databases
 DSN Should be of the format:
 postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
 */
-func NewPostgreQL(config SQLConfig) (Type, error) {
+func NewPostgreSQL(config SQLConfig) (Type, error) {
 	return newSQL(postgres, config)
 }
 
