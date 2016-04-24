@@ -8,6 +8,8 @@ Simply navigate to a directory you want to share, run `leaps`, open the hosted
 page in your browser and direct any friends on your LAN to the same page. You
 can now collectively edit any documents in that directory.
 
+![Screenshot](leaps_screenshot.png "Leaps screenshot")
+
 Leaps can also be used as a library, with implementations of accessors for
 various document hosting solutions and plugable authentication layers, allowing
 you to build your own services to suit many service architectures.
