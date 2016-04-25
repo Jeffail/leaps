@@ -23,8 +23,6 @@ THE SOFTWARE.
 package acl
 
 import (
-	"encoding/json"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -143,26 +141,9 @@ func (f *FileExists) Authenticate(_, _, documentID string) AccessLevel {
 	return NoAccess
 }
 
-// ServePaths - An HTTP handler able to return the full list of available files as a JSON blob.
-func (f *FileExists) ServePaths(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Supports GET verb only", http.StatusMethodNotAllowed)
-		return
-	}
-	f.mutex.RLock()
-	js, err := json.Marshal(struct {
-		Paths []string `json:"paths"`
-	}{
-		Paths: f.paths,
-	})
-	f.mutex.RUnlock()
-	if err != nil {
-		f.logger.Errorf("Failed to marshal paths for server: %v\n", err)
-		http.Error(w, "Internal server issue", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+// GetPaths - Returns the cached list of file paths available.
+func (f *FileExists) GetPaths() []string {
+	return f.paths
 }
 
 //--------------------------------------------------------------------------------------------------

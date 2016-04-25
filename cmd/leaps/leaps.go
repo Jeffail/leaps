@@ -124,17 +124,41 @@ func main() {
 
 	handle("/endpoints", "Lists all available endpoints (including this one).",
 		func(w http.ResponseWriter, r *http.Request) {
-			data, err := json.Marshal(endpoints)
-			if err != nil {
-				logger.Errorf("Failed to serve endpoints: %v\n", err)
-				http.Error(w, "Sorry", http.StatusInternalServerError)
+			data, reqErr := json.Marshal(endpoints)
+			if reqErr != nil {
+				logger.Errorf("Failed to serve endpoints: %v\n", reqErr)
+				http.Error(w, reqErr.Error(), http.StatusInternalServerError)
 				return
 			}
 			w.Header().Add("Content-Type", "application/json")
 			w.Write(data)
 		})
 
-	handle("/files", "Lists all available files for editing.", authenticator.ServePaths)
+	handle("/files", "Returns a list of available files and a map of users per document.",
+		func(w http.ResponseWriter, r *http.Request) {
+			var reqErr error
+			var users map[string][]string
+			if users, reqErr = curator.GetUsers(time.Second); reqErr == nil {
+				var data []byte
+				data, reqErr = json.Marshal(struct {
+					Paths []string            `json:"paths"`
+					Users map[string][]string `json:"users"`
+				}{
+					Paths: authenticator.GetPaths(),
+					Users: users,
+				})
+				if reqErr == nil {
+					w.Write(data)
+				}
+			}
+			if reqErr != nil {
+				http.Error(w, reqErr.Error(), http.StatusInternalServerError)
+				logger.Errorf("Failed to serve users: %v\n", reqErr)
+				return
+			}
+			w.Header().Add("Content-Type", "application/json")
+		})
+
 	handle("/stats", "Lists all aggregated metrics as a json blob.", stats.JSONHandler())
 
 	http.Handle("/", http.FileServer(assetFS()))
@@ -142,7 +166,7 @@ func main() {
 		websocket.Handler(leaphttp.WebsocketHandler(curator, time.Second, logger, stats)))
 
 	go func() {
-		logger.Infof("Serving HTTP requets at: %v\n", *httpAddress)
+		logger.Infof("Serving HTTP requests at: %v\n", *httpAddress)
 		if httperr := http.ListenAndServe(*httpAddress, nil); httperr != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("HTTP listen error: %v\n", httperr))
 		}

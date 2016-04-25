@@ -201,19 +201,28 @@ func (c *impl) GetUsers(timeout time.Duration) (map[string][]string, error) {
 
 	started := time.Now()
 
-	// TODO: make these calls asynchronous
-	list := map[string][]string{}
-	for _, binder := range openBinders {
-		users, err := binder.GetUsers(timeout - time.Since(started))
-		if err != nil {
-			c.stats.Incr("curator.get_users.error", 1)
-			c.log.Errorf("Failed to get users list from %v\n", binder.ID())
-			return list, err
-		}
-		if len(users) > 0 {
-			list[binder.ID()] = users
-		}
+	list, listMutex := map[string][]string{}, sync.Mutex{}
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(openBinders))
+
+	for _, b := range openBinders {
+		go func(tmpBinder binder.Type) {
+			defer wg.Done()
+
+			users, err := tmpBinder.GetUsers(timeout - time.Since(started))
+			if err != nil {
+				c.stats.Incr("curator.get_users.error", 1)
+				c.log.Errorf("Failed to get users list from %v\n", tmpBinder.ID())
+			} else if len(users) > 0 {
+				listMutex.Lock()
+				list[tmpBinder.ID()] = users
+				listMutex.Unlock()
+			}
+		}(b)
 	}
+
+	wg.Wait()
 
 	c.stats.Incr("curator.get_users.success", 1)
 	return list, nil

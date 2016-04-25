@@ -25,6 +25,7 @@ package curator
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -100,6 +101,57 @@ func TestReadOnlyCurator(t *testing.T) {
 	}
 
 	curator.Close()
+}
+
+func TestGetUsers(t *testing.T) {
+	log, stats := loggerAndStats()
+	auth, storage := authAndStore(log, stats)
+
+	testCases := map[string][]string{
+		"doc1": []string{
+			"user1", "user2", "user3",
+		},
+		"doc2": []string{
+			"user4", "user5", "user6",
+		},
+		"doc3": []string{
+			"user1", "user4", "user7",
+		},
+	}
+
+	for docID := range testCases {
+		doc := store.Document{}
+		doc.ID = docID
+		doc.Content = "hello world"
+		if err := storage.Create(doc); err != nil {
+			t.Error(err)
+		}
+	}
+
+	curator, err := New(NewConfig(), log, stats, auth, storage)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer curator.Close()
+
+	for docID, users := range testCases {
+		for _, userID := range users {
+			if _, err := curator.EditDocument(userID, "", docID, time.Second); err != nil {
+				t.Error(err)
+			}
+		}
+	}
+
+	getUsers, err := curator.GetUsers(time.Second)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if !reflect.DeepEqual(getUsers, testCases) {
+		t.Errorf("GetUsers not matched, %v != %v", getUsers, testCases)
+	}
 }
 
 func goodClient(b binder.Portal, expecting int, t *testing.T, wg *sync.WaitGroup) {

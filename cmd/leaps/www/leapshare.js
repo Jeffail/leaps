@@ -558,7 +558,7 @@ var create_path_click = function(ele, id) {
 	};
 };
 
-var draw_path_object = function(path_object, parent, selected_id) {
+var draw_path_object = function(path_object, users_map, parent, selected_id) {
 	if ( "object" === typeof path_object ) {
 		for ( var prop in path_object ) {
 			if ( path_object.hasOwnProperty(prop) ) {
@@ -576,11 +576,16 @@ var draw_path_object = function(path_object, parent, selected_id) {
 					li.appendChild(span);
 					li.appendChild(list);
 
-					draw_path_object(path_object[prop], list, selected_id);
+					draw_path_object(path_object[prop], users_map, list, selected_id);
 					parent.appendChild(li);
 				} else if ( "string" === typeof path_object[prop] ) {
 					li.id = path_object[prop];
 					li.onclick = create_path_click(li, li.id);
+
+					var path_users_list = users_map[li.id];
+					if ( "object" === typeof path_users_list ) {
+						text = document.createTextNode(prop + " (" + path_users_list.length + ")");
+					}
 
 					if ( selected_id === li.id ) {
 						li.className = fileItemClass + ' selected';
@@ -598,11 +603,15 @@ var draw_path_object = function(path_object, parent, selected_id) {
 	}
 };
 
-var show_paths = function(paths_list) {
+var show_paths = function(paths_list, users_map) {
 	var i = 0, l = 0, j = 0, k = 0;
 
 	if ( typeof paths_list !== 'object' ) {
 		console.error("paths list wrong type", typeof paths_list);
+		return;
+	}
+	if ( typeof users_map !== 'object' ) {
+		console.error("users map wrong type", typeof users_map);
 		return;
 	}
 
@@ -628,7 +637,7 @@ var show_paths = function(paths_list) {
 	var paths_ele = document.getElementById("file-list");
 	paths_ele.innerHTML = "";
 
-	draw_path_object(paths_hierarchy, paths_ele, selected_path);
+	draw_path_object(paths_hierarchy, users_map, paths_ele, selected_path);
 };
 
 var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
@@ -665,12 +674,14 @@ var get_paths = function() {
 	AJAX_REQUEST("/files", function(data) {
 		try {
 			var paths_list = JSON.parse(data);
-			show_paths(paths_list.paths);
+			show_paths(paths_list.paths, paths_list.users);
 		} catch (e) {
 			console.error("paths parse error", e);
 		}
+		setTimeout(get_paths, 5000);
 	}, function(code, message) {
 		console.error("get_paths error", code, message);
+		setTimeout(get_paths, 1000);
 	});
 };
 
@@ -783,14 +794,6 @@ var set_cookie_option = function(key, value) {
 
 window.onload = function() {
 	get_paths();
-
-/*--------------------------------------------------------------------------------------------------
-                                  File Paths Refresh Button
---------------------------------------------------------------------------------------------------*/
-	var refresh_button = document.getElementById("refresh-button") || {};
-	refresh_button.onclick = function() {
-		get_paths();
-	};
 
 /*--------------------------------------------------------------------------------------------------
                                     Messages Clear Button
@@ -916,10 +919,7 @@ window.onload = function() {
 		var keyCode = e.keyCode || e.which;
 		if ( keyCode == '13' && chat_bar.value.length > 0 ) {
 			if ( leaps_client !== null ) {
-				leaps_client.send_message(JSON.stringify({
-					username: username,
-					text: chat_bar.value
-				}));
+				leaps_client.send_message(chat_bar.value);
 				chat_message(null, username, chat_bar.value);
 				chat_bar.value = "";
 				return false;
