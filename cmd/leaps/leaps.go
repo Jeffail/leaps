@@ -48,11 +48,13 @@ import (
 var (
 	httpAddress *string
 	showHidden  *bool
+	debugWWWDir *string
 )
 
 func init() {
 	httpAddress = flag.String("address", ":8080", "The HTTP address to bind to")
 	showHidden = flag.Bool("all", false, "Display all files, including hidden")
+	debugWWWDir = flag.String("use_www", "", "Serve alternative web files from this dir")
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -161,7 +163,12 @@ func main() {
 
 	handle("/stats", "Lists all aggregated metrics as a json blob.", stats.JSONHandler())
 
-	http.Handle("/", http.FileServer(assetFS()))
+	if len(*debugWWWDir) > 0 {
+		logger.Warnf("Serving web files from alternative www dir: %v\n", *debugWWWDir)
+		http.Handle("/", http.FileServer(http.Dir(*debugWWWDir)))
+	} else {
+		http.Handle("/", http.FileServer(assetFS()))
+	}
 	http.Handle("/leaps/ws",
 		websocket.Handler(leaphttp.WebsocketHandler(curator, time.Second, logger, stats)))
 
