@@ -8,7 +8,7 @@ Simply navigate to a directory you want to share, run `leaps`, open the hosted
 page in your browser and direct any friends on your LAN to the same page. You
 can now collectively edit any documents in that directory.
 
-![Screenshot](leaps_screenshot.png "Leaps screenshot")
+![Screenshot](leaps_ss.png "Leaps screenshot")
 
 Leaps can also be used as a library, with implementations of accessors for
 various document hosting solutions and plugable authentication layers, allowing
@@ -23,10 +23,19 @@ the [godocs][1].
 
 To read about the JavaScript client check out the [README][2].
 
-##How to run
+## Install
 
-Leaps is a single binary, with no runtime dependencies. Just download a release
-package for your OS and take a look at the available flags:
+Leaps is a single binary, with no runtime dependencies. Just download a package
+for your OS from [the latest releases page][3].
+
+### From homebrew
+
+```bash
+brew install leaps
+leaps -h
+```
+
+### Build with Go
 
 ```bash
 go get github.com/jeffail/leaps/cmd/...
@@ -59,7 +68,8 @@ function go-add-vendor {
 }
 ```
 
-##System compatibility
+## System compatibility
+
 OS               | Status
 ---------------- | ------
 OSX x86_64       | Supported, tested
@@ -70,11 +80,11 @@ Linux ARMv7      | Supported, tested
 Windows x86      | Supported
 Windows x86_64   | Supported
 
-##Contributing and customizing
+## Contributing and customizing
 
 Contributions are very welcome, just fork and submit a pull request.
 
-##Contact
+## Contact
 
 Ashley Jeffs
 * Web: [http://jeffs.eu](http://jeffs.eu)
@@ -83,3 +93,4 @@ Ashley Jeffs
 
 [1]: https://godoc.org/github.com/Jeffail/leaps
 [2]: client/README.md
+[3]: https://github.com/Jeffail/leaps/releases/latest
