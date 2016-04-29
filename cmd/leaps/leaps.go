@@ -49,12 +49,14 @@ var (
 	httpAddress *string
 	showHidden  *bool
 	debugWWWDir *string
+	logLevel    *string
 )
 
 func init() {
 	httpAddress = flag.String("address", ":8080", "The HTTP address to bind to")
 	showHidden = flag.Bool("all", false, "Display all files, including hidden")
 	debugWWWDir = flag.String("use_www", "", "Serve alternative web files from this dir")
+	logLevel = flag.String("log_level", "INFO", "Log level (NONE, ERROR, WARM, INFO, DEBUG, TRACE)")
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -85,7 +87,7 @@ func main() {
 	// Logging and metrics aggregation
 	logConf := log.NewLoggerConfig()
 	logConf.Prefix = "leaps"
-	logConf.LogLevel = "INFO"
+	logConf.LogLevel = *logLevel
 
 	logger := log.NewLogger(os.Stdout, logConf)
 

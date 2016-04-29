@@ -530,80 +530,170 @@ var refresh_document = function() {
 /*--------------------------------------------------------------------------------------------------
                                     File Path Acquire and Listing
 --------------------------------------------------------------------------------------------------*/
-var fileItemClass = "file-path";
 
-var get_selected_li = function() {
-	var li_eles = document.getElementsByTagName('li');
+/* Creates a manager for the file path list.
+ *
+ * paths_ele   - the element to append list items to
+ * opened_file - string of the current opened document (empty string if not applicable)
+ * action      - callback for when a file path is clicked (function(path))
+ */
+var file_list = function(paths_ele, opened_file, action) {
+	// Reset the element.
+	paths_ele.innerHTML = "";
+
+	this.file_item_class = "file-path";
+	this.dir_item_class = "dir-path";
+
+	this.element = paths_ele;
+	this.files_obj = {};
+	this.dirs_collapsed = [];
+	this.file_opened = opened_file;
+
+	this.open_action = action;
+
+	try {
+		if ( Cookies.get("collapsed-dirs") ) {
+			this.dirs_collapsed = JSON.parse(Cookies.get("collapsed-dirs"));
+		}
+	} catch (e) {
+		console.error("collapsed-dirs parse error", e);
+	}
+};
+
+file_list.prototype.get_selected_li = function() {
+	var li_eles = this.element.getElementsByTagName('li');
 	for ( var i = 0, l = li_eles.length; i < l; i++ ) {
-		if ( li_eles[i].className === fileItemClass + ' selected' ) {
+		if ( li_eles[i].className === this.file_item_class + ' selected' ) {
 			return li_eles[i];
 		}
 	}
 	return null;
 };
 
-var create_path_click = function(ele, id) {
+file_list.prototype.create_path_click = function(ele, id) {
+	var _this = this;
+
 	return function() {
-		if ( ele.className === fileItemClass + ' selected' ) {
+		if ( ele.className === _this.file_item_class + ' selected' ) {
 			// Nothing
 		} else {
-			var current_ele = get_selected_li();
+			var current_ele = _this.get_selected_li();
 			if ( current_ele !== null ) {
-				current_ele.className = fileItemClass;
+				current_ele.className = _this.file_item_class;
 			}
-			ele.className = fileItemClass + ' selected';
+			ele.className = _this.file_item_class + ' selected';
 			window.location.hash = "path:" + id;
-			join_new_document(id);
+			_this.file_opened = id;
+			_this.open_action(id);
 		}
 	};
 };
 
-var draw_path_object = function(path_object, users_map, parent, selected_id) {
-	if ( "object" === typeof path_object ) {
-		for ( var prop in path_object ) {
-			if ( path_object.hasOwnProperty(prop) ) {
-				var li = document.createElement("li");
-				var text = document.createTextNode(prop);
+file_list.prototype.create_dir_ele = function(id, name) {
+	var _this = this;
 
-				if ( "object" === typeof path_object[prop] ) {
-					var span = document.createElement("span");
-					var list = document.createElement("ul");
+	var ele = document.createElement("li");
+	ele.className = _this.dir_item_class;
 
-					list.className = "narrow-list";
-					span.className = "directory-name";
+	for ( var i = 0, l = _this.dirs_collapsed.length; i < l; i++ ) {
+		if ( _this.dirs_collapsed[i] === id ) {
+			ele.className = _this.dir_item_class + ' collapsed';
+			break;
+		}
+	}
 
-					span.appendChild(text);
-					li.appendChild(span);
-					li.appendChild(list);
+	var span = document.createElement("div");
+	span.className = "directory-name";
 
-					draw_path_object(path_object[prop], users_map, list, selected_id);
-					parent.appendChild(li);
-				} else if ( "string" === typeof path_object[prop] ) {
-					li.id = path_object[prop];
-					li.onclick = create_path_click(li, li.id);
+	span.appendChild(document.createTextNode(name));
+	ele.appendChild(span);
 
-					var path_users_list = users_map[li.id];
-					if ( "object" === typeof path_users_list ) {
-						text = document.createTextNode(prop + " (" + path_users_list.length + ")");
-					}
-
-					if ( selected_id === li.id ) {
-						li.className = fileItemClass + ' selected';
-					} else {
-						li.className = fileItemClass;
-					}
-					li.appendChild(text);
-
-					parent.appendChild(li);
-				} else {
-					console.error("path object wrong type", typeof path_object[prop]);
+	ele.id = id;
+	span.onclick = function() {
+		if ( ele.className === _this.dir_item_class + ' collapsed' ) {
+			// Uncollapse
+			ele.className = _this.dir_item_class;
+			for ( var i = 0, l = _this.dirs_collapsed.length; i < l; i++ ) {
+				if ( _this.dirs_collapsed[i] === id ) {
+					_this.dirs_collapsed.splice(i, 1);
+					set_cookie_option("collapsed-dirs", JSON.stringify(_this.dirs_collapsed));
+					return;
 				}
 			}
+		} else {
+			// Collapse
+			ele.className = _this.dir_item_class + ' collapsed';
+			_this.dirs_collapsed.push(id);
+			set_cookie_option("collapsed-dirs", JSON.stringify(_this.dirs_collapsed));
+		}
+	};
+	return ele;
+};
+
+file_list.prototype.refresh = function() {
+	var _this = this;
+
+	AJAX_REQUEST("/files", function(data) {
+		try {
+			var paths_list = JSON.parse(data);
+			_this.update_paths(paths_list.paths, paths_list.users);
+		} catch (e) {
+			console.error("paths parse error", e);
+		}
+		setTimeout(function() { _this.refresh() }, 5000);
+	}, function(code, message) {
+		console.error("get_paths error", code, message);
+		setTimeout(function() { _this.refresh() }, 1000);
+	});
+};
+
+file_list.prototype.draw_path_object = function(path_object, users_map, parent, path) {
+	if ( "object" !== typeof path_object ) {
+		console.error("paths object wrong type", typeof paths_object);
+		return;
+	}
+	for ( var prop in path_object ) {
+		if ( !path_object.hasOwnProperty(prop) ) {
+			continue
+		}
+
+		var tmpPath = path + "/" + prop;
+		if ( "object" === typeof path_object[prop] ) {
+			var li = this.create_dir_ele(tmpPath, prop);
+
+			var list = document.createElement("ul");
+			list.className = "narrow-list";
+			li.appendChild(list);
+
+			this.draw_path_object(path_object[prop], users_map, list, tmpPath);
+			parent.appendChild(li);
+		} else if ( "string" === typeof path_object[prop] ) {
+			var text = document.createTextNode(prop);
+			var li = document.createElement("li");
+
+			li.id = path_object[prop];
+			li.onclick = this.create_path_click(li, li.id);
+
+			var path_users_list = users_map[li.id];
+			if ( "object" === typeof path_users_list ) {
+				text = document.createTextNode(prop + " (" + path_users_list.length + ")");
+			}
+
+			if ( this.file_opened === li.id ) {
+				li.className = this.file_item_class + ' selected';
+			} else {
+				li.className = this.file_item_class;
+			}
+			li.appendChild(text);
+
+			parent.appendChild(li);
+		} else {
+			console.error("path object wrong type", typeof path_object[prop]);
 		}
 	}
 };
 
-var show_paths = function(paths_list, users_map) {
+file_list.prototype.update_paths = function(paths_list, users_map) {
 	var i = 0, l = 0, j = 0, k = 0;
 
 	if ( typeof paths_list !== 'object' ) {
@@ -615,10 +705,9 @@ var show_paths = function(paths_list, users_map) {
 		return;
 	}
 
-	var paths_hierarchy = {};
 	for ( i = 0, l = paths_list.length; i < l; i++ ) {
 		var split_path = paths_list[i].split('/');
-		var ptr = paths_hierarchy;
+		var ptr = this.files_obj;
 		for ( j = 0, k = split_path.length - 1; j < k; j++ ) {
 			if ( 'object' !== typeof ptr[split_path[j]] ) {
 				ptr[split_path[j]] = {};
@@ -628,16 +717,8 @@ var show_paths = function(paths_list, users_map) {
 		ptr[split_path[split_path.length - 1]] = paths_list[i];
 	}
 
-	var selected_path = "";
-	var selected_ele = get_selected_li();
-	if ( selected_ele !== null ) {
-		selected_path = selected_ele.id;
-	}
-
-	var paths_ele = document.getElementById("file-list");
-	paths_ele.innerHTML = "";
-
-	draw_path_object(paths_hierarchy, users_map, paths_ele, selected_path);
+	this.element.innerHTML = "";
+	this.draw_path_object(this.files_obj, users_map, this.element, "");
 };
 
 var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
@@ -668,21 +749,6 @@ var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
 		xmlhttp.open("GET", path, true);
 		xmlhttp.send();
 	}
-};
-
-var get_paths = function() {
-	AJAX_REQUEST("/files", function(data) {
-		try {
-			var paths_list = JSON.parse(data);
-			show_paths(paths_list.paths, paths_list.users);
-		} catch (e) {
-			console.error("paths parse error", e);
-		}
-		setTimeout(get_paths, 5000);
-	}, function(code, message) {
-		console.error("get_paths error", code, message);
-		setTimeout(get_paths, 1000);
-	});
 };
 
 /*--------------------------------------------------------------------------------------------------
@@ -793,7 +859,6 @@ var set_cookie_option = function(key, value) {
 };
 
 window.onload = function() {
-	get_paths();
 
 /*--------------------------------------------------------------------------------------------------
                                     Messages Clear Button
@@ -938,12 +1003,16 @@ window.onload = function() {
 		chat_bar.focus();
 	};
 
+	var opened_path = "";
 	// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
 	if ( window.location.hash.length > 0 &&
 			window.location.hash.substr(1, 5) === "path:" ) {
-		var path = window.location.hash.substr(6);
-		join_new_document(path);
+		opened_path = window.location.hash.substr(6);
+		join_new_document(opened_path);
 	}
+
+	var file_list_obj = new file_list(document.getElementById("file-list"), opened_path, join_new_document);
+	file_list_obj.refresh();
 };
 
 })();

@@ -195,6 +195,22 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	background-color: #bf5661;
 }
 
+.dir-path.collapsed > ul {
+	display: none;
+}
+
+.dir-path.collapsed > .directory-name {
+	color: #bf5661;
+}
+
+.directory-name {
+}
+
+.directory-name:hover, .directory-name:focus, .directory-name:active {
+	color: #f0f0f0;
+	background-color: #5088B7;
+}
+
 .narrow-list {
 	list-style-type: none;
 	padding-left: 4px;
@@ -387,7 +403,6 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 @media (min-width: 960px) {
 	#editor {
-		margin: 10px;
 		box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
 	}
 
