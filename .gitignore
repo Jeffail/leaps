@@ -6,3 +6,4 @@ static/share_dir/ace
 certificate.key
 certificate.cert
 .htpasswd
+.leapsignore

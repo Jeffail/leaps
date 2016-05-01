@@ -23,6 +23,7 @@ THE SOFTWARE.
 package acl
 
 import (
+	"bufio"
 	"os"
 	"path"
 	"path/filepath"
@@ -76,6 +77,63 @@ func NewFileExists(config FileExistsConfig, logger log.Modular) *FileExists {
 
 //--------------------------------------------------------------------------------------------------
 
+// extractIgnores - Parses a .leapsignore file for ignore patterns (one per line).
+func (f *FileExists) extractIgnores(ignoreFilePath string) []string {
+	ignorePatterns := []string{}
+
+	file, err := os.Open(ignoreFilePath)
+	if err != nil {
+		f.logger.Errorf("Failed to read .leapsignore file: %v\n", err)
+		return ignorePatterns
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		ignorePatterns = append(ignorePatterns, filepath.Clean(scanner.Text()))
+	}
+	if err := scanner.Err(); err != nil {
+		f.logger.Errorf("Failed to read .leapsignore file: %v\n", err)
+	}
+	return ignorePatterns
+}
+
+/*
+checkPatterns - Checks an array of ignore patterns against a path.
+
+Pattern rules:
+
+Pattern match rules either:
+	- Pattern is an exact match of the full relative path (foo/bar/*.jpg matches foo/bar/test.jpg)
+or:
+	- Pattern is an exact match of the base of the path (*.jpg matches foo/bar/test.jpg)
+
+./foo.jpg will only match foo.jpg
+foo.jpg will match foo.jpg and bar/foo.jpg
+*/
+func (f *FileExists) checkPatterns(patterns []string, path string) bool {
+	for _, pattern := range patterns {
+		// Cleaned pattern and full relative path
+		matched, err := filepath.Match(filepath.Clean(pattern), path)
+		if err != nil {
+			f.logger.Errorf("Pattern match error: %s: %v\n", pattern, err)
+			return false
+		}
+		// Or non-cleaned pattern versus base of relative path
+		if !matched {
+			matched, err = filepath.Match(pattern, filepath.Base(path))
+			if err != nil {
+				f.logger.Errorf("Pattern match error: %s: %v\n", pattern, err)
+				return false
+			}
+		}
+		if matched {
+			return true
+		}
+	}
+	return false
+}
+
 func (f *FileExists) getPaths() ([]string, error) {
 	paths := []string{}
 	if info, err := os.Stat(f.config.Path); err == nil {
@@ -86,23 +144,52 @@ func (f *FileExists) getPaths() ([]string, error) {
 	} else {
 		return paths, err
 	}
+	// map[directoryTree][]ignorePaths
+	ignorePatterns := map[string][]string{}
 	if err := filepath.Walk(f.config.Path, func(p string, info os.FileInfo, err error) error {
-		if !f.config.ShowHidden {
-			// If not showing hidden files then skip when prefix is "."
-			if len(info.Name()) > 1 && strings.HasPrefix(info.Name(), ".") {
-				if info.Mode().IsRegular() {
-					return nil
+		// Get path relative to root search directory.
+		relPath, err := filepath.Rel(f.config.Path, p)
+		if err != nil {
+			f.logger.Errorf("Relative path conversion error: %v\n", err)
+			// Stop walking files
+			return err
+		}
+		// If we've found a .leapsignore file then parse it for ignore patterns.
+		if info.Mode().IsRegular() && info.Name() == ".leapsignore" {
+			dirTree := filepath.Dir(relPath)
+			if dirTree == "." {
+				dirTree = ""
+			}
+			ignorePatterns[dirTree] = append(ignorePatterns[dirTree], f.extractIgnores(relPath)...)
+			return nil
+		}
+		for dirTree, patterns := range ignorePatterns {
+			if strings.Contains(relPath, dirTree) {
+				relToPatternDir, err := filepath.Rel(dirTree, relPath)
+				if err != nil {
+					f.logger.Errorf("Relative path conversion error: %v\n", err)
+					// Stop walking files
+					return err
 				}
-				// Skip hidden directories
-				return filepath.SkipDir
+				if f.checkPatterns(patterns, relToPatternDir) {
+					// Otherwise, check all ignore patterns for a match.
+					if info.Mode().IsRegular() {
+						return nil
+					}
+					return filepath.SkipDir
+				}
 			}
 		}
-		if info.Mode().IsRegular() {
-			if relPath, err := filepath.Rel(f.config.Path, p); err == nil {
-				paths = append(paths, relPath)
-			} else {
-				f.logger.Errorf("Relative path conversion error: %v\n", err)
+		// If not showing hidden files then skip when prefix is "."
+		if !f.config.ShowHidden && len(info.Name()) > 1 && strings.HasPrefix(info.Name(), ".") {
+			if info.Mode().IsRegular() {
+				return nil
 			}
+			// Skip hidden directories
+			return filepath.SkipDir
+		}
+		if info.Mode().IsRegular() {
+			paths = append(paths, relPath)
 		}
 		return nil
 	}); err != nil {
