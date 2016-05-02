@@ -82,7 +82,20 @@ func main() {
 		closeChan = make(chan bool)
 	)
 
+	flag.Usage = func() {
+		fmt.Println(`Usage: leaps [flags...] [path/to/share]
+
+If a path is not specified the current directory is shared instead.
+`)
+		flag.PrintDefaults()
+	}
+
 	flag.Parse()
+
+	targetPath := "."
+	if flag.NArg() == 1 {
+		targetPath = flag.Arg(0)
+	}
 
 	// Logging and metrics aggregation
 	logConf := log.NewLoggerConfig()
@@ -112,7 +125,7 @@ func main() {
 
 	// Authenticator
 	storeConf := acl.NewFileExistsConfig()
-	storeConf.Path = "."
+	storeConf.Path = targetPath
 	storeConf.ShowHidden = *showHidden
 
 	authenticator := acl.NewFileExists(storeConf, logger)
