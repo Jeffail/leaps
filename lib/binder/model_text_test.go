@@ -206,7 +206,7 @@ func TestTextModelUnicodeTransforms(t *testing.T) {
 	}
 	if _, _, err = model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
-		Position: 23,
+		Position: 25,
 		Insert:   "我饿了",
 		Delete:   6,
 	}); err != nil {
@@ -214,7 +214,7 @@ func TestTextModelUnicodeTransforms(t *testing.T) {
 	}
 	if _, _, err = model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
-		Position: 23,
+		Position: 25,
 		Insert:   "交通堵塞了",
 		Delete:   3,
 	}); err != nil {
@@ -225,7 +225,7 @@ func TestTextModelUnicodeTransforms(t *testing.T) {
 		t.Errorf("Error flushing: %v", err)
 	}
 
-	expected := "hello world 你听说那条新闻了吗? 交通堵塞了"
+	expected := "hello world 👦🏻你听说那条新闻了吗? 交通堵塞了"
 	received := doc.Content
 	if expected != received {
 		t.Errorf("Expected %v, received %v", expected, received)
