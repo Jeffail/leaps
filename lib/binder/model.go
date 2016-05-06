@@ -22,24 +22,19 @@ THE SOFTWARE.
 
 package binder
 
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------
 
-/*
-ModelConfig - Holds configuration options for a transform model.
-*/
+// ModelConfig - Holds configuration options for a transform model.
 type ModelConfig struct {
 	MaxDocumentSize    uint64 `json:"max_document_size" yaml:"max_document_size"`
 	MaxTransformLength uint64 `json:"max_transform_length" yaml:"max_transform_length"`
 }
 
-/*
-NewModelConfig - Returns a default ModelConfig.
-*/
+// NewModelConfig - Returns a default ModelConfig.
 func NewModelConfig() ModelConfig {
 	return ModelConfig{
-		MaxDocumentSize:    50000000, // ~50MB
-		MaxTransformLength: 50000,    // ~50KB
+		MaxDocumentSize:    52428800, // 50MiB
+		MaxTransformLength: 51200,    // 50KiB
 	}
 }
 
@@ -54,7 +49,7 @@ type Model interface {
 	 */
 	PushTransform(ot OTransform) (OTransform, int, error)
 
-	/* Returns true, if the model have unapplied transforms that can be flushed */
+	// Returns true, if the model have unapplied transforms that can be flushed
 	IsDirty() bool
 
 	/* FlushTransforms - apply all unapplied transforms to content, and delete old applied
@@ -63,10 +58,8 @@ type Model interface {
 	 */
 	FlushTransforms(content *string, secondsRetention int64) (bool, error)
 
-	/* GetVersion - returns the current version of the document.
-	 */
+	// GetVersion - returns the current version of the document.
 	GetVersion() int
 }
 
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------

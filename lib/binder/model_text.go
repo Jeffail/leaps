@@ -29,8 +29,7 @@ import (
 	"time"
 )
 
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------
 
 // Errors for the internal Operational Transform model.
 var (
@@ -40,15 +39,15 @@ var (
 )
 
 /*
-OTransform - A representation of a transformation relating to a leap document. This can either be a
+OTransform - A representation of a transformation relating to a leaps document. This can either be a
 text addition, a text deletion, or both.
 */
 type OTransform struct {
-	Position  int    `json:"position" yaml:"position"`
-	Delete    int    `json:"num_delete" yaml:"num_delete"`
-	Insert    string `json:"insert" yaml:"insert"`
-	Version   int    `json:"version" yaml:"version"`
-	TReceived int64  `json:"received,omitempty" yaml:"received,omitempty"`
+	Position  int    `json:"position"`
+	Delete    int    `json:"num_delete"`
+	Insert    string `json:"insert"`
+	Version   int    `json:"version"`
+	TReceived int64  `json:"received,omitempty"`
 }
 
 /*
@@ -62,9 +61,7 @@ type OModel struct {
 	Unapplied []OTransform
 }
 
-/*
-CreateTextModel - Returns a fresh transform model, with the version set to 1.
-*/
+// CreateTextModel - Returns a fresh transform model, with the version set to 1.
 func CreateTextModel(config ModelConfig) Model {
 	return &OModel{
 		config:    config,
@@ -74,8 +71,7 @@ func CreateTextModel(config ModelConfig) Model {
 	}
 }
 
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------
 
 /*
 PushTransform - Inserts a transform onto the unapplied stack and increments the version number of
@@ -121,19 +117,14 @@ func (m *OModel) PushTransform(ot OTransform) (OTransform, int, error) {
 	return ot, m.Version, nil
 }
 
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------
 
-/*
-IsDirty - Check if there is any unapplied transforms.
-*/
+// IsDirty - Check if there is any unapplied transforms.
 func (m *OModel) IsDirty() bool {
 	return len(m.Unapplied) > 0
 }
 
-/*
-GetVersion - returns the current version of the document.
-*/
+// GetVersion - returns the current version of the document.
 func (m *OModel) GetVersion() int {
 	return m.Version
 }
@@ -238,9 +229,7 @@ func updateTransform(sub *OTransform, pre *OTransform) {
 	}
 }
 
-/*
-applyTransform - Apply a specific transform to some content.
-*/
+// applyTransform - Apply a specific transform to some content.
 func (m *OModel) applyTransform(content *[]rune, ot *OTransform) error {
 	if ot.Delete < 0 {
 		return ErrTransformNegDelete
@@ -265,5 +254,4 @@ func (m *OModel) applyTransform(content *[]rune, ot *OTransform) error {
 	return nil
 }
 
-/*--------------------------------------------------------------------------------------------------
- */
+//--------------------------------------------------------------------------------------------------

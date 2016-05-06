@@ -281,7 +281,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	list-style-type: none;
 	padding: 0;
 	margin: 0;
-	padding-bottom: 100px;
+	padding-bottom: 1em;
 	padding-top: 1em;
 }
 
@@ -407,7 +407,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	}
 
 	#editor {
-		right: 25vw; /* 100 - width of info window */
+		right: 20vw; /* width of info window */
 		bottom: 0;
 	}
 
@@ -415,17 +415,17 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 		top: 50px;
 		height: 200px;
 		right: 0;
-		width: 25vw;
+		width: 20vw;
 	}
 
 	#info-window {
 		top: 250px;
 		right: 0;
 		bottom: 35px;
-		width: 25vw;
+		width: 20vw;
 	}
 
 	#chat-bar-container {
-		width: 25vw;
+		width: 20vw;
 	}
 }

@@ -855,7 +855,7 @@ var refresh_users_list = function() {
                                     Set Cookies Helper
 --------------------------------------------------------------------------------------------------*/
 var set_cookie_option = function(key, value) {
-	Cookies.set(key, value, { expires: 7, path: '' });
+	Cookies.set(key, value, { path: '' });
 };
 
 window.onload = function() {

@@ -198,6 +198,14 @@ func TestTextModelUnicodeTransforms(t *testing.T) {
 	}
 	if _, _, err = model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
+		Position: 12,
+		Insert:   "👦🏻",
+		Delete:   0,
+	}); err != nil {
+		t.Errorf("Error: %v", err)
+	}
+	if _, _, err = model.PushTransform(OTransform{
+		Version:  model.GetVersion() + 1,
 		Position: 23,
 		Insert:   "我饿了",
 		Delete:   6,
