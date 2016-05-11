@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/text"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -48,7 +49,7 @@ type Portal interface {
 	ReleaseDocument()
 
 	// TransformReadChan - Get the channel for reading transforms from other binder clients.
-	TransformReadChan() <-chan OTransform
+	TransformReadChan() <-chan text.OTransform
 
 	// UpdateReadChan - Get the channel for reading meta updates from other binder clients.
 	UpdateReadChan() <-chan ClientUpdate
@@ -57,7 +58,7 @@ type Portal interface {
 	// transform to the stack of pending changes and broadcasts it to all other connected clients.
 	// The transform must be submitted with the target version (the version that the client believed
 	// it was, at the time it was made), and the actual version is returned.
-	SendTransform(ot OTransform, timeout time.Duration) (int, error)
+	SendTransform(ot text.OTransform, timeout time.Duration) (int, error)
 
 	// SendMessage - Broadcasts a message out to all other connected clients.
 	SendMessage(message Message)

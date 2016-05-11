@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/text"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -48,7 +49,7 @@ type portalImpl struct {
 	document store.Document
 	version  int
 
-	transformRcvChan <-chan OTransform
+	transformRcvChan <-chan text.OTransform
 	updateRcvChan    <-chan ClientUpdate
 
 	transformSndChan chan<- transformSubmission
@@ -82,7 +83,7 @@ func (p *portalImpl) ReleaseDocument() {
 }
 
 // TransformReadChan - Returns a channel for receiving live transforms from the binder.
-func (p *portalImpl) TransformReadChan() <-chan OTransform {
+func (p *portalImpl) TransformReadChan() <-chan text.OTransform {
 	return p.transformRcvChan
 }
 
@@ -95,7 +96,7 @@ func (p *portalImpl) UpdateReadChan() <-chan ClientUpdate {
 SendTransform - Submits a transform to the binder. The binder responds with either an error or a
 corrected version number for the transform. This is safe to call from any goroutine.
 */
-func (p *portalImpl) SendTransform(ot OTransform, timeout time.Duration) (int, error) {
+func (p *portalImpl) SendTransform(ot text.OTransform, timeout time.Duration) (int, error) {
 	// Check if we are READ ONLY
 	if nil == p.transformSndChan {
 		return 0, ErrReadOnlyPortal

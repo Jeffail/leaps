@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/text"
 	"github.com/jeffail/leaps/lib/util"
 )
 
@@ -92,7 +93,7 @@ func TestGracefullShutdown(t *testing.T) {
 		return
 	}
 	delete(store.documents, "KILL_ME")
-	testClient.SendTransform(OTransform{Position: 0, Insert: "hello", Version: 2}, time.Second)
+	testClient.SendTransform(text.OTransform{Position: 0, Insert: "hello", Version: 2}, time.Second)
 
 	<-errChan
 	binder.Close()
@@ -341,7 +342,7 @@ func TestNew(t *testing.T) {
 	portal1, _ := binder.Subscribe("", time.Second)
 	portal2, _ := binder.Subscribe("", time.Second)
 	if v, err := portal1.SendTransform(
-		OTransform{
+		text.OTransform{
 			Position: 6,
 			Version:  2,
 			Delete:   5,
@@ -352,7 +353,7 @@ func TestNew(t *testing.T) {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
 	if v, err := portal2.SendTransform(
-		OTransform{
+		text.OTransform{
 			Position: 0,
 			Version:  3,
 			Delete:   0,
@@ -401,7 +402,7 @@ func TestReadOnlyPortals(t *testing.T) {
 	portalReadOnly, _ := binder.SubscribeReadOnly("", time.Second)
 
 	if v, err := portal1.SendTransform(
-		OTransform{
+		text.OTransform{
 			Position: 6,
 			Version:  2,
 			Delete:   5,
@@ -412,7 +413,7 @@ func TestReadOnlyPortals(t *testing.T) {
 		t.Errorf("Send Transform error, v: %v, err: %v", v, err)
 	}
 	if v, err := portal2.SendTransform(
-		OTransform{
+		text.OTransform{
 			Position: 0,
 			Version:  3,
 			Delete:   0,
@@ -427,7 +428,7 @@ func TestReadOnlyPortals(t *testing.T) {
 	<-portal2.TransformReadChan()
 	<-portalReadOnly.TransformReadChan()
 
-	if _, err := portalReadOnly.SendTransform(OTransform{}, time.Second); err != ErrReadOnlyPortal {
+	if _, err := portalReadOnly.SendTransform(text.OTransform{}, time.Second); err != ErrReadOnlyPortal {
 		t.Errorf("Read only portal unexpected result: %v", err)
 	}
 
@@ -496,8 +497,8 @@ func TestClients(t *testing.T) {
 		}
 	}()
 
-	tform := func(i int) OTransform {
-		return OTransform{
+	tform := func(i int) text.OTransform {
+		return text.OTransform{
 			Position: 0,
 			Version:  i,
 			Delete:   0,
@@ -538,10 +539,10 @@ func TestClients(t *testing.T) {
 }
 
 type binderStory struct {
-	Content    string       `json:"content" yaml:"content"`
-	Transforms []OTransform `json:"transforms" yaml:"transforms"`
-	TCorrected []OTransform `json:"corrected_transforms" yaml:"corrected_transforms"`
-	Result     string       `json:"result" yaml:"result"`
+	Content    string            `json:"content" yaml:"content"`
+	Transforms []text.OTransform `json:"transforms" yaml:"transforms"`
+	TCorrected []text.OTransform `json:"corrected_transforms" yaml:"corrected_transforms"`
+	Result     string            `json:"result" yaml:"result"`
 }
 
 type binderStoriesContainer struct {

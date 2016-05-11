@@ -182,7 +182,7 @@ leap_model.prototype._merge_transforms = function(first, second) {
 leap_model.prototype._collide_transforms = function(unapplied, unsent) {
 	var earlier, later;
 
-	if ( unapplied.position <= unsent.position ) {
+	if ( unapplied.position < unsent.position ) {
 		earlier = unapplied;
 		later = unsent;
 	} else {

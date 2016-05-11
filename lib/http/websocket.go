@@ -31,6 +31,7 @@ import (
 	"github.com/jeffail/leaps/lib/binder"
 	"github.com/jeffail/leaps/lib/curator"
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/text"
 	"github.com/jeffail/util/log"
 	"github.com/jeffail/util/metrics"
 	"golang.org/x/net/websocket"
@@ -158,10 +159,10 @@ to a text model. Commands can currently be 'submit' (submit a transform to a bou
 'update' (submit an update to the users cursor position).
 */
 type leapSocketClientMessage struct {
-	Command   string             `json:"command"`
-	Transform *binder.OTransform `json:"transform,omitempty"`
-	Position  *int64             `json:"position,omitempty"`
-	Message   string             `json:"message,omitempty"`
+	Command   string           `json:"command"`
+	Transform *text.OTransform `json:"transform,omitempty"`
+	Position  *int64           `json:"position,omitempty"`
+	Message   string           `json:"message,omitempty"`
 }
 
 /*
@@ -172,7 +173,7 @@ client).
 */
 type leapSocketServerMessage struct {
 	Type       string                `json:"response_type"`
-	Transforms []binder.OTransform   `json:"transforms,omitempty"`
+	Transforms []text.OTransform     `json:"transforms,omitempty"`
 	Updates    []binder.ClientUpdate `json:"user_updates,omitempty"`
 	Version    int                   `json:"version,omitempty"`
 	Error      string                `json:"error,omitempty"`
@@ -258,7 +259,7 @@ func serveWebsocketIO(
 				}
 				websocket.JSON.Send(ws, leapSocketServerMessage{
 					Type:       "transforms",
-					Transforms: []binder.OTransform{tform},
+					Transforms: []text.OTransform{tform},
 				})
 			case msg, open := <-portal.UpdateReadChan():
 				if !open {

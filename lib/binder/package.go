@@ -21,8 +21,10 @@ THE SOFTWARE.
 */
 
 /*
-Package binder - Defines the type used to synchronize user sessions with documents using operational
-transforms to allow zero collision asynchronous editing of a text document.
+Package binder - Defines the binder type, used for managing multiple clients of a single document,
+ensuring that operational transforms received are ordered and dispatched across all other clients.
+Also manages message broadcasting and session management for all client connections, as well as
+periodic flushing of changes to a document storage solution.
 */
 package binder
 

@@ -34,9 +34,9 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/acl"
-	"github.com/jeffail/leaps/lib/binder"
 	"github.com/jeffail/leaps/lib/curator"
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/text"
 	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 	"github.com/jeffail/util/metrics"
@@ -44,10 +44,10 @@ import (
 )
 
 type binderStory struct {
-	Content    string              `json:"content" yaml:"content"`
-	Transforms []binder.OTransform `json:"transforms" yaml:"transforms"`
-	TCorrected []binder.OTransform `json:"corrected_transforms" yaml:"corrected_transforms"`
-	Result     string              `json:"result" yaml:"result"`
+	Content    string            `json:"content" yaml:"content"`
+	Transforms []text.OTransform `json:"transforms" yaml:"transforms"`
+	TCorrected []text.OTransform `json:"corrected_transforms" yaml:"corrected_transforms"`
+	Result     string            `json:"result" yaml:"result"`
 }
 
 type binderStoriesContainer struct {
@@ -78,7 +78,7 @@ func findDocument(docID, userID string, ws *websocket.Conn) error {
 	return nil
 }
 
-func senderClient(id, url string, feeds <-chan binder.OTransform, t *testing.T) {
+func senderClient(id, url string, feeds <-chan text.OTransform, t *testing.T) {
 	origin := "http://127.0.0.1/"
 
 	userID := util.GenerateStampedUUID()
@@ -94,7 +94,7 @@ func senderClient(id, url string, feeds <-chan binder.OTransform, t *testing.T) 
 		return
 	}
 
-	rcvChan := make(chan []binder.OTransform, 5)
+	rcvChan := make(chan []text.OTransform, 5)
 	crctChan := make(chan bool)
 	go func() {
 		for {
@@ -166,7 +166,7 @@ func goodStoryClient(id, url string, bstory *binderStory, wg *sync.WaitGroup, t 
 		return
 	}
 
-	rcvChan := make(chan []binder.OTransform, 5)
+	rcvChan := make(chan []text.OTransform, 5)
 	go func() {
 		for {
 			var serverMsg leapSocketServerMessage
@@ -300,7 +300,7 @@ func TestHttpServer(t *testing.T) {
 			return
 		}
 
-		feeds := make(chan binder.OTransform)
+		feeds := make(chan text.OTransform)
 
 		wg := sync.WaitGroup{}
 		wg.Add(10)

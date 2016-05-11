@@ -33,6 +33,7 @@ import (
 	"github.com/jeffail/leaps/lib/acl"
 	"github.com/jeffail/leaps/lib/binder"
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/text"
 	"github.com/jeffail/util/log"
 	"github.com/jeffail/util/metrics"
 )
@@ -94,7 +95,7 @@ func TestReadOnlyCurator(t *testing.T) {
 	}
 
 	if _, err := readOnlyPortal.SendTransform(
-		binder.OTransform{}, time.Second,
+		text.OTransform{}, time.Second,
 	); err != binder.ErrReadOnlyPortal {
 		t.Errorf("read only portal unexpected error: %v", err)
 		return
@@ -196,8 +197,8 @@ func TestCuratorClients(t *testing.T) {
 		t.Errorf("error: %v", err)
 	}
 
-	tform := func(i int) binder.OTransform {
-		return binder.OTransform{
+	tform := func(i int) text.OTransform {
+		return text.OTransform{
 			Position: 0,
 			Version:  i,
 			Delete:   0,

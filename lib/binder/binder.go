@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/text"
 	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 	"github.com/jeffail/util/metrics"
@@ -36,11 +37,11 @@ import (
 
 // Config - Holds configuration options for a binder.
 type Config struct {
-	FlushPeriod           int64       `json:"flush_period_ms" yaml:"flush_period_ms"`
-	RetentionPeriod       int64       `json:"retention_period_s" yaml:"retention_period_s"`
-	ClientKickPeriod      int64       `json:"kick_period_ms" yaml:"kick_period_ms"`
-	CloseInactivityPeriod int64       `json:"close_inactivity_period_s" yaml:"close_inactivity_period_s"`
-	ModelConfig           ModelConfig `json:"transform_model" yaml:"transform_model"`
+	FlushPeriod           int64               `json:"flush_period_ms" yaml:"flush_period_ms"`
+	RetentionPeriod       int64               `json:"retention_period_s" yaml:"retention_period_s"`
+	ClientKickPeriod      int64               `json:"kick_period_ms" yaml:"kick_period_ms"`
+	CloseInactivityPeriod int64               `json:"close_inactivity_period_s" yaml:"close_inactivity_period_s"`
+	OTBufferConfig        text.OTBufferConfig `json:"transform_buffer" yaml:"transform_buffer"`
 }
 
 // NewConfig - Returns a fully defined Binder configuration with the default values for each field.
@@ -50,7 +51,7 @@ func NewConfig() Config {
 		RetentionPeriod:       60,
 		ClientKickPeriod:      200,
 		CloseInactivityPeriod: 300,
-		ModelConfig:           NewModelConfig(),
+		OTBufferConfig:        text.NewOTBufferConfig(),
 	}
 }
 
@@ -61,10 +62,10 @@ impl - A Type implementation that contains a single document and acts as a broke
 readers, writers and the storage strategy.
 */
 type impl struct {
-	id     string
-	config Config
-	model  Model
-	block  store.Type
+	id       string
+	config   Config
+	otBuffer *text.OTBuffer
+	block    store.Type
 
 	log   log.Modular
 	stats metrics.Aggregator
@@ -98,7 +99,7 @@ func New(
 	binder := impl{
 		id:               id,
 		config:           config,
-		model:            CreateTextModel(config.ModelConfig),
+		otBuffer:         text.NewOTBuffer(config.OTBufferConfig),
 		block:            block,
 		log:              log.NewModule(":binder"),
 		stats:            stats,
@@ -246,11 +247,11 @@ func (b *impl) Close() {
 
 /*
 processSubscriber - Processes a prospective client wishing to subscribe to this binder. This
-involves flushing the model in order to obtain a clean version of the document, if this fails
+involves flushing the OTBuffer in order to obtain a clean version of the document, if this fails
 we return false to flag the binder loop that we should shut down.
 */
 func (b *impl) processSubscriber(request subscribeRequest) error {
-	transformSndChan := make(chan OTransform, 1)
+	transformSndChan := make(chan text.OTransform, 1)
 	updateSndChan := make(chan ClientUpdate, 1)
 
 	var err error
@@ -274,7 +275,7 @@ func (b *impl) processSubscriber(request subscribeRequest) error {
 	}
 	portal := portalImpl{
 		client:           &client,
-		version:          b.model.GetVersion(),
+		version:          b.otBuffer.GetVersion(),
 		document:         doc,
 		transformRcvChan: transformSndChan,
 		updateRcvChan:    updateSndChan,
@@ -332,12 +333,12 @@ processTransform - Processes a clients transform submission, and broadcasts the 
 other clients.
 */
 func (b *impl) processTransform(request transformSubmission) {
-	var dispatch OTransform
+	var dispatch text.OTransform
 	var err error
 	var version int
 
 	b.log.Debugf("Received transform: %q\n", fmt.Sprintf("%v", request.transform))
-	dispatch, version, err = b.model.PushTransform(request.transform)
+	dispatch, version, err = b.otBuffer.PushTransform(request.transform)
 
 	if err != nil {
 		b.stats.Incr("binder.process_job.error", 1)
@@ -430,7 +431,7 @@ func (b *impl) flush() (store.Document, error) {
 		b.stats.Incr("binder.block_fetch.error", 1)
 		return doc, errStore
 	}
-	changed, errFlush = b.model.FlushTransforms(&doc.Content, b.config.RetentionPeriod)
+	changed, errFlush = b.otBuffer.FlushTransforms(&doc.Content, b.config.RetentionPeriod)
 	if changed {
 		errStore = b.block.Update(doc)
 	}
@@ -543,7 +544,7 @@ func (b *impl) loop() {
 				running = false
 			}
 		case <-flushTimer.C:
-			if b.model.IsDirty() {
+			if b.otBuffer.IsDirty() {
 				if _, err := b.flush(); err != nil {
 					b.log.Errorf("Flush error: %v, shutting down\n", err)
 					b.errorChan <- Error{ID: b.id, Err: err}
@@ -572,7 +573,7 @@ func (b *impl) loop() {
 				close(client.updateChan)
 			}
 			b.log.Infof("Attempting final flush of %v\n", b.id)
-			if b.model.IsDirty() {
+			if b.otBuffer.IsDirty() {
 				if _, err := b.flush(); err != nil {
 					b.errorChan <- Error{ID: b.id, Err: err}
 				}

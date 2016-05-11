@@ -22,6 +22,8 @@ THE SOFTWARE.
 
 package binder
 
+import "github.com/jeffail/leaps/lib/text"
+
 //--------------------------------------------------------------------------------------------------
 
 /*
@@ -65,7 +67,7 @@ response from the binder (error or version adjustment).
 */
 type transformSubmission struct {
 	client      *binderClient
-	transform   OTransform
+	transform   text.OTransform
 	versionChan chan<- int
 	errorChan   chan<- error
 }
@@ -89,7 +91,7 @@ type binderClient struct {
 	userID    string
 	sessionID string
 
-	transformChan chan<- OTransform
+	transformChan chan<- text.OTransform
 	updateChan    chan<- ClientUpdate
 }
 
