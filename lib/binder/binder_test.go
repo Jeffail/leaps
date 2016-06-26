@@ -166,6 +166,50 @@ func TestClientAdminTasks(t *testing.T) {
 	binder.Close()
 }
 
+func TestKickLockedUsers(t *testing.T) {
+	errChan := make(chan Error, 10)
+
+	logger, stats := loggerAndStats()
+	doc, _ := store.NewDocument("hello world")
+
+	store := testStore{documents: map[string]store.Document{
+		"KILL_ME": *doc,
+	}}
+
+	conf := NewConfig()
+	conf.ClientKickPeriod = 1
+
+	binder, err := New("KILL_ME", &store, conf, errChan, logger, stats)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+	defer binder.Close()
+
+	testClient, err := binder.Subscribe("TestClient", time.Second)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = binder.Subscribe("TestClient2", time.Second)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = binder.Subscribe("TestClient3", time.Second)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	testClient.SendTransform(text.OTransform{Position: 0, Insert: "hello", Version: 2}, time.Second)
+	testClient.SendTransform(text.OTransform{Position: 0, Insert: "hello", Version: 3}, time.Second)
+	testClient.SendTransform(text.OTransform{Position: 0, Insert: "hello", Version: 4}, time.Second)
+
+	// Wait until both testClient2 and testClient3 should have been kicked (in the same epoch).
+	<-time.After(time.Millisecond * 10)
+}
+
 func TestUpdates(t *testing.T) {
 	errChan := make(chan Error)
 	doc, _ := store.NewDocument("hello world")

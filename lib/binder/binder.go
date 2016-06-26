@@ -355,7 +355,9 @@ func (b *impl) processTransform(request transformSubmission) {
 
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
-	for i, c := range b.clients {
+	for i := 0; i < len(b.clients); i++ {
+		c := b.clients[i]
+
 		// Skip sends for client from which the message came
 		if c == request.client {
 			continue
@@ -372,6 +374,8 @@ func (b *impl) processTransform(request transformSubmission) {
 			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
 
 			b.clients = append(b.clients[:i], b.clients[i+1:]...)
+			i--
+
 			close(c.transformChan)
 			close(c.updateChan)
 		}
@@ -392,7 +396,9 @@ func (b *impl) processMessage(request messageSubmission) {
 		Message: request.message,
 	}
 
-	for i, c := range b.clients {
+	for i := 0; i < len(b.clients); i++ {
+		c := b.clients[i]
+
 		// Skip sends for client from which the message came
 		if c == request.client {
 			continue
@@ -410,6 +416,8 @@ func (b *impl) processMessage(request messageSubmission) {
 			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
 
 			b.clients = append(b.clients[:i], b.clients[i+1:]...)
+			i--
+
 			close(c.transformChan)
 			close(c.updateChan)
 		}
@@ -509,10 +517,13 @@ func (b *impl) loop() {
 
 				// TODO: Refactor and improve kick API
 				kicked := 0
-				for i, c := range b.clients {
+				for i := 0; i < len(b.clients); i++ {
+					c := b.clients[i]
 					if c.userID == kickRequest.userID {
 						b.stats.Decr("binder.subscribed_clients", 1)
 						b.clients = append(b.clients[:i], b.clients[i+1:]...)
+						i--
+
 						close(c.transformChan)
 						close(c.updateChan)
 						kicked++
@@ -531,10 +542,13 @@ func (b *impl) loop() {
 		case client, open := <-b.exitChan:
 			if running && open {
 				b.log.Debugf("Received exit request for: %v\n", client.userID)
-				for i, c := range b.clients {
+				for i := 0; i < len(b.clients); i++ {
+					c := b.clients[i]
 					if c == client {
 						b.stats.Decr("binder.subscribed_clients", 1)
 						b.clients = append(b.clients[:i], b.clients[i+1:]...)
+						i--
+
 						close(c.transformChan)
 						close(c.updateChan)
 					}
