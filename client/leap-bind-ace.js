@@ -32,7 +32,7 @@ THE SOFTWARE.
 _create_leaps_ace_marker - creates a marker for displaying the cursor positions of other users in an
 ace editor.
 */
-var _create_leaps_ace_marker = function(ace_editor) {
+var _create_leaps_ace_marker = function(session) {
 	var marker = {};
 
 	marker.draw_handler = null;
@@ -101,7 +101,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 		marker.redraw();
 	};
 
-	marker.session = ace_editor.getSession();
+	marker.session = session;
 	marker.session.addDynamicMarker(marker, true);
 
 	return marker;
@@ -110,7 +110,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 /* leap_bind_ace_editor takes an existing leap_client and uses it to convert an Ace web editor
  * (http://ace.c9.io) into a live leaps shared editor.
  */
-var leap_bind_ace_editor = function(leap_client, ace_editor) {
+var leap_bind_ace_editor = function(leap_client, session) {
 	if ( null === document.getElementById("leaps-ace-style") ) {
 		var node = document.createElement('style');
 		node.id = "leaps-ace-style";
@@ -122,40 +122,41 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		document.body.appendChild(node);
 	}
 
-	this._ace = ace_editor;
 	this._leap_client = leap_client;
+	this._session = session;
 
 	this._content = "";
 	this._ready = false;
 	this._blind_eye_turned = false;
 
-	this._ace.setReadOnly(true);
+	//this._ace.setReadOnly(true);
 
-	this._marker = _create_leaps_ace_marker(this._ace);
+	this._marker = _create_leaps_ace_marker(session);
 
 	var binder = this;
 
-	this._ace.getSession().on('change', function(e) {
+	session.on('change', function(e) {
 		binder._convert_to_transform.apply(binder, [ e ]);
 	});
 
 	this._leap_client.subscribe_event("document", function(doc) {
+		console.log(doc)
 		binder._content = doc.content;
 
 		binder._blind_eye_turned = true;
-		binder._ace.setValue(doc.content);
-		binder._ace.setReadOnly(false);
-		binder._ace.clearSelection();
+		session.setValue(doc.content);
+		//binder._ace.setReadOnly(false);
+		session.selection.clearSelection();
 
-		var old_undo = binder._ace.getSession().getUndoManager();
+		var old_undo = session.getUndoManager();
 		old_undo.reset();
-		binder._ace.getSession().setUndoManager(old_undo);
+		session.setUndoManager(old_undo);
 
 		binder._ready = true;
 		binder._blind_eye_turned = false;
 
 		binder._pos_interval = setInterval(function() {
-			var session = binder._ace.getSession(), doc = session.getDocument();
+			var doc = session.getDocument();
 			var position = session.getSelection().getCursor();
 			var index = doc.positionToIndex(position, 0);
 
@@ -170,7 +171,7 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 	});
 
 	this._leap_client.subscribe_event("disconnect", function() {
-		binder._ace.setReadOnly(true);
+		//binder._ace.setReadOnly(true);
 
 		if ( undefined !== binder._pos_interval ) {
 			clearTimeout(binder._pos_interval);
@@ -204,7 +205,7 @@ leap_bind_ace_editor.prototype.set_cursor_handler = function(handler, clear_hand
 leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 	this._blind_eye_turned = true;
 
-	var edit_session = this._ace.getSession();
+	var edit_session = this._session;
 	var live_document = edit_session.getDocument();
 
 	var position = live_document.indexToPosition(transform.position, 0);
@@ -224,7 +225,7 @@ leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 	this._content = this._leap_client.apply(transform, this._content);
 
 	setTimeout((function() {
-		if ( this._content !== this._ace.getValue() ) {
+		if ( this._content !== this._session.getValue() ) {
 			this._leap_client._dispatch_event.apply(this._leap_client,
 				[ this._leap_client.EVENT_TYPE.ERROR, [
 					"Local editor has lost synchronization with server"
@@ -242,25 +243,17 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 
 	var tform = {};
 
-	var live_document = this._ace.getSession().getDocument();
+	var live_document = this._session.getDocument();
 	var nl = live_document.getNewLineCharacter();
 
-	switch (e.data.action) {
-	case "insertText":
-		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.insert = e.data.text;
+	switch (e.action) {
+	case "insert":
+		tform.position = live_document.positionToIndex(e.start, 0);
+		tform.insert = e.lines.join(nl);
 		break;
-	case "insertLines":
-		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.insert = e.data.lines.join(nl) + nl;
-		break;
-	case "removeText":
-		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.num_delete = e.data.text.length;
-		break;
-	case "removeLines":
-		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.num_delete = e.data.lines.join(nl).length + nl.length;
+	case "remove":
+		tform.position = live_document.positionToIndex(e.start, 0);
+		tform.num_delete = e.lines.join(nl).length;
 		break;
 	}
 
@@ -281,7 +274,7 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 	}
 
 	setTimeout((function() {
-		if ( this._content !== this._ace.getValue() ) {
+		if ( this._content !== this._session.getValue() ) {
 			this._leap_client._dispatch_event.apply(this._leap_client,
 				[ this._leap_client.EVENT_TYPE.ERROR, [
 					"Local editor has lost synchronization with server"
