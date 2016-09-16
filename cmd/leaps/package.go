@@ -32,5 +32,6 @@ To rebuild the generated files:
 
 go get github.com/jteeuwen/go-bindata/...
 go get github.com/elazarl/go-bindata-assetfs/...
+go generate
 */
 package main
