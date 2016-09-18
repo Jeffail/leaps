@@ -29,9 +29,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	gopath "path"
 	"syscall"
 	"time"
-	gopath "path"
+
 	"golang.org/x/net/websocket"
 
 	"github.com/jeffail/leaps/lib/acl"
@@ -66,7 +67,7 @@ func init() {
 var endpoints = []interface{}{}
 
 func handle(path, description string, handler http.HandlerFunc) {
-	path = gopath.Join(*subdirPath, path)
+	path = gopath.Join("/", *subdirPath, path)
 	http.HandleFunc(path, handler)
 	endpoints = append(endpoints, struct {
 		Path string `json:"path"`
@@ -180,15 +181,20 @@ If a path is not specified the current directory is shared instead.
 		})
 
 	handle("/stats", "Lists all aggregated metrics as a json blob.", stats.JSONHandler())
-	var myPath = gopath.Join("/", *subdirPath) + "/"
 
+	wwwPath := gopath.Join("/", *subdirPath)
+	stripPath := ""
+	if wwwPath != "/" {
+		wwwPath = wwwPath + "/"
+		stripPath = wwwPath
+	}
 	if len(*debugWWWDir) > 0 {
 		logger.Warnf("Serving web files from alternative www dir: %v\n", *debugWWWDir)
-		http.Handle(myPath, http.StripPrefix(myPath, http.FileServer(http.Dir(*debugWWWDir))))
+		http.Handle(wwwPath, http.StripPrefix(stripPath, http.FileServer(http.Dir(*debugWWWDir))))
 	} else {
-		http.Handle(myPath, http.StripPrefix(myPath, http.FileServer(assetFS())))
+		http.Handle(wwwPath, http.StripPrefix(stripPath, http.FileServer(assetFS())))
 	}
-	http.Handle(gopath.Join("/", *subdirPath) + "/leaps/ws",
+	http.Handle(gopath.Join("/", *subdirPath, "/leaps/ws"),
 		websocket.Handler(leaphttp.WebsocketHandler(curator, time.Second, logger, stats)))
 
 	go func() {
