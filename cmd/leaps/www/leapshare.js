@@ -517,7 +517,7 @@ var join_new_document = function(document_id) {
 	leaps_client.ACE_set_cursor_handler(ACE_cursor_handler, ACE_cursor_clear_handler);
 
 	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
-	leaps_client.connect(protocol + "//" + window.location.host + "/leaps/ws");
+	leaps_client.connect(protocol + "//" + window.location.host + window.location.pathname + "leaps/ws");
 };
 
 var refresh_document = function() {
@@ -633,7 +633,7 @@ file_list.prototype.create_dir_ele = function(id, name) {
 file_list.prototype.refresh = function() {
 	var _this = this;
 
-	AJAX_REQUEST("/files", function(data) {
+	AJAX_REQUEST(window.location.pathname + "files", function(data) {
 		try {
 			var paths_list = JSON.parse(data);
 			_this.update_paths(paths_list.paths, paths_list.users);
