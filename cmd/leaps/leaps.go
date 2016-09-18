@@ -31,7 +31,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
+	gopath "path"
 	"golang.org/x/net/websocket"
 
 	"github.com/jeffail/leaps/lib/acl"
@@ -50,6 +50,7 @@ var (
 	showHidden  *bool
 	debugWWWDir *string
 	logLevel    *string
+	subdirPath  *string
 )
 
 func init() {
@@ -57,6 +58,7 @@ func init() {
 	showHidden = flag.Bool("all", false, "Display all files, including hidden")
 	debugWWWDir = flag.String("use_www", "", "Serve alternative web files from this dir")
 	logLevel = flag.String("log_level", "INFO", "Log level (NONE, ERROR, WARM, INFO, DEBUG, TRACE)")
+	subdirPath = flag.String("path", "/", "Subdirectory (when running leaps in a webserver subdirectory as example.com/myleaps)")
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -64,6 +66,7 @@ func init() {
 var endpoints = []interface{}{}
 
 func handle(path, description string, handler http.HandlerFunc) {
+	path = gopath.Join(*subdirPath, path)
 	http.HandleFunc(path, handler)
 	endpoints = append(endpoints, struct {
 		Path string `json:"path"`
@@ -177,18 +180,19 @@ If a path is not specified the current directory is shared instead.
 		})
 
 	handle("/stats", "Lists all aggregated metrics as a json blob.", stats.JSONHandler())
+	var myPath = gopath.Join("/", *subdirPath) + "/"
 
 	if len(*debugWWWDir) > 0 {
 		logger.Warnf("Serving web files from alternative www dir: %v\n", *debugWWWDir)
-		http.Handle("/", http.FileServer(http.Dir(*debugWWWDir)))
+		http.Handle(myPath, http.StripPrefix(myPath, http.FileServer(http.Dir(*debugWWWDir))))
 	} else {
-		http.Handle("/", http.FileServer(assetFS()))
+		http.Handle(myPath, http.StripPrefix(myPath, http.FileServer(assetFS())))
 	}
-	http.Handle("/leaps/ws",
+	http.Handle(gopath.Join("/", *subdirPath) + "/leaps/ws",
 		websocket.Handler(leaphttp.WebsocketHandler(curator, time.Second, logger, stats)))
 
 	go func() {
-		logger.Infof("Serving HTTP requests at: %v\n", *httpAddress)
+		logger.Infof("Serving HTTP requests at: %v%v\n", *httpAddress, *subdirPath)
 		if httperr := http.ListenAndServe(*httpAddress, nil); httperr != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("HTTP listen error: %v\n", httperr))
 		}
