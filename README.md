@@ -62,7 +62,7 @@ git submodule add https://$PACKAGE vendor/$PACKAGE"
 
 It might be handy to set yourself a function for this in your `.bashrc`:
 
-```
+```bash
 function go-add-vendor {
     git submodule add https://$1 vendor/$1
 }
