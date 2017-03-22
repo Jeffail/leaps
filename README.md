@@ -28,21 +28,21 @@ To read about the JavaScript client check out the [README][2].
 Leaps is a single binary, with no runtime dependencies. Just download a package
 for your OS from [the latest releases page][3].
 
-### From homebrew
+### From homebrew
 
 ```bash
 brew install leaps
 leaps -h
 ```
 
-### Build with Go
+### Build with Go
 
 ```bash
 go get github.com/jeffail/leaps/cmd/...
 leaps -h
 ```
 
-## Vendoring
+## Vendoring
 
 Versions of go above 1.6 should automatically `go get` all vendored libraries.
 Otherwise, while cloning use `--recursive`:
