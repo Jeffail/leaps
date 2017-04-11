@@ -126,38 +126,56 @@ func TestPrematureTransforms(t *testing.T) {
 	}
 
 	for _, test := range tests.Stories {
-		content := bytes.Runes([]byte(test.Content))
-		contentOrdered := bytes.Runes([]byte(test.Content))
+		// contentClient simulates the local clients doc copy
+		contentClient := bytes.Runes([]byte(test.Content))
+
+		// contentServer simulates the servers doc copy
 		contentServer := bytes.Runes([]byte(test.Content))
 
-		applyTransform(&content, &test.LocalTform)
+		// contentOrdered is a hypothetical ideal document receiving each change
+		// in the intended order
+		contentOrdered := bytes.Runes([]byte(test.Content))
 
+		// Apply our local transform to the client doc immediately
+		applyTransform(&contentClient, &test.LocalTform)
+
+		// Take a copy of our local tform to represent the servers' copy
 		remoteOT := test.LocalTform
 
+		// For each tform dispatched by the server
 		for i := range test.RemoteTforms {
+			// Fix the server copy so that it can be applied after remote tform
 			FixOutOfDateTransform(&remoteOT, &test.RemoteTforms[i])
 
+			// Apply the remote tform in the correct original order for both
+			// the server and idealistic docs
 			applyTransform(&contentOrdered, &test.RemoteTforms[i])
 			applyTransform(&contentServer, &test.RemoteTforms[i])
-			FixPrematureTransform(&test.LocalTform, &test.RemoteTforms[i])
+
+			// Fix our premature clients tform with respect to remote tform
+			FixPrematureTransform(&test.RemoteTforms[i], &test.LocalTform)
+
+			// Validate the fix is what we expected
 			if !reflect.DeepEqual(test.RemoteTforms[i], test.CorrectedRemoteTforms[i]) {
 				t.Errorf("Wrong remote correction from story %s, %v != %v",
 					test.Name, test.RemoteTforms[i], test.CorrectedRemoteTforms[i])
 			}
-			applyTransform(&content, &test.RemoteTforms[i])
+
+			// Apply the fixed remote tform to our client doc
+			applyTransform(&contentClient, &test.RemoteTforms[i])
 		}
 
 		applyTransform(&contentOrdered, &test.LocalTform)
 		applyTransform(&contentServer, &remoteOT)
 
-		if exp, act := test.Result, string(content); exp != act {
-			t.Errorf("Wrong result from story %s, %v != %v", test.Name, exp, act)
+		if exp, act := test.Result, string(contentClient); exp != act {
+			t.Errorf("Wrong client doc result from story %s, %v != %v", test.Name, exp, act)
 		}
 		if exp, act := test.Result, string(contentOrdered); exp != act {
-			t.Errorf("Wrong result from story in order %s, %v != %v", test.Name, exp, act)
+			t.Errorf("Wrong ordered doc result from story %s, %v != %v", test.Name, exp, act)
 		}
 		if exp, act := test.Result, string(contentServer); exp != act {
-			t.Errorf("Wrong result from story compared to server %s, %v != %v", test.Name, exp, act)
+			t.Errorf("Wrong server doc result from story %s, %v != %v", test.Name, exp, act)
 		}
 
 		if !reflect.DeepEqual(remoteOT, test.CorrectedLocalTform) {

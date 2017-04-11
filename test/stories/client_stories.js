@@ -165,5 +165,81 @@
 			"result" : "heyo testing world you poor fool"
 		}
 	]
+},
+{
+	"name" : "emojitest2",
+	"content" : "hello a world",
+	"result" : "hello b happy b faces",
+	"epochs" : [
+		{
+			"send" : [
+				{ "position" : 6, "num_delete" : 2, "insert" : "happy " }
+			],
+			"receive" : [
+				{
+					"response_type" : "correction",
+					"version" : 6
+				},
+				{
+					"response_type" : "transforms",
+					"transforms" : [
+						{ "position" : 8, "num_delete" : 5, "insert" : "", "version" : 2 },
+						{ "position" : 8, "num_delete" : 0, "insert" : "faces", "version" : 3 }
+					]
+				},
+				{
+					"response_type" : "transforms",
+					"transforms" : [
+						{ "position" : 6, "num_delete" : 0, "insert" : "b ", "version" : 4 }
+					]
+				},
+				{
+					"response_type" : "transforms",
+					"transforms" : [
+						{ "position" : 10, "num_delete" : 0, "insert" : "b ", "version" : 5 }
+					]
+				}
+			],
+			"result" : "hello b happy b faces"
+		}
+	]
+},
+{
+	"name" : "emojitest1",
+	"content" : "hello 🙁 world",
+	"result" : "hello 😀 happy 😀 faces",
+	"epochs" : [
+		{
+			"send" : [
+				{ "position" : 6, "num_delete" : 2, "insert" : "happy " }
+			],
+			"receive" : [
+				{
+					"response_type" : "correction",
+					"version" : 6
+				},
+				{
+					"response_type" : "transforms",
+					"transforms" : [
+						{ "position" : 8, "num_delete" : 5, "insert" : "", "version" : 2 },
+						{ "position" : 8, "num_delete" : 0, "insert" : "faces", "version" : 3 }
+					]
+				},
+				{
+					"response_type" : "transforms",
+					"transforms" : [
+						{ "position" : 6, "num_delete" : 0, "insert" : "😀 ", "version" : 4 }
+					]
+				},
+				{
+					"response_type" : "transforms",
+					"transforms" : [
+						{ "position" : 10, "num_delete" : 0, "insert" : "😀 ", "version" : 5 }
+					]
+				}
+			],
+			"result" : "hello 😀 happy 😀 faces"
+		}
+	]
 }
 ] }

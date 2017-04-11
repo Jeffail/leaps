@@ -84,5 +84,22 @@
 	"corrected_remote_tforms" : [
 		{ "position" : 13, "num_delete" : 2, "insert" : "w0" }
 	]
+},
+{
+	"name" : "genstory7",
+	"content" : "hello world",
+	"result" : "hello stupid internet you fool",
+	"local_tform": { "position" : 11, "num_delete" : 0, "insert" : " you fool" },
+	"remote_tforms" : [
+		{ "position" : 6, "num_delete" : 5, "insert" : "" },
+		{ "position" : 6, "num_delete" : 0, "insert" : "internet" },
+		{ "position" : 6, "num_delete" : 0, "insert" : "stupid " }
+	],
+	"corrected_local_tform": { "position" : 21, "num_delete" : 0, "insert" : " you fool" },
+	"corrected_remote_tforms" : [
+		{ "position" : 6, "num_delete" : 5, "insert" : "" },
+		{ "position" : 6, "num_delete" : 0, "insert" : "internet" },
+		{ "position" : 6, "num_delete" : 0, "insert" : "stupid " }
+	]
 }
 ] }

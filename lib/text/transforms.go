@@ -22,7 +22,9 @@ THE SOFTWARE.
 
 package text
 
-import "bytes"
+import (
+	"bytes"
+)
 
 //--------------------------------------------------------------------------------------------------
 
@@ -127,7 +129,7 @@ func FixPrematureTransform(unapplied, unsent *OTransform) {
 	var before, after *OTransform
 
 	// Order the OTs by position in the document.
-	if unapplied.Position < unsent.Position {
+	if unapplied.Position <= unsent.Position {
 		before = unapplied
 		after = unsent
 	} else {
