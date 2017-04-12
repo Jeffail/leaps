@@ -151,22 +151,25 @@ leap_model.prototype._validate_updates = function(user_updates) {
 leap_model.prototype._merge_transforms = function(first, second) {
 	var overlap, remainder;
 
-	if ( first.position + first.insert.length === second.position ) {
+	var first_len = [...first.insert].length;
+
+	if ( ( first.position + first_len) === second.position ) {
 		first.insert = first.insert + second.insert;
 		first.num_delete += second.num_delete;
 		return true;
 	}
 	if ( second.position === first.position ) {
-		remainder = Math.max(0, second.num_delete - first.insert.length);
+		remainder = Math.max(0, second.num_delete - first_len);
 		first.num_delete += remainder;
-		first.insert = second.insert + first.insert.slice(second.num_delete);
+		first.insert = second.insert + [...first.insert].slice(second.num_delete).join('');
 		return true;
 	}
-	if ( second.position > first.position && second.position < ( first.position + first.insert.length ) ) {
+	if ( second.position > first.position && second.position < ( first.position + first_len ) ) {
 		overlap = second.position - first.position;
-		remainder = Math.max(0, second.num_delete - (first.insert.length - overlap));
+		remainder = Math.max(0, second.num_delete - (first_len - overlap));
 		first.num_delete += remainder;
-		first.insert = first.insert.slice(0, overlap) + second.insert + first.insert.slice(overlap + second.num_delete);
+		first.insert = [...first.insert].slice(0, overlap).join('') +
+			second.insert + [...first.insert].slice(overlap + second.num_delete).join('');
 		return true;
 	}
 	return false;
@@ -189,25 +192,28 @@ leap_model.prototype._collide_transforms = function(unapplied, unsent) {
 		earlier = unsent;
 		later = unapplied;
 	}
+
+	var earlier_len = [...earlier.insert].length;
+	var later_len = [...later.insert].length;
+
 	if ( earlier.num_delete === 0 ) {
-		later.position += earlier.insert.length;
+		later.position += earlier_len;
 	} else if ( ( earlier.num_delete + earlier.position ) <= later.position ) {
-		later.position += ( earlier.insert.length - earlier.num_delete );
+		later.position += ( earlier_len - earlier.num_delete );
 	} else {
 		var pos_gap = later.position - earlier.position;
-		var over_hang = Math.min(later.insert.length, earlier.num_delete - pos_gap);
 		var excess = Math.max(0, (earlier.num_delete - pos_gap));
 
 		// earlier changes
 		if ( excess > later.num_delete ) {
-			earlier.num_delete += later.insert.length - later.num_delete;
+			earlier.num_delete += later_len - later.num_delete;
 			earlier.insert = earlier.insert + later.insert;
 		} else {
 			earlier.num_delete = pos_gap;
 		}
 		// later changes
 		later.num_delete = Math.min(0, later.num_delete - excess);
-		later.position = earlier.position + earlier.insert.length;
+		later.position = earlier.position + earlier_len;
 	}
 };
 
@@ -708,9 +714,9 @@ var leap_apply = function(transform, content) {
 		to_insert = transform.insert;
 	}
 
-	var first = content.slice(0, transform.position);
-	var second = content.slice(transform.position + num_delete, content.length);
-	return first + to_insert + second;
+	var content_u = [...content];
+	return content_u.slice(0, transform.position).join('') + to_insert +
+		content_u.slice(transform.position + num_delete, content_u.length).join('');
 };
 
 leap_client.prototype.apply = leap_apply;
