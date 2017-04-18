@@ -23,33 +23,34 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
+var leap_str = require('../leapclient').str;
 var model = new (require('../leapclient')._model)(0);
 
 var tests = [
 	{
-		first : { position : 5, insert : "hello", num_delete : 0 },
-		second : { position : 10, insert : " world", num_delete : 0 },
-		result : { position : 5, insert : "hello world", num_delete : 0 }
+		first : { position : 5, insert : new leap_str("hello"), num_delete : 0 },
+		second : { position : 10, insert : new leap_str(" world"), num_delete : 0 },
+		result : { position : 5, insert : new leap_str("hello world"), num_delete : 0 }
 	},
 	{
-		first : { position : 5, insert : "hello", num_delete : 4 },
-		second : { position : 10, insert : " world", num_delete : 3 },
-		result : { position : 5, insert : "hello world", num_delete : 7 }
+		first : { position : 5, insert : new leap_str("hello"), num_delete : 4 },
+		second : { position : 10, insert : new leap_str(" world"), num_delete : 3 },
+		result : { position : 5, insert : new leap_str("hello world"), num_delete : 7 }
 	},
 	{
-		first : { position : 5, insert : "hello", num_delete : 2 },
-		second : { position : 5, insert : "j", num_delete : 1 },
-		result : { position : 5, insert : "jello", num_delete : 2 }
+		first : { position : 5, insert : new leap_str("hello"), num_delete : 2 },
+		second : { position : 5, insert : new leap_str("j"), num_delete : 1 },
+		result : { position : 5, insert : new leap_str("jello"), num_delete : 2 }
 	},
 	{
-		first : { position : 5, insert : "hello", num_delete : 0 },
-		second : { position : 7, insert : "y world", num_delete : 4 },
-		result : { position : 5, insert : "hey world", num_delete : 1 }
+		first : { position : 5, insert : new leap_str("hello"), num_delete : 0 },
+		second : { position : 7, insert : new leap_str("y world"), num_delete : 4 },
+		result : { position : 5, insert : new leap_str("hey world"), num_delete : 1 }
 	},
 	{
-		first : { position : 5, insert : "0", num_delete : 1 },
-		second : { position : 6, insert : "1", num_delete : 1 },
-		result : { position : 5, insert : "01", num_delete : 2 }
+		first : { position : 5, insert : new leap_str("0"), num_delete : 1 },
+		second : { position : 6, insert : new leap_str("1"), num_delete : 1 },
+		result : { position : 5, insert : new leap_str("01"), num_delete : 2 }
 	}
 ];
 

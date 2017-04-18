@@ -23,12 +23,56 @@ THE SOFTWARE.
 /*jshint newcap: false*/
 
 var leap_client = {};
+var leap_str = {};
 
 (function() {
 "use strict";
 
 /*--------------------------------------------------------------------------------------------------
  */
+
+/* leap_str is a wrapper around strings that stores lazy evaluated codepoint arrays using the ES6
+ * triple dot operator.
+ *
+ * @param any_str either a standard string or an array of unicode codepoints.
+ */
+leap_str = function(any_str) {
+	if ( any_str instanceof leap_str ) {
+		this._str = any_str._str;
+		this._u_str = any_str._u_str;
+	} else if ( any_str instanceof String ) {
+		this._str = any_str;
+	} else if ( any_str instanceof Array ) {
+		this._u_str = any_str;
+	} else if ( typeof any_str === "string" ) {
+		this._str = any_str;
+	} else {
+		throw TypeError("attempted to construct leap_str with non-string/array type");
+	}
+};
+
+// Returns the standard underlying string.
+leap_str.prototype.str = function() {
+	// Lazy evaluated.
+	if ( undefined === this._str ) {
+		this._str = this._u_str.join('');
+	}
+	return this._str;
+};
+
+try {
+	// Returns the underlying unicode codepoint array. We define this with eval
+	// in order to support older browsers.
+	leap_str.prototype.u_str = eval('(function() { if ( undefined === this._u_str ) { this._u_str = [...this._str]; } return this._u_str; })');
+} catch (e) {
+	leap_str.prototype.u_str = function() { return this._str.split(''); };
+	console.warn("JS Engine without ES6 support detected: this will result in" +
+		" unexpected behaviour when working with larger unicode codepoints.");
+}
+
+/*--------------------------------------------------------------------------------------------------
+ */
+
 /* leap_model is an object designed to keep track of the inbound and outgoing transforms
  * for a local document, and updates the caller with the appropriate actions at each stage.
  *
@@ -84,11 +128,13 @@ leap_model.prototype._validate_transforms = function(transforms) {
 			}
 		}
 		if ( tform.insert !== undefined ) {
-			if ( typeof(tform.insert) !== "string" ) {
+			try {
+				tform.insert = new leap_str(tform.insert);
+			} catch(e) {
 				return "transform contained non-string value for insert: " + JSON.stringify(tform);
 			}
 		} else {
-			tform.insert = "";
+			tform.insert = new leap_str("");
 		}
 	}
 };
@@ -151,22 +197,25 @@ leap_model.prototype._validate_updates = function(user_updates) {
 leap_model.prototype._merge_transforms = function(first, second) {
 	var overlap, remainder;
 
-	if ( first.position + first.insert.length === second.position ) {
-		first.insert = first.insert + second.insert;
+	var first_len = first.insert.u_str().length;
+
+	if ( ( first.position + first_len) === second.position ) {
+		first.insert = new leap_str(first.insert.str() + second.insert.str());
 		first.num_delete += second.num_delete;
 		return true;
 	}
 	if ( second.position === first.position ) {
-		remainder = Math.max(0, second.num_delete - first.insert.length);
+		remainder = Math.max(0, second.num_delete - first_len);
 		first.num_delete += remainder;
-		first.insert = second.insert + first.insert.slice(second.num_delete);
+		first.insert = new leap_str(second.insert.str() + first.insert.u_str().slice(second.num_delete).join(''));
 		return true;
 	}
-	if ( second.position > first.position && second.position < ( first.position + first.insert.length ) ) {
+	if ( second.position > first.position && second.position < ( first.position + first_len ) ) {
 		overlap = second.position - first.position;
-		remainder = Math.max(0, second.num_delete - (first.insert.length - overlap));
+		remainder = Math.max(0, second.num_delete - (first_len - overlap));
 		first.num_delete += remainder;
-		first.insert = first.insert.slice(0, overlap) + second.insert + first.insert.slice(overlap + second.num_delete);
+		first.insert = new leap_str(first.insert.u_str().slice(0, overlap).join('') +
+			second.insert.str() + first.insert.u_str().slice(overlap + second.num_delete).join(''));
 		return true;
 	}
 	return false;
@@ -189,25 +238,28 @@ leap_model.prototype._collide_transforms = function(unapplied, unsent) {
 		earlier = unsent;
 		later = unapplied;
 	}
+
+	var earlier_len = earlier.insert.u_str().length;
+	var later_len = later.insert.u_str().length;
+
 	if ( earlier.num_delete === 0 ) {
-		later.position += earlier.insert.length;
+		later.position += earlier_len;
 	} else if ( ( earlier.num_delete + earlier.position ) <= later.position ) {
-		later.position += ( earlier.insert.length - earlier.num_delete );
+		later.position += ( earlier_len - earlier.num_delete );
 	} else {
 		var pos_gap = later.position - earlier.position;
-		var over_hang = Math.min(later.insert.length, earlier.num_delete - pos_gap);
 		var excess = Math.max(0, (earlier.num_delete - pos_gap));
 
 		// earlier changes
 		if ( excess > later.num_delete ) {
-			earlier.num_delete += later.insert.length - later.num_delete;
-			earlier.insert = earlier.insert + later.insert;
+			earlier.num_delete += later_len - later.num_delete;
+			earlier.insert = new leap_str(earlier.insert.str() + later.insert.str());
 		} else {
 			earlier.num_delete = pos_gap;
 		}
 		// later changes
 		later.num_delete = Math.min(0, later.num_delete - excess);
-		later.position = earlier.position + earlier.insert.length;
+		later.position = earlier.position + earlier_len;
 	}
 };
 
@@ -246,8 +298,13 @@ leap_model.prototype._resolve_state = function() {
 					this._unsent.shift();
 				}
 				this._sending.version = this._version + 1;
+
 				this._leap_state = this.SENDING;
-				return { send : this._sending, apply : unapplied };
+				return { send : {
+					version: this._sending.version,
+					num_delete: this._sending.num_delete,
+					insert: this._sending.insert.str()
+				}, apply : unapplied };
 			} else {
 				this._leap_state = this.READY;
 				return { apply : unapplied };
@@ -284,7 +341,11 @@ leap_model.prototype.submit = function(transform) {
 		this._leap_state = this.SENDING;
 		transform.version = this._version + 1;
 		this._sending = transform;
-		return { send : transform };
+		return { send : {
+			version: this._sending.version,
+			num_delete: this._sending.num_delete,
+			insert: this._sending.insert.str()
+		} };
 	case this.BUFFERING:
 	case this.SENDING:
 		this._unsent = this._unsent.concat(transform);
@@ -704,13 +765,16 @@ var leap_apply = function(transform, content) {
 		num_delete = transform.num_delete;
 	}
 
-	if ( typeof(transform.insert) === "string" ) {
-		to_insert = transform.insert;
+	if ( undefined !== transform.insert ) {
+		to_insert = new leap_str(transform.insert).str();
 	}
 
-	var first = content.slice(0, transform.position);
-	var second = content.slice(transform.position + num_delete, content.length);
-	return first + to_insert + second;
+	if (! ( content instanceof leap_str ) ) {
+		content = new leap_str(content);
+	}
+
+	return content.u_str().slice(0, transform.position).join('') + to_insert +
+		content.u_str().slice(transform.position + num_delete, content.u_str().length).join('');
 };
 
 leap_client.prototype.apply = leap_apply;
@@ -723,6 +787,7 @@ try {
 		module.exports = {
 			client : leap_client,
 			apply : leap_apply,
+			str: leap_str,
 			_model : leap_model
 		};
 	}

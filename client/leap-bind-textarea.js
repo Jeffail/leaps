@@ -91,11 +91,13 @@ leap_bind_textarea.prototype._apply_transform = function(transform) {
 	var content = this._text_area.value;
 
 	if ( transform.position <= cursor_pos ) {
+		// Need to test this with large unicode codepoints.
 		cursor_pos += (transform.insert.length - transform.num_delete);
 		cursor_pos_end += (transform.insert.length - transform.num_delete);
 	}
 
 	this._content = this._text_area.value = this._leap_client.apply(transform, content);
+
 	this._text_area.selectionStart = cursor_pos;
 	this._text_area.selectionEnd = cursor_pos_end;
 };
@@ -105,30 +107,34 @@ leap_bind_textarea.prototype._apply_transform = function(transform) {
  * is generated from the comparison and dispatched via the leap_client.
  */
 leap_bind_textarea.prototype._trigger_diff = function() {
-	var new_content = this._text_area.value;
-	if ( !(this._ready) || new_content === this._content ) {
+	var new_content = new leap_str(this._text_area.value);
+	var old_content = this._content;
+
+	if ( !(this._ready) || new_content.str() === old_content.str() ) {
 		return;
 	}
 
+	this._content = new_content;
+
 	var i = 0, j = 0;
-	while (new_content[i] === this._content[i]) {
+	while (new_content.u_str()[i] === old_content.u_str()[i]) {
 		i++;
 	}
-	while ((new_content[(new_content.length - 1 - j)] === this._content[(this._content.length - 1 - j)]) &&
-			((i + j) < new_content.length) && ((i + j) < this._content.length)) {
+	while ((new_content.u_str()[(new_content.u_str().length - 1 - j)] ===
+				old_content.u_str()[(old_content.u_str().length - 1 - j)]) &&
+			((i + j) < new_content.u_str().length) && ((i + j) < old_content.u_str().length)) {
 		j++;
 	}
 
 	var tform = { position : i };
 
-	if (this._content.length !== (i + j)) {
-		tform.num_delete = (this._content.length - (i + j));
+	if (old_content.u_str().length !== (i + j)) {
+		tform.num_delete = (old_content.u_str().length - (i + j));
 	}
-	if (new_content.length !== (i + j)) {
-		tform.insert = new_content.slice(i, new_content.length - j);
+	if (new_content.u_str().length !== (i + j)) {
+		tform.insert = new leap_str(new_content.u_str().slice(i, new_content.u_str().length - j).join(''));
 	}
 
-	this._content = new_content;
 	if ( tform.insert !== undefined || tform.num_delete !== undefined ) {
 		var err = this._leap_client.send_transform(tform);
 		if ( err !== undefined ) {

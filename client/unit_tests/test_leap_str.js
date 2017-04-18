@@ -23,24 +23,52 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
-var la = require('../leapclient').apply,
-    leap_str = require('../leapclient').str;
+var leap_str = require('../leapclient').str;
 
-var content = "hello world";
+function test_content(test) {
+	var good_cases = [
+		"hello world",
+		"",
+		'',
+		'a',
+		['a','b','c'],
+		new String("test"),
+		new String(),
+		new leap_str('')
+	];
 
-var tests = [
-	{ transform : { position : 3, insert : new leap_str("123"), num_delete : 0 }, result : "hel123lo world" },
-	{ transform : { position : 3, insert : new leap_str("123"), num_delete : 3 }, result : "hel123world" },
-	{ transform : { position : 0, insert : new leap_str(""), num_delete : 5 }, result : " world" }
-];
+	for ( var index = 0; index < good_cases.length; ++index ) {
+		try {
+			var tmp = new leap_str(good_cases[index]);
+		} catch (e) {
+			test.ok(false, e.what());
+		}
+	}
+};
+
+function test_strings(test) {
+	var cases = [
+		{ input: "hello world", u: ['h','e','l','l','o',' ','w','o','r','l','d'], s: "hello world" }
+	];
+
+	for ( var index = 0; index < cases.length; ++index ) {
+		try {
+			var tmp = new leap_str(cases[index].input);
+			test.ok(cases[index].s === tmp.str(), "Non-matching regular strings: " + cases[index].s + " != " + tmp.str());
+			test.ok(JSON.stringify(cases[index].u) === JSON.stringify(tmp.u_str()),
+					"Non-matching codepoint arrays: " + cases[index].u + " != " + tmp.u_str());
+		} catch (e) {
+			test.ok(false, e.what());
+		}
+	}
+};
 
 module.exports = function(test) {
 	"use strict";
 
-	for ( var i = 0, l = tests.length; i < l; i++ ) {
-		var result = la(tests[i].transform, content);
-		test.ok(tests[i].result === result, tests[i].result + " != " + result);
-	}
+	test_content(test);
+	test_strings(test);
+
 	test.done();
 };
 

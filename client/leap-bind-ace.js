@@ -28,6 +28,43 @@ THE SOFTWARE.
 /*--------------------------------------------------------------------------------------------------
  */
 
+// This is a rewrite of an ACE editor document.indexToPosition() which also
+// takes into account the unicode codepoints larger than 16 bits when counting.
+function u_index_to_position(doc, index, startRow) {
+	var lines = doc.$lines || doc.getAllLines();
+	var newlineChar = doc.getNewLineCharacter();
+	var newlineLength = newlineChar.length;
+
+	for ( var i = startRow || 0, l = lines.length; i < l; i++ ) {
+		let uline = new leap_str(lines[i] + newlineChar);
+		let ulength = uline.u_str().length;
+		index -= ulength;
+		if (index < 0) {
+			if ( ulength === (lines[i].length + newlineLength) ) {
+				return {row: i, column: index + ulength};
+			}
+			return {row: i, column: uline.u_str().slice(0, index).join('').length};
+		}
+	}
+	return {row: l-1, column: lines[l-1].length};
+}
+
+// This is a rewrite of an ACE editor document.positionToIndex() which also
+// takes into account the unicode codepoints larger than 16 bits when counting.
+function position_to_u_index(doc, position, startRow) {
+	var lines = doc.$lines || doc.getAllLines();
+	var newlineChar = doc.getNewLineCharacter();
+	var newlineLength = newlineChar.length;
+	var index = 0;
+	var row = Math.min(position.row, lines.length);
+
+	for (var i = startRow || 0; i < row; ++i) {
+		index += (new leap_str(lines[i])).u_str().length + newlineLength;
+	}
+
+	return index + (new leap_str((lines[row]+newlineChar).slice(0, position.column))).u_str().length;
+}
+
 /*
 _create_leaps_ace_marker - creates a marker for displaying the cursor positions of other users in an
 ace editor.
@@ -79,7 +116,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 		for ( i = 0, l = cursors.length; i < l; i++ ) {
 			if ( cursors[i].session_id === update.client.session_id ) {
 				current = cursors[i];
-				current.position = marker.session.getDocument().indexToPosition(update.message.position, 0);
+				current.position = u_index_to_position(marker.session.getDocument(), update.message.position, 0);
 				current.updated = new Date().getTime();
 				break;
 			}
@@ -89,7 +126,7 @@ var _create_leaps_ace_marker = function(ace_editor) {
 				current = {
 					user_id: update.client.user_id,
 					session_id: update.client.session_id,
-					position: marker.session.getDocument().indexToPosition(update.client.position, 0),
+					position: u_index_to_position(marker.session.getDocument(), update.client.position, 0),
 					updated: new Date().getTime()
 				};
 				cursors.push(current);
@@ -157,7 +194,7 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		binder._pos_interval = setInterval(function() {
 			var session = binder._ace.getSession(), doc = session.getDocument();
 			var position = session.getSelection().getCursor();
-			var index = doc.positionToIndex(position, 0);
+			var index = position_to_u_index(doc, position, 0);
 
 			binder._leap_client.update_cursor.apply(binder._leap_client, [ index ]);
 		}, leap_client._POSITION_POLL_PERIOD);
@@ -207,16 +244,16 @@ leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 	var edit_session = this._ace.getSession();
 	var live_document = edit_session.getDocument();
 
-	var position = live_document.indexToPosition(transform.position, 0);
+	var position = u_index_to_position(live_document, transform.position, 0);
 
 	if ( transform.num_delete > 0 ) {
 		edit_session.remove({
 			start: position,
-			end: live_document.indexToPosition(transform.position + transform.num_delete, 0)
+			end: u_index_to_position(live_document, transform.position + transform.num_delete, 0)
 		});
 	}
-	if ( typeof(transform.insert) === "string" && transform.insert.length > 0 ) {
-		edit_session.insert(position, transform.insert);
+	if ( (transform.insert instanceof leap_str) && transform.insert.str().length > 0 ) {
+		edit_session.insert(position, transform.insert.str());
 	}
 
 	this._blind_eye_turned = false;
@@ -247,20 +284,20 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 
 	switch (e.data.action) {
 	case "insertText":
-		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.insert = e.data.text;
+		tform.position = position_to_u_index(live_document, e.data.range.start, 0);
+		tform.insert = new leap_str(e.data.text);
 		break;
 	case "insertLines":
-		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.insert = e.data.lines.join(nl) + nl;
+		tform.position = position_to_u_index(live_document, e.data.range.start, 0);
+		tform.insert = new leap_str(e.data.lines.join(nl) + nl);
 		break;
 	case "removeText":
-		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.num_delete = e.data.text.length;
+		tform.position = position_to_u_index(live_document, e.data.range.start, 0);
+		tform.num_delete = (new leap_str(e.data.text)).u_str().length;
 		break;
 	case "removeLines":
-		tform.position = live_document.positionToIndex(e.data.range.start, 0);
-		tform.num_delete = e.data.lines.join(nl).length + nl.length;
+		tform.position = position_to_u_index(live_document, e.data.range.start, 0);
+		tform.num_delete = (new leap_str(e.data.lines.join(nl))).u_str().length + nl.length;
 		break;
 	}
 
@@ -282,6 +319,8 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 
 	setTimeout((function() {
 		if ( this._content !== this._ace.getValue() ) {
+			console.log("local: " + this._content);
+			console.log("ACE: " + this._ace.getValue());
 			this._leap_client._dispatch_event.apply(this._leap_client,
 				[ this._leap_client.EVENT_TYPE.ERROR, [
 					"Local editor has lost synchronization with server"
