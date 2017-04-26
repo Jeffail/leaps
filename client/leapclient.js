@@ -303,7 +303,8 @@ leap_model.prototype._resolve_state = function() {
 				return { send : {
 					version: this._sending.version,
 					num_delete: this._sending.num_delete,
-					insert: this._sending.insert.str()
+					insert: this._sending.insert.str(),
+					position: this._sending.position
 				}, apply : unapplied };
 			} else {
 				this._leap_state = this.READY;
@@ -344,7 +345,8 @@ leap_model.prototype.submit = function(transform) {
 		return { send : {
 			version: this._sending.version,
 			num_delete: this._sending.num_delete,
-			insert: this._sending.insert.str()
+			insert: this._sending.insert.str(),
+			position: this._sending.position
 		} };
 	case this.BUFFERING:
 	case this.SENDING:
