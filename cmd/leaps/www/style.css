@@ -52,13 +52,11 @@ img {
 /* FONTS */
 
 body, html, a {
-	font-family: "Open Sans", sans-serif;
-	font-weight: 300;
+	font-family: sans-serif;
 }
 
 h1, h2, h3, h4, h5, button, strong, .button, .round-button {
-	font-family: "Open Sans", sans-serif;
-	font-weight: 300;
+	font-family: sans-serif;
 }
 
 /* COLOURS */
