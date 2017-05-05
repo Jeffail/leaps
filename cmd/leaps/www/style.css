@@ -93,7 +93,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 .light-grey {
 	color: #3c3c3c;
-	background-color: #E0E0E0;
+	background-color: #EFEFEF;
 }
 
 .ash {
@@ -311,6 +311,10 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 #logo {
 	float: left;
+}
+
+#username-bar, #input-select, #theme-select {
+	max-width: 100px;
 }
 
 #username-bar, #input-select, #theme-select, #tab-input-container, #wrap-input-container {
