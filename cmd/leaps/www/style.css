@@ -76,6 +76,10 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	background-color: #42A7CA;
 }
 
+.bold {
+	font-weight: bold;
+}
+
 .red {
 	color: #f0f0f0;
 	background-color: #bf5661;
@@ -98,7 +102,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 .ash {
 	color: #4c4c4c;
-	background-color: #F6F6F6;
+	background-color: #E6E6E6;
 }
 
 .box {
@@ -404,30 +408,45 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 @media (min-width: 960px) {
-	#editor {
-		box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+	#menu-bar {
+		left: 0px;
 	}
 
 	#editor {
-		right: 20vw; /* width of info window */
-		bottom: 0;
+		box-shadow: 7px 7px 7px rgba(0, 0, 0, 0.2);
+		right: 245px; /* width of info window */
+		left: 245px;
+		bottom: 15px;
+	}
+
+	#username-bar, #input-select, #theme-select {
+		max-width: none;
+	}
+
+	#file-list-container {
+		top: 50px;
+		left: 10px;
+		bottom: 15px;
+		width: 215px;
 	}
 
 	#users-window {
 		top: 50px;
-		height: 200px;
-		right: 0;
-		width: 20vw;
+		height: 185px;
+		right: 10px;
+		width: 215px;
 	}
 
 	#info-window {
 		top: 250px;
-		right: 0;
-		bottom: 35px;
-		width: 20vw;
+		right: 10px;
+		bottom: 55px;
+		width: 215px;
 	}
 
 	#chat-bar-container {
-		width: 20vw;
+		width: 215px;
+		right: 10px;
+		bottom: 15px;
 	}
 }

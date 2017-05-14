@@ -492,7 +492,7 @@ var join_new_document = function(document_id) {
 
 	leaps_client.on("document", function() {
 		last_document_joined = document_id;
-		system_message("Opened document " + document_id, "blue");
+		system_message("Opened document " + document_id, "ash");
 	});
 
 	leaps_client.on("user", function(user_update) {
@@ -522,7 +522,7 @@ var join_new_document = function(document_id) {
 
 var refresh_document = function() {
 	if ( last_document_joined.length > 0 ) {
-		system_message("Rejoining document " + last_document_joined, "blue");
+		system_message("Rejoining document " + last_document_joined, "ash");
 		join_new_document(last_document_joined);
 	}
 };
@@ -757,10 +757,10 @@ var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
 // Use to alert users when new messages appear
 var flash_chat_window = function() {
 	var info_window = document.getElementById("info-window");
-	info_window.style.boxShadow = "0px 0px 0px 5px #4E81B4";
+	info_window.style.boxShadow = "0px 0px 0px 5px #ffffff";
 
 	setTimeout(function() {
-		info_window.style.boxShadow = "0px 0px 0px 0px #4E81B4";
+		info_window.style.boxShadow = "0px 0px 0px 0px #ffffff";
 	}, 300);
 };
 
@@ -778,7 +778,7 @@ var chat_message = function(user_id, username, message) {
 		name_span.style.color = "#f0f0f0";
 	}
 
-	div.className = "white";
+	div.className = "ash";
 
 	name_span.style.fontWeight = "700";
 	name_span.style.paddingLeft = "4px";
@@ -808,7 +808,7 @@ var system_message = function(text, style) {
 	var messages = document.getElementById("info-messages");
 	var div = document.createElement("div");
 	if ( typeof style === 'string' ) {
-		div.className = style;
+		div.className = style + " bold";
 	}
 	var textNode = document.createTextNode((new Date()).toTimeString().substr(0, 8) + " " + text);
 

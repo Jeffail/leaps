@@ -197,7 +197,7 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 			var index = position_to_u_index(doc, position, 0);
 
 			binder._leap_client.update_cursor.apply(binder._leap_client, [ index ]);
-		}, leap_client._POSITION_POLL_PERIOD);
+		}, 100);
 	});
 
 	this._leap_client.subscribe_event("transforms", function(transforms) {
