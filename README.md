@@ -1,8 +1,8 @@
 ![Leaps](leaps_logo.png "Leaps")
 
-Leaps is a command line utility and golang library for collaboratively editing
-your local files over HTTP, using operational transforms to ensure
-zero-collision synchronization across any number of editing clients.
+Leaps is a service for collaboratively editing your local files over a web UI,
+using operational transforms to ensure zero-collision synchronization across any
+number of editing clients.
 
 Simply navigate to a directory you want to share, run `leaps`, open the hosted
 page in your browser and direct any friends on your LAN to the same page. You
