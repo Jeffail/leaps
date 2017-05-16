@@ -109,13 +109,13 @@ func TestGetUsers(t *testing.T) {
 	auth, storage := authAndStore(log, stats)
 
 	testCases := map[string][]string{
-		"doc1": []string{
+		"doc1": {
 			"user1", "user2", "user3",
 		},
-		"doc2": []string{
+		"doc2": {
 			"user4", "user5", "user6",
 		},
-		"doc3": []string{
+		"doc3": {
 			"user1", "user4", "user7",
 		},
 	}

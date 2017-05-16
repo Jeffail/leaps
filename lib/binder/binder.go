@@ -24,6 +24,7 @@ package binder
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/jeffail/leaps/lib/store"
@@ -33,7 +34,7 @@ import (
 	"github.com/jeffail/util/metrics"
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // Config - Holds configuration options for a binder.
 type Config struct {
@@ -44,7 +45,8 @@ type Config struct {
 	OTBufferConfig        text.OTBufferConfig `json:"transform_buffer" yaml:"transform_buffer"`
 }
 
-// NewConfig - Returns a fully defined Binder configuration with the default values for each field.
+// NewConfig - Returns a fully defined Binder configuration with the default
+// values for each field.
 func NewConfig() Config {
 	return Config{
 		FlushPeriod:           500,
@@ -55,12 +57,10 @@ func NewConfig() Config {
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-/*
-impl - A Type implementation that contains a single document and acts as a broker between multiple
-readers, writers and the storage strategy.
-*/
+// impl - A Type implementation that contains a single document and acts as a
+// broker between multiple readers, writers and the storage strategy.
 type impl struct {
 	id       string
 	config   Config
@@ -74,6 +74,8 @@ type impl struct {
 	clients       []*binderClient
 	subscribeChan chan subscribeRequest
 
+	clientMux sync.Mutex
+
 	// Control channels
 	transformChan    chan transformSubmission
 	messageChan      chan messageSubmission
@@ -84,10 +86,7 @@ type impl struct {
 	closedChan       chan struct{}
 }
 
-/*
-New - Creates a binder targeting an existing document determined via an ID. Must provide a
-store.Type to acquire the document and apply future updates to.
-*/
+// New - Creates a binder targeting an existing document determined via an ID.
 func New(
 	id string,
 	block store.Type,
@@ -125,7 +124,7 @@ func New(
 	return &binder, nil
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // ID - Return the binder ID.
 func (b *impl) ID() string {
@@ -154,10 +153,9 @@ type kickRequest struct {
 	result chan error
 }
 
-/*
-KickUser - Signals the binder to remove a particular user. Currently doesn't confirm removal, this
-ought to be a blocking call until the removal is validated.
-*/
+// KickUser - Signals the binder to remove a particular user. Currently doesn't
+// confirm removal, this ought to be a blocking call until the removal is
+// validated.
 func (b *impl) KickUser(userID string, timeout time.Duration) error {
 	result := make(chan error)
 	timer := time.After(timeout)
@@ -180,7 +178,8 @@ type subscribeRequest struct {
 	errChan    chan<- error
 }
 
-// Subscribe - Returns a Portal, which represents a contract between a client and the binder.
+// Subscribe - Returns a Portal, which represents a contract between a client
+// and the binder.
 func (b *impl) Subscribe(userID string, timeout time.Duration) (Portal, error) {
 	portalChan, errChan := make(chan *portalImpl, 1), make(chan error, 1)
 	bundle := subscribeRequest{
@@ -205,10 +204,8 @@ func (b *impl) Subscribe(userID string, timeout time.Duration) (Portal, error) {
 	return nil, ErrTimeout
 }
 
-/*
-SubscribeReadOnly - Returns a read-only Portal, which represents a contract between a client and the
-binder.
-*/
+// SubscribeReadOnly - Returns a read-only Portal, which represents a contract
+// between a client and the binder.
 func (b *impl) SubscribeReadOnly(userID string, timeout time.Duration) (Portal, error) {
 	portalChan, errChan := make(chan *portalImpl, 1), make(chan error, 1)
 	bundle := subscribeRequest{
@@ -234,22 +231,19 @@ func (b *impl) SubscribeReadOnly(userID string, timeout time.Duration) (Portal, 
 	return nil, ErrTimeout
 }
 
-/*
-Close - Close the binder, before closing the client channels the binder will flush changes and
-store the document.
-*/
+// Close - Close the binder, before closing the client channels the binder will
+// flush changes and store the document.
 func (b *impl) Close() {
 	close(b.subscribeChan)
 	<-b.closedChan
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-/*
-processSubscriber - Processes a prospective client wishing to subscribe to this binder. This
-involves flushing the OTBuffer in order to obtain a clean version of the document, if this fails
-we return false to flag the binder loop that we should shut down.
-*/
+// processSubscriber - Processes a prospective client wishing to subscribe to
+// this binder. This involves flushing the OTBuffer in order to obtain a clean
+// version of the document, if this fails we return false to flag the binder
+// loop that we should shut down.
 func (b *impl) processSubscriber(request subscribeRequest) error {
 	transformSndChan := make(chan text.OTransform, 1)
 	updateSndChan := make(chan ClientUpdate, 1)
@@ -298,10 +292,28 @@ func (b *impl) processSubscriber(request subscribeRequest) error {
 	return nil
 }
 
-/*
-sendClientError - Sends an error to a channel, the channel should be non-blocking (buffered by at
-least one and kept empty). In the event where the channel is blocked a log entry is made.
-*/
+// removeClient - Closes a client and removes it from the binder, uses a mutex
+// and is therefore safe to call asynchronously.
+func (b *impl) removeClient(client *binderClient) {
+	b.clientMux.Lock()
+	defer b.clientMux.Unlock()
+
+	for i := 0; i < len(b.clients); i++ {
+		c := b.clients[i]
+		if c == client {
+			b.stats.Decr("binder.subscribed_clients", 1)
+			b.clients = append(b.clients[:i], b.clients[i+1:]...)
+			i--
+
+			close(c.transformChan)
+			close(c.updateChan)
+		}
+	}
+}
+
+// sendClientError - Sends an error to a channel, the channel should be
+// non-blocking (buffered by at least one and kept empty). In the event where
+// the channel is blocked a log entry is made.
 func (b *impl) sendClientError(errChan chan<- error, err error) {
 	select {
 	case errChan <- err:
@@ -328,10 +340,8 @@ func (b *impl) processUsersRequest(request usersRequest) {
 	}
 }
 
-/*
-processTransform - Processes a clients transform submission, and broadcasts the transform out to
-other clients.
-*/
+// processTransform - Processes a clients transform submission, and broadcasts
+// the transform out to other clients.
 func (b *impl) processTransform(request transformSubmission) {
 	var dispatch text.OTransform
 	var err error
@@ -355,31 +365,34 @@ func (b *impl) processTransform(request transformSubmission) {
 
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
 
-	for i := 0; i < len(b.clients); i++ {
-		c := b.clients[i]
+	wg := sync.WaitGroup{}
+
+	clients := b.clients
+	wg.Add(len(clients) - 1)
+
+	for i := 0; i < len(clients); i++ {
+		client := clients[i]
 
 		// Skip sends for client from which the message came
-		if c == request.client {
+		if client == request.client {
 			continue
 		}
-		select {
-		case c.transformChan <- dispatch:
-		case <-time.After(clientKickPeriod):
-			/* The client may have stopped listening, or is just being slow.
-			 * Either way, we have a strict policy here of no time wasters.
-			 */
-			b.stats.Decr("binder.subscribed_clients", 1)
-			b.stats.Incr("binder.clients_kicked", 1)
-
-			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
-
-			b.clients = append(b.clients[:i], b.clients[i+1:]...)
-			i--
-
-			close(c.transformChan)
-			close(c.updateChan)
-		}
+		go func(c *binderClient) {
+			select {
+			case c.transformChan <- dispatch:
+			case <-time.After(clientKickPeriod):
+				/* The client may have stopped listening, or is just being slow.
+				 * Either way, we have a strict policy here of no time wasters.
+				 */
+				b.stats.Incr("binder.clients_kicked", 1)
+				b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
+				b.removeClient(c)
+			}
+			wg.Done()
+		}(client)
 	}
+
+	wg.Wait()
 }
 
 // processMessage - Sends a clients message out to other clients.
@@ -396,38 +409,39 @@ func (b *impl) processMessage(request messageSubmission) {
 		Message: request.message,
 	}
 
-	for i := 0; i < len(b.clients); i++ {
-		c := b.clients[i]
+	wg := sync.WaitGroup{}
+
+	clients := b.clients
+	wg.Add(len(clients) - 1)
+
+	for i := 0; i < len(clients); i++ {
+		client := clients[i]
 
 		// Skip sends for client from which the message came
-		if c == request.client {
+		if client == request.client {
 			continue
 		}
-		select {
-		case c.updateChan <- clientUpdate:
-			b.stats.Incr("binder.sent_message", 1)
-		case <-time.After(clientKickPeriod):
-			/* The client may have stopped listening, or is just being slow.
-			 * Either way, we have a strict policy here of no time wasters.
-			 */
-			b.stats.Decr("binder.subscribed_clients", 1)
-			b.stats.Incr("binder.clients_kicked", 1)
-
-			b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
-
-			b.clients = append(b.clients[:i], b.clients[i+1:]...)
-			i--
-
-			close(c.transformChan)
-			close(c.updateChan)
-		}
+		go func(c *binderClient) {
+			select {
+			case c.updateChan <- clientUpdate:
+				b.stats.Incr("binder.sent_message", 1)
+			case <-time.After(clientKickPeriod):
+				/* The client may have stopped listening, or is just being slow.
+				 * Either way, we have a strict policy here of no time wasters.
+				 */
+				b.stats.Incr("binder.clients_kicked", 1)
+				b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
+				b.removeClient(c)
+			}
+			wg.Done()
+		}(client)
 	}
+
+	wg.Wait()
 }
 
-/*
-flush - Obtain latest document content, flush current changes to document, and store the updated
-version.
-*/
+// flush - Obtain latest document content, flush current changes to document,
+// and store the updated version.
 func (b *impl) flush() (store.Document, error) {
 	var (
 		errStore, errFlush error
@@ -453,11 +467,11 @@ func (b *impl) flush() (store.Document, error) {
 	return doc, nil
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 /*
-loop - The internal loop that performs the broker duties of the binder. Which includes the
-following:
+loop - The internal loop that performs the broker duties of the binder. Which
+includes the following:
 
 - Enrolling new clients by dispatching a fresh copy of the document
 - Receiving messages and transforms from clients
@@ -516,16 +530,12 @@ func (b *impl) loop() {
 				b.log.Debugf("Received kick request for: %v\n", kickRequest.userID)
 
 				// TODO: Refactor and improve kick API
+				clients := b.clients
 				kicked := 0
-				for i := 0; i < len(b.clients); i++ {
-					c := b.clients[i]
+				for i := 0; i < len(clients); i++ {
+					c := clients[i]
 					if c.userID == kickRequest.userID {
-						b.stats.Decr("binder.subscribed_clients", 1)
-						b.clients = append(b.clients[:i], b.clients[i+1:]...)
-						i--
-
-						close(c.transformChan)
-						close(c.updateChan)
+						b.removeClient(clients[i])
 						kicked++
 					}
 				}
@@ -542,17 +552,7 @@ func (b *impl) loop() {
 		case client, open := <-b.exitChan:
 			if running && open {
 				b.log.Debugf("Received exit request for: %v\n", client.userID)
-				for i := 0; i < len(b.clients); i++ {
-					c := b.clients[i]
-					if c == client {
-						b.stats.Decr("binder.subscribed_clients", 1)
-						b.clients = append(b.clients[:i], b.clients[i+1:]...)
-						i--
-
-						close(c.transformChan)
-						close(c.updateChan)
-					}
-				}
+				b.removeClient(client)
 			} else {
 				b.log.Infoln("Exit channel closed, shutting down")
 				running = false
@@ -598,4 +598,4 @@ func (b *impl) loop() {
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
