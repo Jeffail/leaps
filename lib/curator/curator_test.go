@@ -266,6 +266,6 @@ func TestCuratorClients(t *testing.T) {
 	}()
 
 	if closeStatus := <-closeChan; !closeStatus {
-		t.Errorf("Timeout occured waiting for test finish.")
+		t.Errorf("Timeout occurred waiting for test finish.")
 	}
 }

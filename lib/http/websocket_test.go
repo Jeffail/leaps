@@ -143,7 +143,7 @@ func senderClient(id, url string, feeds <-chan text.OTransform, t *testing.T) {
 			}
 			t.Errorf("sender client received a transform")
 		case <-time.After(8 * time.Second):
-			t.Errorf("Sender client timeout occured")
+			t.Errorf("Sender client timeout occurred")
 			return
 		}
 	}
@@ -214,7 +214,7 @@ func goodStoryClient(id, url string, bstory *binderStory, wg *sync.WaitGroup, t 
 				}
 			}
 		case <-time.After(8 * time.Second):
-			t.Errorf("Timeout occured")
+			t.Errorf("Timeout occurred")
 			wg.Done()
 			return
 		}

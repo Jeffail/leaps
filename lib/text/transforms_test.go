@@ -40,27 +40,27 @@ func TestTransformMerge(t *testing.T) {
 	}
 
 	tests := []mergeTest{
-		mergeTest{
+		{
 			first:  OTransform{Position: 5, Insert: "hello", Delete: 0},
 			second: OTransform{Position: 10, Insert: " world", Delete: 0},
 			result: OTransform{Position: 5, Insert: "hello world", Delete: 0},
 		},
-		mergeTest{
+		{
 			first:  OTransform{Position: 5, Insert: "hello", Delete: 4},
 			second: OTransform{Position: 10, Insert: " world", Delete: 3},
 			result: OTransform{Position: 5, Insert: "hello world", Delete: 7},
 		},
-		mergeTest{
+		{
 			first:  OTransform{Position: 5, Insert: "hello", Delete: 2},
 			second: OTransform{Position: 5, Insert: "j", Delete: 1},
 			result: OTransform{Position: 5, Insert: "jello", Delete: 2},
 		},
-		mergeTest{
+		{
 			first:  OTransform{Position: 5, Insert: "hello", Delete: 0},
 			second: OTransform{Position: 7, Insert: "y world", Delete: 4},
 			result: OTransform{Position: 5, Insert: "hey world", Delete: 1},
 		},
-		mergeTest{
+		{
 			first:  OTransform{Position: 5, Insert: "0", Delete: 1},
 			second: OTransform{Position: 6, Insert: "1", Delete: 1},
 			result: OTransform{Position: 5, Insert: "01", Delete: 2},
@@ -84,7 +84,7 @@ func TestTransformMergeBad(t *testing.T) {
 	}
 
 	tests := []mergeFailTest{
-		mergeFailTest{
+		{
 			first:  OTransform{Position: 5, Insert: "hello", Delete: 0},
 			second: OTransform{Position: 11, Insert: " world", Delete: 0},
 		},
