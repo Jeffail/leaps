@@ -307,7 +307,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 #info-messages div {
-	font-size: 14px;
+	font-size: 11px;
 	padding: 4px;
 	padding-left: 1em;
 	padding-right: 1em;
@@ -377,7 +377,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	bottom: 0;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 959px) {
 	#users-window {
 		height: 150px;
 		height: 20vh;
@@ -413,7 +413,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	}
 
 	#editor {
-		box-shadow: 7px 7px 7px rgba(0, 0, 0, 0.2);
+		box-shadow: 4px 4px 8px 3px rgba(0, 0, 0, 0.3);
 		right: 245px; /* width of info window */
 		left: 245px;
 		bottom: 15px;
