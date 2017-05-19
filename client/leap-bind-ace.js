@@ -183,6 +183,7 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		binder._ace.setValue(doc.content);
 		binder._ace.setReadOnly(false);
 		binder._ace.clearSelection();
+		binder._ace.selection.moveCursorToPosition({row: 0, column: 0})
 
 		var old_undo = binder._ace.getSession().getUndoManager();
 		old_undo.reset();
@@ -260,6 +261,7 @@ leap_bind_ace_editor.prototype._apply_transform = function(transform) {
 
 	this._content = this._leap_client.apply(transform, this._content);
 
+	// Asynchronously check that our isolated content copy and the editor version match up.
 	setTimeout((function() {
 		if ( this._content !== this._ace.getValue() ) {
 			this._leap_client._dispatch_event.apply(this._leap_client,

@@ -200,14 +200,15 @@ func (f *FileExists) getPaths() ([]string, error) {
 
 func (f *FileExists) loop() {
 	for {
-		f.mutex.Lock()
 		p, err := f.getPaths()
 		if err != nil {
 			f.logger.Errorf("Failed to walk paths for authenticator: %v\n", err)
 		}
+
+		f.mutex.Lock()
+		f.paths = p
 		f.mutex.Unlock()
 
-		f.paths = p
 		time.Sleep(time.Duration(f.config.RefreshPeriod) * time.Second)
 	}
 }
