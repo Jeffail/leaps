@@ -489,44 +489,41 @@ func (b *impl) loop() {
 		running := true
 		select {
 		case clientBundle, open := <-b.subscribeChan:
-			if running && open {
+			if open {
 				if err := b.processSubscriber(clientBundle); err != nil {
 					b.errorChan <- Error{ID: b.id, Err: err}
 					b.log.Errorf("Flush error: %v, shutting down\n", err)
 					running = false
 				} else {
 					flushTimer.Reset(flushPeriod)
-					closeTimer.Reset(closePeriod)
 				}
 			} else {
 				b.log.Infoln("Subscribe channel closed, shutting down")
 				running = false
 			}
 		case tform, open := <-b.transformChan:
-			if running && open {
+			if open {
 				b.processTransform(tform)
-				closeTimer.Reset(closePeriod)
 			} else {
 				b.log.Infoln("Transforms channel closed, shutting down")
 				running = false
 			}
 		case message, open := <-b.messageChan:
-			if running && open {
+			if open {
 				b.processMessage(message)
-				closeTimer.Reset(closePeriod)
 			} else {
 				b.log.Infoln("Messages channel closed, shutting down")
 				running = false
 			}
 		case usersRequest, open := <-b.usersRequestChan:
-			if running && open {
+			if open {
 				b.processUsersRequest(usersRequest)
 			} else {
 				b.log.Infoln("Users request channel closed, shutting down")
 				running = false
 			}
 		case kickRequest, open := <-b.kickChan:
-			if running && open {
+			if open {
 				b.log.Debugf("Received kick request for: %v\n", kickRequest.userID)
 
 				// TODO: Refactor and improve kick API
@@ -545,12 +542,11 @@ func (b *impl) loop() {
 					kickRequest.result <- fmt.Errorf("No such userID: %s", kickRequest.userID)
 				}
 			} else {
-				b.log.Infoln("Exit channel closed, shutting down")
+				b.log.Infoln("Kick channel closed, shutting down")
 				running = false
-				close(kickRequest.result)
 			}
 		case client, open := <-b.exitChan:
-			if running && open {
+			if open {
 				b.log.Debugf("Received exit request for: %v\n", client.userID)
 				b.removeClient(client)
 			} else {
@@ -572,9 +568,10 @@ func (b *impl) loop() {
 				// Send graceful close request
 				b.errorChan <- Error{ID: b.id, Err: nil}
 			}
-			closeTimer.Reset(closePeriod)
 		}
-		if !running {
+		if running {
+			closeTimer.Reset(closePeriod)
+		} else {
 			flushTimer.Stop()
 			closeTimer.Stop()
 
