@@ -177,7 +177,7 @@ func TestCuratorClients(t *testing.T) {
 	auth, storage := authAndStore(log, stats)
 
 	config := binder.NewConfig()
-	config.FlushPeriod = 5000
+	config.FlushPeriodMS = 5000
 
 	curator, err := New(NewConfig(), log, stats, auth, storage)
 	if err != nil {

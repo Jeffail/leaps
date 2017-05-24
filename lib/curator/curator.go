@@ -240,7 +240,7 @@ func (c *impl) EditDocument(
 	if c.auth.Authenticate(userID, token, documentID) < acl.EditAccess {
 		c.stats.Incr("curator.edit.rejected_client", 1)
 		return nil, fmt.Errorf(
-			"failed to authorise join of document id: %v with token: %v\n", documentID, token,
+			"failed to authorise join of document id: %v with token: %v", documentID, token,
 		)
 	}
 	c.stats.Incr("curator.edit.accepted_client", 1)
@@ -282,7 +282,7 @@ func (c *impl) ReadDocument(
 	if c.auth.Authenticate(userID, token, documentID) < acl.ReadAccess {
 		c.stats.Incr("curator.read.rejected_client", 1)
 		return nil, fmt.Errorf(
-			"failed to authorise read only join of document id: %v with token: %v\n",
+			"failed to authorise read only join of document id: %v with token: %v",
 			documentID, token,
 		)
 	}
@@ -324,7 +324,7 @@ func (c *impl) CreateDocument(
 
 	if c.auth.Authenticate(userID, token, "") < acl.CreateAccess {
 		c.stats.Incr("curator.create.rejected_client", 1)
-		return nil, fmt.Errorf("failed to gain permission to create with token: %v\n", token)
+		return nil, fmt.Errorf("failed to gain permission to create with token: %v", token)
 	}
 	c.stats.Incr("curator.create.accepted_client", 1)
 
