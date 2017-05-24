@@ -492,7 +492,7 @@ var join_new_document = function(document_id) {
 
 	leaps_client.on("document", function() {
 		last_document_joined = document_id;
-		system_message("Opened document " + document_id, "ash");
+		system_message("Opened document " + document_id);
 	});
 
 	leaps_client.on("user", function(user_update) {
@@ -522,7 +522,7 @@ var join_new_document = function(document_id) {
 
 var refresh_document = function() {
 	if ( last_document_joined.length > 0 ) {
-		system_message("Rejoining document " + last_document_joined, "ash");
+		system_message("Rejoining document " + last_document_joined);
 		join_new_document(last_document_joined);
 	}
 };
@@ -757,10 +757,10 @@ var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
 // Use to alert users when new messages appear
 var flash_chat_window = function() {
 	var info_window = document.getElementById("info-window");
-	info_window.style.boxShadow = "0px 0px 0px 5px #ffffff";
+	info_window.style.backgroundColor = "#FFFFFF";
 
 	setTimeout(function() {
-		info_window.style.boxShadow = "0px 0px 0px 0px #ffffff";
+		info_window.style.backgroundColor = "#E6E6E6";
 	}, 300);
 };
 
@@ -777,8 +777,6 @@ var chat_message = function(user_id, username, message) {
 		name_span.style.backgroundColor = user_id_to_color(user_id);
 		name_span.style.color = "#f0f0f0";
 	}
-
-	div.className = "ash";
 
 	name_span.style.fontWeight = "700";
 	name_span.style.paddingLeft = "4px";
@@ -809,6 +807,8 @@ var system_message = function(text, style) {
 	var div = document.createElement("div");
 	if ( typeof style === 'string' ) {
 		div.className = style + " bold";
+	} else {
+		div.className = "bold";
 	}
 	var textNode = document.createTextNode((new Date()).toTimeString().substr(0, 8) + " " + text);
 

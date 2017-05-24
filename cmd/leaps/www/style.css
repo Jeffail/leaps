@@ -99,14 +99,6 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 	background-color: #E6E6E6;
 }
 
-.box {
-	box-shadow: 1px 1px 2px rgba(20, 20, 20, 0.3);
-}
-
-.light-box {
-	box-shadow: 1px 1px 2px rgba(20, 20, 20, 0.3);
-}
-
 .light-url {
 	color: #f0f0f0;
 }
@@ -225,6 +217,10 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 
 #file-list-container, #info-window, #users-window, #editor, #menu-bar {
 	position: absolute;
+}
+
+#file-list-container, #info-window, #users-window, #editor, #chat-bar-container {
+	box-shadow: 4px 4px 0px 0px #5c5c5c;
 }
 
 #file-list-container, #info-window, #users-window {
@@ -355,7 +351,7 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 #info-window {
 	right: 0;
 	bottom: 0;
-	transition: box-shadow .25s ease-in-out;
+	transition: background-color .25s ease-in-out;
 }
 
 #file-list-container {
@@ -376,7 +372,6 @@ h1, h2, h3, h4, h5, button, strong, .button, .round-button {
 }
 
 #editor {
-	box-shadow: 4px 4px 8px 3px rgba(0, 0, 0, 0.3);
 	right: 245px; /* width of info window */
 	left: 245px;
 	bottom: 15px;
