@@ -38,22 +38,22 @@ import (
 
 // Config - Holds configuration options for a binder.
 type Config struct {
-	FlushPeriod           int64               `json:"flush_period_ms" yaml:"flush_period_ms"`
-	RetentionPeriod       int64               `json:"retention_period_s" yaml:"retention_period_s"`
-	ClientKickPeriod      int64               `json:"kick_period_ms" yaml:"kick_period_ms"`
-	CloseInactivityPeriod int64               `json:"close_inactivity_period_s" yaml:"close_inactivity_period_s"`
-	OTBufferConfig        text.OTBufferConfig `json:"transform_buffer" yaml:"transform_buffer"`
+	FlushPeriodMS           int64               `json:"flush_period_ms" yaml:"flush_period_ms"`
+	RetentionPeriodS        int64               `json:"retention_period_s" yaml:"retention_period_s"`
+	ClientKickPeriodMS      int64               `json:"kick_period_ms" yaml:"kick_period_ms"`
+	CloseInactivityPeriodMS int64               `json:"close_inactivity_period_ms" yaml:"close_inactivity_period_ms"`
+	OTBufferConfig          text.OTBufferConfig `json:"transform_buffer" yaml:"transform_buffer"`
 }
 
 // NewConfig - Returns a fully defined Binder configuration with the default
 // values for each field.
 func NewConfig() Config {
 	return Config{
-		FlushPeriod:           500,
-		RetentionPeriod:       60,
-		ClientKickPeriod:      200,
-		CloseInactivityPeriod: 300,
-		OTBufferConfig:        text.NewOTBufferConfig(),
+		FlushPeriodMS:           500,
+		RetentionPeriodS:        60,
+		ClientKickPeriodMS:      200,
+		CloseInactivityPeriodMS: 300000,
+		OTBufferConfig:          text.NewOTBufferConfig(),
 	}
 }
 
@@ -282,7 +282,7 @@ func (b *impl) processSubscriber(request subscribeRequest) error {
 		b.stats.Incr("binder.subscribed_clients", 1)
 		b.log.Debugf("Subscribed new client %v\n", request.userID)
 		b.clients = append(b.clients, &client)
-	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
+	case <-time.After(time.Duration(b.config.ClientKickPeriodMS) * time.Millisecond):
 		/* We're not bothered if you suck, you just don't get enrolled, and this isn't
 		 * considered an error. Deal with it.
 		 */
@@ -331,7 +331,7 @@ func (b *impl) processUsersRequest(request usersRequest) {
 	}
 	select {
 	case request.responseChan <- clients:
-	case <-time.After(time.Duration(b.config.ClientKickPeriod) * time.Millisecond):
+	case <-time.After(time.Duration(b.config.ClientKickPeriodMS) * time.Millisecond):
 		/* If the receive channel is blocked then we move on, we have more important things to
 		 * deal with.
 		 */
@@ -363,7 +363,7 @@ func (b *impl) processTransform(request transformSubmission) {
 	}
 	b.stats.Incr("binder.process_job.success", 1)
 
-	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
+	clientKickPeriod := (time.Duration(b.config.ClientKickPeriodMS) * time.Millisecond)
 
 	wg := sync.WaitGroup{}
 
@@ -397,7 +397,7 @@ func (b *impl) processTransform(request transformSubmission) {
 
 // processMessage - Sends a clients message out to other clients.
 func (b *impl) processMessage(request messageSubmission) {
-	clientKickPeriod := (time.Duration(b.config.ClientKickPeriod) * time.Millisecond)
+	clientKickPeriod := (time.Duration(b.config.ClientKickPeriodMS) * time.Millisecond)
 
 	b.log.Tracef("Received message: %v %v\n", *request.client, request.message)
 
@@ -453,7 +453,7 @@ func (b *impl) flush() (store.Document, error) {
 		b.stats.Incr("binder.block_fetch.error", 1)
 		return doc, errStore
 	}
-	changed, errFlush = b.otBuffer.FlushTransforms(&doc.Content, b.config.RetentionPeriod)
+	changed, errFlush = b.otBuffer.FlushTransforms(&doc.Content, b.config.RetentionPeriodS)
 	if changed {
 		errStore = b.block.Update(doc)
 	}
@@ -480,8 +480,8 @@ includes the following:
 - Intermittently checking for active clients, and shutting down when unused
 */
 func (b *impl) loop() {
-	flushPeriod := (time.Duration(b.config.FlushPeriod) * time.Millisecond)
-	closePeriod := (time.Duration(b.config.CloseInactivityPeriod) * time.Second)
+	flushPeriod := (time.Duration(b.config.FlushPeriodMS) * time.Millisecond)
+	closePeriod := (time.Duration(b.config.CloseInactivityPeriodMS) * time.Millisecond)
 
 	flushTimer := time.NewTimer(flushPeriod)
 	closeTimer := time.NewTimer(closePeriod)
@@ -567,11 +567,11 @@ func (b *impl) loop() {
 				b.log.Infoln("Binder inactive, requesting shutdown")
 				// Send graceful close request
 				b.errorChan <- Error{ID: b.id, Err: nil}
+			} else {
+				closeTimer.Reset(closePeriod)
 			}
 		}
-		if running {
-			closeTimer.Reset(closePeriod)
-		} else {
+		if !running {
 			flushTimer.Stop()
 			closeTimer.Stop()
 

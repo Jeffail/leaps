@@ -71,20 +71,36 @@ func (s *testStore) Read(id string) (store.Document, error) {
 
 //--------------------------------------------------------------------------------------------------
 
+func TestFailedInitialFlush(t *testing.T) {
+	errChan := make(chan Error, 10)
+
+	logger, stats := loggerAndStats()
+	storage := testStore{documents: nil}
+
+	_, err := New("KILL_ME", &storage, NewConfig(), errChan, logger, stats)
+	if err == nil {
+		t.Error("Expected error from failed initial flush")
+	}
+}
+
 func TestGracefullShutdown(t *testing.T) {
 	errChan := make(chan Error, 10)
 
 	logger, stats := loggerAndStats()
 	doc, _ := store.NewDocument("hello world")
 
-	store := testStore{documents: map[string]store.Document{
+	storage := testStore{documents: map[string]store.Document{
 		"KILL_ME": *doc,
 	}}
 
-	binder, err := New("KILL_ME", &store, NewConfig(), errChan, logger, stats)
+	binder, err := New("KILL_ME", &storage, NewConfig(), errChan, logger, stats)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
+	}
+
+	if exp, actual := "KILL_ME", binder.ID(); exp != actual {
+		t.Errorf("Wrong result from ID call: %v != %v", exp, actual)
 	}
 
 	testClient, err := binder.Subscribe("", time.Second)
@@ -92,10 +108,70 @@ func TestGracefullShutdown(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	delete(store.documents, "KILL_ME")
+	delete(storage.documents, "KILL_ME")
 	testClient.SendTransform(text.OTransform{Position: 0, Insert: "hello", Version: 2}, time.Second)
 
-	<-errChan
+	if bErr := <-errChan; bErr.Err == nil {
+		t.Error("Expected an error from errchan")
+	}
+	binder.Close()
+}
+
+func TestClientExitAndShutdown(t *testing.T) {
+	errChan := make(chan Error, 10)
+
+	logger, stats := loggerAndStats()
+	doc, _ := store.NewDocument("hello world")
+
+	storage := testStore{documents: map[string]store.Document{
+		"KILL_ME": *doc,
+	}}
+
+	conf := NewConfig()
+	conf.ClientKickPeriodMS = 1        // Basically do not block at all on clients
+	conf.CloseInactivityPeriodMS = 500 // 1 second of inactivity before we close
+
+	binder, err := New("KILL_ME", &storage, conf, errChan, logger, stats)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+
+	testClient1, err := binder.Subscribe("1", time.Second)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	testClient2, err := binder.Subscribe("2", time.Second)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	testClient1.SendTransform(text.OTransform{Position: 0, Insert: "hello", Version: 2}, time.Second)
+	testClient1.SendTransform(text.OTransform{Position: 5, Insert: " world", Version: 3}, time.Second)
+
+	// Block testClient2 transform chan so that it gets kicked.
+	// We read the message channel instead, waiting for it to be closed.
+	select {
+	case _, open := <-testClient2.UpdateReadChan():
+		if open {
+			t.Error("Received unexpected update to lazy client")
+		}
+	case <-time.After(time.Second * 5):
+		t.Error("Lazy client was not kicked")
+	}
+
+	testClient1.Exit(time.Second)
+	// This is the last client, the binder should shut down now.
+
+	select {
+	case bErr := <-errChan:
+		if bErr.Err != nil {
+			t.Errorf("Unexpected error while waiting for graceful shutdown request: %v", bErr.Err)
+		}
+	case <-time.After(time.Second * 5):
+		t.Error("Empty binder was not closed")
+	}
 	binder.Close()
 }
 
@@ -130,6 +206,10 @@ func TestClientAdminTasks(t *testing.T) {
 		}
 	}
 
+	if err = binder.KickUser("Doesnotexist", time.Second); err == nil {
+		t.Error("Expected error when kicking non existant user")
+	}
+
 	for i := 0; i < nClients; i++ {
 		remainingClients, err := binder.GetUsers(time.Second)
 		if err != nil {
@@ -157,7 +237,7 @@ func TestClientAdminTasks(t *testing.T) {
 		killID := clientIDs[0]
 		clientIDs = clientIDs[1:]
 
-		if err := binder.KickUser(killID, time.Second); err != nil {
+		if err = binder.KickUser(killID, time.Second); err != nil {
 			t.Errorf("Kick user error: %v\n", err)
 			return
 		}
@@ -177,7 +257,7 @@ func TestKickLockedUsers(t *testing.T) {
 	}}
 
 	conf := NewConfig()
-	conf.ClientKickPeriod = 1
+	conf.ClientKickPeriodMS = 1
 
 	binder, err := New("KILL_ME", &store, conf, errChan, logger, stats)
 	if err != nil {
@@ -518,7 +598,7 @@ func TestClients(t *testing.T) {
 	logger, stats := loggerAndStats()
 
 	config := NewConfig()
-	config.FlushPeriod = 5000
+	config.FlushPeriodMS = 5000
 
 	wg := sync.WaitGroup{}
 
