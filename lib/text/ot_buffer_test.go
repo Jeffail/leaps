@@ -32,16 +32,12 @@ import (
 )
 
 func TestTextOTBufferSimpleTransforms(t *testing.T) {
-	doc, err := store.NewDocument("hello world")
-	if err != nil {
-		t.Errorf("Error: %v", err)
-		return
-	}
+	doc := store.NewDocument("hello world")
 
 	model := NewOTBuffer(NewOTBufferConfig())
 	for j := 0; j < 3; j++ {
 		for i := 0; i < 3; i++ {
-			if _, _, err = model.PushTransform(OTransform{
+			if _, _, err := model.PushTransform(OTransform{
 				Version:  model.GetVersion() + 1,
 				Position: i + (j * 3) + 5,
 				Insert:   fmt.Sprintf("%v", i+(j*3)),
@@ -50,12 +46,12 @@ func TestTextOTBufferSimpleTransforms(t *testing.T) {
 				t.Errorf("Error: %v", err)
 			}
 		}
-		if _, err = model.FlushTransforms(&doc.Content, 60); err != nil {
+		if _, err := model.FlushTransforms(&doc.Content, 60); err != nil {
 			t.Errorf("Error flushing: %v", err)
 		}
 	}
 
-	if _, _, err = model.PushTransform(OTransform{
+	if _, _, err := model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 3,
 		Insert:   "*",
@@ -64,7 +60,7 @@ func TestTextOTBufferSimpleTransforms(t *testing.T) {
 		t.Errorf("Error: %v", err)
 	}
 
-	if _, err = model.FlushTransforms(&doc.Content, 60); err != nil {
+	if _, err := model.FlushTransforms(&doc.Content, 60); err != nil {
 		t.Errorf("Error flushing: %v", err)
 	}
 
@@ -77,11 +73,7 @@ func TestTextOTBufferSimpleTransforms(t *testing.T) {
 func TestPushPullTransforms(t *testing.T) {
 	numTransforms := 100
 	arrTransforms := make([]OTransform, numTransforms)
-	doc, err := store.NewDocument("hello world")
-	if err != nil {
-		t.Errorf("Error: %v", err)
-		return
-	}
+	doc := store.NewDocument("hello world")
 	model := NewOTBuffer(NewOTBufferConfig())
 
 	for j := 0; j < 2; j++ {
@@ -135,11 +127,7 @@ func TestTransformStories(t *testing.T) {
 	for _, story := range scont.Stories {
 		stages := []byte("Stages of story:\n")
 
-		doc, err := store.NewDocument(story.Content)
-		if err != nil {
-			t.Errorf("Error: %v", err)
-			return
-		}
+		doc := store.NewDocument(story.Content)
 		model := NewOTBuffer(NewOTBufferConfig())
 
 		stages = append(stages,
@@ -161,7 +149,7 @@ func TestTransformStories(t *testing.T) {
 			}
 			for _, at := range story.Flushes {
 				if at == j {
-					if _, err = model.FlushTransforms(&doc.Content, 60); err != nil {
+					if _, err := model.FlushTransforms(&doc.Content, 60); err != nil {
 						t.Errorf("Failed to flush: %v", err)
 					}
 					stages = append(stages,
@@ -169,7 +157,7 @@ func TestTransformStories(t *testing.T) {
 				}
 			}
 		}
-		if _, err = model.FlushTransforms(&doc.Content, 60); err != nil {
+		if _, err := model.FlushTransforms(&doc.Content, 60); err != nil {
 			t.Errorf("Failed to flush: %v", err)
 		}
 		result := doc.Content
@@ -181,14 +169,9 @@ func TestTransformStories(t *testing.T) {
 }
 
 func TestTextOTBufferUnicodeTransforms(t *testing.T) {
-	doc, err := store.NewDocument("hello world 我今天要学习")
-	if err != nil {
-		t.Errorf("Error: %v", err)
-		return
-	}
-
+	doc := store.NewDocument("hello world 我今天要学习")
 	model := NewOTBuffer(NewOTBufferConfig())
-	if _, _, err = model.PushTransform(OTransform{
+	if _, _, err := model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 12,
 		Insert:   "你听说那条新闻了吗? ",
@@ -196,7 +179,7 @@ func TestTextOTBufferUnicodeTransforms(t *testing.T) {
 	}); err != nil {
 		t.Errorf("Error: %v", err)
 	}
-	if _, _, err = model.PushTransform(OTransform{
+	if _, _, err := model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 12,
 		Insert:   "👦🏻",
@@ -204,7 +187,7 @@ func TestTextOTBufferUnicodeTransforms(t *testing.T) {
 	}); err != nil {
 		t.Errorf("Error: %v", err)
 	}
-	if _, _, err = model.PushTransform(OTransform{
+	if _, _, err := model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 25,
 		Insert:   "我饿了",
@@ -212,7 +195,7 @@ func TestTextOTBufferUnicodeTransforms(t *testing.T) {
 	}); err != nil {
 		t.Errorf("Error: %v", err)
 	}
-	if _, _, err = model.PushTransform(OTransform{
+	if _, _, err := model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 25,
 		Insert:   "交通堵塞了",
@@ -221,7 +204,7 @@ func TestTextOTBufferUnicodeTransforms(t *testing.T) {
 		t.Errorf("Error: %v", err)
 	}
 
-	if _, err = model.FlushTransforms(&doc.Content, 60); err != nil {
+	if _, err := model.FlushTransforms(&doc.Content, 60); err != nil {
 		t.Errorf("Error flushing: %v", err)
 	}
 
@@ -233,11 +216,7 @@ func TestTextOTBufferUnicodeTransforms(t *testing.T) {
 }
 
 func TestLimits(t *testing.T) {
-	doc, err := store.NewDocument("1")
-	if err != nil {
-		t.Errorf("Error: %v", err)
-		return
-	}
+	doc := store.NewDocument("1")
 
 	config := NewOTBufferConfig()
 	config.MaxDocumentSize = 100
@@ -245,7 +224,7 @@ func TestLimits(t *testing.T) {
 
 	model := NewOTBuffer(config)
 
-	if _, _, err = model.PushTransform(OTransform{
+	if _, _, err := model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 0,
 		Insert:   "hello world, this is greater than 10 bytes.",
@@ -255,7 +234,7 @@ func TestLimits(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		if _, _, err = model.PushTransform(OTransform{
+		if _, _, err := model.PushTransform(OTransform{
 			Version:  model.GetVersion() + 1,
 			Position: 0,
 			Insert:   "1234567890",
@@ -265,7 +244,7 @@ func TestLimits(t *testing.T) {
 		}
 	}
 
-	if _, err = model.FlushTransforms(&doc.Content, 60); err == nil {
+	if _, err := model.FlushTransforms(&doc.Content, 60); err == nil {
 		t.Errorf("Expected failed flush")
 	}
 }

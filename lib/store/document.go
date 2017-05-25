@@ -24,30 +24,22 @@ package store
 
 import "github.com/jeffail/leaps/lib/util"
 
-/*--------------------------------------------------------------------------------------------------
- */
+//------------------------------------------------------------------------------
 
-/*
-Document - A representation of a leap document.
-*/
+// Document - A representation of a leap document, must have a unique ID.
 type Document struct {
 	ID      string `json:"id" yaml:"id"`
 	Content string `json:"content" yaml:"content"`
 }
 
-/*--------------------------------------------------------------------------------------------------
- */
+//------------------------------------------------------------------------------
 
-/*
-NewDocument - Create a fresh leap document with a title, description, type and the initial content.
-*/
-func NewDocument(content string) (*Document, error) {
-	doc := &Document{
+// NewDocument - Create a document with content and a generated UUID.
+func NewDocument(content string) Document {
+	return Document{
 		ID:      util.GenerateStampedUUID(),
 		Content: content,
 	}
-	return doc, nil
 }
 
-/*--------------------------------------------------------------------------------------------------
- */
+//------------------------------------------------------------------------------

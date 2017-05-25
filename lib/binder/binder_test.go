@@ -87,10 +87,10 @@ func TestGracefullShutdown(t *testing.T) {
 	errChan := make(chan Error, 10)
 
 	logger, stats := loggerAndStats()
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 
 	storage := testStore{documents: map[string]store.Document{
-		"KILL_ME": *doc,
+		"KILL_ME": doc,
 	}}
 
 	binder, err := New("KILL_ME", &storage, NewConfig(), errChan, logger, stats)
@@ -121,10 +121,10 @@ func TestClientExitAndShutdown(t *testing.T) {
 	errChan := make(chan Error, 10)
 
 	logger, stats := loggerAndStats()
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 
 	storage := testStore{documents: map[string]store.Document{
-		"KILL_ME": *doc,
+		"KILL_ME": doc,
 	}}
 
 	conf := NewConfig()
@@ -179,10 +179,10 @@ func TestClientAdminTasks(t *testing.T) {
 	errChan := make(chan Error, 10)
 
 	logger, stats := loggerAndStats()
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 
 	store := testStore{documents: map[string]store.Document{
-		"KILL_ME": *doc,
+		"KILL_ME": doc,
 	}}
 
 	binder, err := New("KILL_ME", &store, NewConfig(), errChan, logger, stats)
@@ -250,10 +250,10 @@ func TestKickLockedUsers(t *testing.T) {
 	errChan := make(chan Error, 10)
 
 	logger, stats := loggerAndStats()
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 
 	store := testStore{documents: map[string]store.Document{
-		"KILL_ME": *doc,
+		"KILL_ME": doc,
 	}}
 
 	conf := NewConfig()
@@ -292,12 +292,12 @@ func TestKickLockedUsers(t *testing.T) {
 
 func TestUpdates(t *testing.T) {
 	errChan := make(chan Error)
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 	logger, stats := loggerAndStats()
 
 	binder, err := New(
 		doc.ID,
-		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
+		&testStore{documents: map[string]store.Document{doc.ID: doc}},
 		NewConfig(),
 		errChan,
 		logger,
@@ -370,12 +370,12 @@ func TestUpdates(t *testing.T) {
 
 func TestUpdatesSameUserID(t *testing.T) {
 	errChan := make(chan Error)
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 	logger, stats := loggerAndStats()
 
 	binder, err := New(
 		doc.ID,
-		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
+		&testStore{documents: map[string]store.Document{doc.ID: doc}},
 		NewConfig(),
 		errChan,
 		logger,
@@ -441,12 +441,12 @@ func TestUpdatesSameUserID(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	errChan := make(chan Error)
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 	logger, stats := loggerAndStats()
 
 	binder, err := New(
 		doc.ID,
-		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
+		&testStore{documents: map[string]store.Document{doc.ID: doc}},
 		NewConfig(),
 		errChan,
 		logger,
@@ -499,12 +499,12 @@ func TestNew(t *testing.T) {
 
 func TestReadOnlyPortals(t *testing.T) {
 	errChan := make(chan Error)
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 	logger, stats := loggerAndStats()
 
 	binder, err := New(
 		doc.ID,
-		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
+		&testStore{documents: map[string]store.Document{doc.ID: doc}},
 		NewConfig(),
 		errChan,
 		logger,
@@ -594,7 +594,7 @@ func goodClient(b Portal, expecting int, t *testing.T, wg *sync.WaitGroup) {
 
 func TestClients(t *testing.T) {
 	errChan := make(chan Error)
-	doc, _ := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
 	logger, stats := loggerAndStats()
 
 	config := NewConfig()
@@ -604,7 +604,7 @@ func TestClients(t *testing.T) {
 
 	binder, err := New(
 		doc.ID,
-		&testStore{documents: map[string]store.Document{doc.ID: *doc}},
+		&testStore{documents: map[string]store.Document{doc.ID: doc}},
 		NewConfig(),
 		errChan,
 		logger,
@@ -712,11 +712,7 @@ func TestBinderStories(t *testing.T) {
 	}
 
 	for _, story := range scont.Stories {
-		doc, err := store.NewDocument(story.Content)
-		if err != nil {
-			t.Errorf("error: %v", err)
-			continue
-		}
+		doc := store.NewDocument(story.Content)
 
 		config := NewConfig()
 		//config.LogVerbose = true
@@ -730,7 +726,7 @@ func TestBinderStories(t *testing.T) {
 
 		binder, err := New(
 			doc.ID,
-			&testStore{documents: map[string]store.Document{doc.ID: *doc}},
+			&testStore{documents: map[string]store.Document{doc.ID: doc}},
 			config,
 			errChan,
 			logger,

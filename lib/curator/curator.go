@@ -58,10 +58,10 @@ var (
 )
 
 /*
-impl - The underlying implementation of the curator type. Creates and manages the entire lifecycle
+Impl - The underlying implementation of the curator type. Creates and manages the entire lifecycle
 of binders internally.
 */
-type impl struct {
+type Impl struct {
 	config Config
 	store  store.Type
 	auth   acl.Authenticator
@@ -86,9 +86,9 @@ func New(
 	stats metrics.Aggregator,
 	auth acl.Authenticator,
 	store store.Type,
-) (Type, error) {
+) (*Impl, error) {
 
-	curator := impl{
+	curator := Impl{
 		config:      config,
 		store:       store,
 		log:         log.NewModule(":curator"),
@@ -108,7 +108,7 @@ func New(
 Close - Shut the curator and all subsequent binders down. This call blocks until the shut down is
 finished, and you must ensure that this curator cannot be accessed after closing.
 */
-func (c *impl) Close() {
+func (c *Impl) Close() {
 	c.log.Debugln("Close called")
 	c.closeChan <- struct{}{}
 	<-c.closedChan
@@ -123,7 +123,7 @@ having occurred. The curator then calls close on it and removes it from the list
 - Close channel, used by the owner of the curator to instigate a clean shut down. The curator then
 forwards to call to all binders and closes itself.
 */
-func (c *impl) loop() {
+func (c *Impl) loop() {
 	c.log.Debugln("Loop called")
 	for {
 		select {
@@ -164,7 +164,7 @@ func (c *impl) loop() {
  */
 
 // KickUser - Remove a user from a document, requires the respective user and document IDs.
-func (c *impl) KickUser(documentID, userID string, timeout time.Duration) error {
+func (c *Impl) KickUser(documentID, userID string, timeout time.Duration) error {
 	c.log.Debugf("attempting to kick user %v from document %v\n", documentID, userID)
 
 	c.binderMutex.Lock()
@@ -190,7 +190,7 @@ func (c *impl) KickUser(documentID, userID string, timeout time.Duration) error 
 }
 
 // GetUsers - Return a full list of all connected users of all open documents.
-func (c *impl) GetUsers(timeout time.Duration) (map[string][]string, error) {
+func (c *Impl) GetUsers(timeout time.Duration) (map[string][]string, error) {
 	openBinders := []binder.Type{}
 
 	c.binderMutex.Lock()
@@ -232,7 +232,7 @@ func (c *impl) GetUsers(timeout time.Duration) (map[string][]string, error) {
 EditDocument - Locates or creates a Binder for an existing document and returns that Binder for
 subscribing to. Returns an error if there was a problem locating the document.
 */
-func (c *impl) EditDocument(
+func (c *Impl) EditDocument(
 	userID, token, documentID string, timeout time.Duration,
 ) (binder.Portal, error) {
 	c.log.Debugf("finding document %v, with userID %v token %v\n", documentID, userID, token)
@@ -258,7 +258,7 @@ func (c *impl) EditDocument(
 	if err != nil {
 		c.binderMutex.Unlock()
 
-		c.stats.Incr("curator.bind_existing.failed", 1)
+		c.stats.Incr("curator.bind_new.failed", 1)
 		c.log.Errorf("Failed to bind to document %v: %v\n", documentID, err)
 		return nil, err
 	}
@@ -274,7 +274,7 @@ ReadDocument - Locates or creates a Binder for an existing document and returns 
 subscribing to with read only privileges. Returns an error if there was a problem locating the
 document.
 */
-func (c *impl) ReadDocument(
+func (c *Impl) ReadDocument(
 	userID, token, documentID string, timeout time.Duration,
 ) (binder.Portal, error) {
 	c.log.Debugf("finding document %v, with userID %v token %v\n", documentID, userID, token)
@@ -317,7 +317,7 @@ CreateDocument - Creates a fresh Binder for a new document, which is subsequentl
 error if either the document ID is already currently in use, or if there is a problem storing the
 new document. May require authentication, if so a userID is supplied.
 */
-func (c *impl) CreateDocument(
+func (c *Impl) CreateDocument(
 	userID, token string, doc store.Document, timeout time.Duration,
 ) (binder.Portal, error) {
 	c.log.Debugf("Creating new document with userID %v token %v\n", userID, token)

@@ -23,6 +23,7 @@ THE SOFTWARE.
 package curator
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -69,21 +70,30 @@ func TestReadOnlyCurator(t *testing.T) {
 	log, stats := loggerAndStats()
 	auth, storage := authAndStore(log, stats)
 
+	storage.Create(store.Document{
+		ID:      "exists",
+		Content: "hello world2",
+	})
+
 	curator, err := New(NewConfig(), log, stats, auth, storage)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
 	}
 
-	doc, err := store.NewDocument("hello world")
+	doc := store.NewDocument("hello world")
+	portal, err := curator.CreateDocument("", "", doc, time.Second)
+	doc = portal.Document()
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
 	}
 
-	portal, err := curator.CreateDocument("", "", *doc, time.Second)
-	*doc = portal.Document()
-	if err != nil {
+	if _, err := curator.ReadDocument("test not exist", "", "doesn't exist", time.Second); err == nil {
+		t.Error("expected error from non existing document read")
+	}
+
+	if _, err := curator.ReadDocument("exists test", "", "exists", time.Second); err != nil {
 		t.Errorf("error: %v", err)
 		return
 	}
@@ -102,6 +112,54 @@ func TestReadOnlyCurator(t *testing.T) {
 	}
 
 	curator.Close()
+}
+
+type dummyAuth struct {
+	level acl.AccessLevel
+}
+
+func (d *dummyAuth) Authenticate(userID, token, documentID string) acl.AccessLevel {
+	return d.level
+}
+
+func TestPermissions(t *testing.T) {
+	log, stats := loggerAndStats()
+	_, storage := authAndStore(log, stats)
+	auth := dummyAuth{level: acl.NoAccess}
+
+	cur, err := New(NewConfig(), log, stats, &auth, storage)
+	if err != nil {
+		t.Errorf("Create curator error: %v", err)
+		return
+	}
+
+	// No access
+	if bNil, err := cur.CreateDocument("", "", store.NewDocument("test"), time.Second); err == nil || bNil != nil {
+		t.Error("Expected rejection from create on no access")
+	}
+	if bNil, err := cur.EditDocument("", "", "test", time.Second); err == nil || bNil != nil {
+		t.Error("Expected rejection from edit on no access")
+	}
+	if bNil, err := cur.ReadDocument("", "", "test", time.Second); err == nil || bNil != nil {
+		t.Error("Expected rejection from edit on no access")
+	}
+
+	// Read access
+	auth.level = acl.ReadAccess
+	if bNil, err := cur.CreateDocument("", "", store.NewDocument("test"), time.Second); err == nil || bNil != nil {
+		t.Error("Expected rejection from create on read access")
+	}
+	if bNil, err := cur.EditDocument("", "", "test", time.Second); err == nil || bNil != nil {
+		t.Error("Expected rejection from edit on read access")
+	}
+
+	// Edit access
+	auth.level = acl.EditAccess
+	if bNil, err := cur.CreateDocument("", "", store.NewDocument("test"), time.Second); err == nil || bNil != nil {
+		t.Error("Expected rejection from create on edit access")
+	}
+
+	cur.Close()
 }
 
 func TestGetUsers(t *testing.T) {
@@ -172,12 +230,148 @@ func goodClient(b binder.Portal, expecting int, t *testing.T, wg *sync.WaitGroup
 	wg.Done()
 }
 
-func TestCuratorClients(t *testing.T) {
+type dummyBinder struct {
+	kickChan   chan string
+	closedChan chan struct{}
+	id         string
+}
+
+func (d *dummyBinder) ID() string {
+	return d.id
+}
+
+func (d *dummyBinder) GetUsers(timeout time.Duration) ([]string, error) {
+	return []string{}, nil
+}
+
+func (d *dummyBinder) KickUser(userID string, timeout time.Duration) error {
+	d.kickChan <- userID
+	return nil
+}
+
+func (d *dummyBinder) Subscribe(userID string, timeout time.Duration) (binder.Portal, error) {
+	return nil, nil
+}
+
+// SubscribeReadOnly - Register a new client as a read only viewer of this binder document.
+func (d *dummyBinder) SubscribeReadOnly(userID string, timeout time.Duration) (binder.Portal, error) {
+	return nil, nil
+}
+
+// Close - Close the binder and shut down all clients, also flushes and cleans up the document.
+func (d *dummyBinder) Close() {
+	close(d.closedChan)
+}
+
+func TestCuratorBinderKicking(t *testing.T) {
 	log, stats := loggerAndStats()
 	auth, storage := authAndStore(log, stats)
 
-	config := binder.NewConfig()
-	config.FlushPeriodMS = 5000
+	conf := NewConfig()
+	conf.BinderConfig.CloseInactivityPeriodMS = 1
+
+	curator, err := New(conf, log, stats, auth, storage)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	bOne := &dummyBinder{
+		id:         "first",
+		closedChan: make(chan struct{}),
+		kickChan:   make(chan string),
+	}
+
+	curator.binderMutex.Lock()
+	curator.openBinders = map[string]binder.Type{
+		bOne.id: bOne,
+	}
+	curator.binderMutex.Unlock()
+
+	go func() {
+		if err := curator.KickUser("first", "test1", time.Second); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	select {
+	case kicked := <-bOne.kickChan:
+		if exp, actual := "test1", kicked; exp != actual {
+			t.Errorf("Wrong user kicked: %v != %v", exp, actual)
+		}
+	case <-time.After(time.Second):
+		t.Error("User was not kicked")
+	}
+
+	if err := curator.KickUser("does not exist", "test1", time.Second); err == nil {
+		t.Error("Expected error from invalid binder kicking")
+	}
+
+	curator.Close()
+}
+
+func TestCuratorBinderClosure(t *testing.T) {
+	log, stats := loggerAndStats()
+	auth, storage := authAndStore(log, stats)
+
+	conf := NewConfig()
+	conf.BinderConfig.CloseInactivityPeriodMS = 1
+
+	curator, err := New(conf, log, stats, auth, storage)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	bOne := &dummyBinder{id: "first", closedChan: make(chan struct{})}
+	bTwo := &dummyBinder{id: "second", closedChan: make(chan struct{})}
+
+	curator.binderMutex.Lock()
+	curator.openBinders = map[string]binder.Type{
+		bOne.id: bOne,
+		bTwo.id: bTwo,
+	}
+	curator.binderMutex.Unlock()
+
+	select {
+	case curator.errorChan <- binder.Error{ID: "this doesnt exist, hope we dont panic!", Err: nil}:
+	case <-time.After(time.Second):
+		t.Error("timed out sending binder error")
+	}
+	select {
+	case curator.errorChan <- binder.Error{ID: bOne.id, Err: nil}:
+	case <-time.After(time.Second):
+		t.Error("timed out sending binder error")
+	}
+	select {
+	case curator.errorChan <- binder.Error{ID: bTwo.id, Err: errors.New("this was an error")}:
+	case <-time.After(time.Second):
+		t.Error("timed out sending binder error")
+	}
+
+	select {
+	case <-bOne.closedChan:
+	case <-time.After(time.Second):
+		t.Error("binder one was not closed")
+	}
+	select {
+	case <-bTwo.closedChan:
+	case <-time.After(time.Second):
+		t.Error("binder two was not closed")
+	}
+
+	curator.binderMutex.Lock()
+	if exp, actual := 0, len(curator.openBinders); exp != actual {
+		t.Errorf("Wrong count of openBinders: %v != %v", exp, actual)
+	}
+	curator.binderMutex.Unlock()
+
+	curator.Close()
+}
+
+func TestCuratorClients(t *testing.T) {
+	log, stats := loggerAndStats()
+	auth, storage := authAndStore(log, stats)
 
 	curator, err := New(NewConfig(), log, stats, auth, storage)
 	if err != nil {
@@ -185,14 +379,9 @@ func TestCuratorClients(t *testing.T) {
 		return
 	}
 
-	doc, err := store.NewDocument("hello world")
-	if err != nil {
-		t.Errorf("error: %v", err)
-		return
-	}
-
-	portal, err := curator.CreateDocument("", "", *doc, time.Second)
-	*doc = portal.Document()
+	doc := store.NewDocument("hello world")
+	portal, err := curator.CreateDocument("", "", doc, time.Second)
+	doc = portal.Document()
 	if err != nil {
 		t.Errorf("error: %v", err)
 	}
