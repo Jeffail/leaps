@@ -29,9 +29,19 @@ import (
 	"github.com/jeffail/leaps/lib/store"
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-// Type - Provides thread safe implementations of basic document and session creation.
+// AuditorContainer - A type responsible for creating and managing auditors for
+// string identified operational transform binders.
+type AuditorContainer interface {
+	// Get - Return a managed Auditor type for a binder ID.
+	Get(binderID string) (binder.TransformAuditor, error)
+}
+
+//------------------------------------------------------------------------------
+
+// Type - Provides thread safe implementations of basic document and session
+// creation.
 type Type interface {
 	// EditDocument - Find and return a binder portal to an existing document
 	EditDocument(userID, token, documentID string, timeout time.Duration) (binder.Portal, error)
@@ -55,4 +65,4 @@ type Type interface {
 	Close()
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------

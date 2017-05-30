@@ -29,42 +29,85 @@ import (
 	"github.com/jeffail/leaps/lib/text"
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+// TransformAuditor - A type that receives all transforms from a running binder
+// as they arrive. The purpose of this type is to expose the flowing data to
+// other components.
+type TransformAuditor interface {
+	// OnTransform - Is called by binder threads synchronously for each received
+	// transform. Therefore, the implementation must be thread safe and avoid
+	// blocking. An implementation may wish to perform validation on the
+	// transform, in the case of a 'fail' an error should be returned, which
+	// will prevent the transform from being applied.
+	OnTransform(tform text.OTransform) error
+}
+
+//------------------------------------------------------------------------------
+
+// TransformSink - A type that consumes transforms,
+type TransformSink interface {
+	// PushTransform - Process a newly received transform and return the
+	// corrected version.
+	PushTransform(ot text.OTransform) (text.OTransform, int, error)
+
+	// IsDirty - Check whether the sink has uncommitted changes.
+	IsDirty() bool
+
+	// GetVersion - Returns the current version of the underlying transform
+	// model
+	GetVersion() int
+
+	// FlushTransforms - apply all unapplied transforms to content and perform
+	// any subsequent cleaning up of the transforms stack, transforms within
+	// the secondsRetention period will be preserved for corrections. Returns a
+	// bool indicating whether any changes were applied.
+	FlushTransforms(content *string, secondsRetention int64) (bool, error)
+}
+
+//------------------------------------------------------------------------------
 
 // Portal - An interface used by clients to contact a connected binder type.
 type Portal interface {
 	// UserID - Returns the user identifier associated with this binder session.
 	UserID() string
 
-	// SessionID - Returns the unique session identifier associated with this binder session.
+	// SessionID - Returns the unique session identifier associated with this
+	// binder session.
 	SessionID() string
 
-	// BaseVersion - Returns the version of the binder as it was when this session opened.
+	// BaseVersion - Returns the version of the binder as it was when this
+	// session opened.
 	BaseVersion() int
 
-	// Document - Returns the document contents as it was when this session opened.
+	// Document - Returns the document contents as it was when this session
+	// opened.
 	Document() store.Document
 
 	// ReleaseDocument - Releases the cached document.
 	ReleaseDocument()
 
-	// TransformReadChan - Get the channel for reading transforms from other binder clients.
+	// TransformReadChan - Get the channel for reading transforms from other
+	// binder clients.
 	TransformReadChan() <-chan text.OTransform
 
-	// UpdateReadChan - Get the channel for reading meta updates from other binder clients.
+	// UpdateReadChan - Get the channel for reading meta updates from other
+	// binder clients.
 	UpdateReadChan() <-chan ClientUpdate
 
-	// SendTransform - Submits an operational transform to the document, this call adds the
-	// transform to the stack of pending changes and broadcasts it to all other connected clients.
-	// The transform must be submitted with the target version (the version that the client believed
-	// it was, at the time it was made), and the actual version is returned.
+	// SendTransform - Submits an operational transform to the document, this
+	// call adds the transform to the stack of pending changes and broadcasts it
+	// to all other connected clients. The transform must be submitted with the
+	// target version (the version that the client believed it was, at the time
+	// it was made), and the actual version is returned.
 	SendTransform(ot text.OTransform, timeout time.Duration) (int, error)
 
 	// SendMessage - Broadcasts a message out to all other connected clients.
 	SendMessage(message Message)
 
-	// Exit - Inform the binder that this client is shutting down, this call will block until
-	// acknowledged by the binder. Therefore, you may specify a timeout.
+	// Exit - Inform the binder that this client is shutting down, this call
+	// will block until acknowledged by the binder. Therefore, you may specify a
+	// timeout.
 	Exit(timeout time.Duration)
 }
 
@@ -82,11 +125,13 @@ type Type interface {
 	// Subscribe - Register a new client as an editor of this binder document.
 	Subscribe(userID string, timeout time.Duration) (Portal, error)
 
-	// SubscribeReadOnly - Register a new client as a read only viewer of this binder document.
+	// SubscribeReadOnly - Register a new client as a read only viewer of this
+	// binder document.
 	SubscribeReadOnly(userID string, timeout time.Duration) (Portal, error)
 
-	// Close - Close the binder and shut down all clients, also flushes and cleans up the document.
+	// Close - Close the binder and shut down all clients, also flushes and
+	// cleans up the document.
 	Close()
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------

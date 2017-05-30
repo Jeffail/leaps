@@ -36,35 +36,35 @@ import (
 	"github.com/jeffail/util/metrics"
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // Config - Holds configuration options for a curator.
 type Config struct {
 	BinderConfig binder.Config `json:"binder" yaml:"binder"`
 }
 
-// NewConfig - Returns a fully defined curator configuration with the default values for each field.
+// NewConfig - Returns a fully defined curator configuration with the default
+// values for each field.
 func NewConfig() Config {
 	return Config{
 		BinderConfig: binder.NewConfig(),
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // Errors for the Curator type.
 var (
 	ErrBinderNotFound = errors.New("binder was not found")
 )
 
-/*
-Impl - The underlying implementation of the curator type. Creates and manages the entire lifecycle
-of binders internally.
-*/
+// Impl - The underlying implementation of the curator type. Creates and manages
+// the entire lifecycle of binders internally.
 type Impl struct {
-	config Config
-	store  store.Type
-	auth   acl.Authenticator
+	config   Config
+	store    store.Type
+	auth     acl.Authenticator
+	auditors AuditorContainer
 
 	log   log.Modular
 	stats metrics.Aggregator
@@ -86,6 +86,7 @@ func New(
 	stats metrics.Aggregator,
 	auth acl.Authenticator,
 	store store.Type,
+	auditors AuditorContainer,
 ) (*Impl, error) {
 
 	curator := Impl{
@@ -94,6 +95,7 @@ func New(
 		log:         log.NewModule(":curator"),
 		stats:       stats,
 		auth:        auth,
+		auditors:    auditors,
 		openBinders: make(map[string]binder.Type),
 		errorChan:   make(chan binder.Error, 10),
 		closeChan:   make(chan struct{}),
@@ -104,10 +106,9 @@ func New(
 	return &curator, nil
 }
 
-/*
-Close - Shut the curator and all subsequent binders down. This call blocks until the shut down is
-finished, and you must ensure that this curator cannot be accessed after closing.
-*/
+// Close - Shut the curator and all subsequent binders down. This call blocks
+// until the shut down is finished, and you must ensure that this curator cannot
+// be accessed after closing.
 func (c *Impl) Close() {
 	c.log.Debugln("Close called")
 	c.closeChan <- struct{}{}
@@ -117,11 +118,12 @@ func (c *Impl) Close() {
 /*
 loop - The main loop of the curator. Two channels are listened to:
 
-- Error channel, used by active binders to request a shut down, either due to inactivity or an error
-having occurred. The curator then calls close on it and removes it from the list of binders.
+- Error channel, used by active binders to request a shut down, either due to
+  inactivity or an error having occurred. The curator then calls close on it and
+  removes it from the list of binders.
 
-- Close channel, used by the owner of the curator to instigate a clean shut down. The curator then
-forwards to call to all binders and closes itself.
+- Close channel, used by the owner of the curator to instigate a clean shut
+  down. The curator then forwards to call to all binders and closes itself.
 */
 func (c *Impl) loop() {
 	c.log.Debugln("Loop called")
@@ -160,10 +162,23 @@ func (c *Impl) loop() {
 	}
 }
 
-/*--------------------------------------------------------------------------------------------------
- */
+func (c *Impl) newBinder(id string) (binder.Type, error) {
+	var auditor binder.TransformAuditor
+	var err error
+	if c.auditors != nil {
+		if auditor, err = c.auditors.Get(id); err != nil {
+			return nil, fmt.Errorf("failed to create auditor: %v", err)
+		}
+	}
+	return binder.New(
+		id, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats, auditor,
+	)
+}
 
-// KickUser - Remove a user from a document, requires the respective user and document IDs.
+//------------------------------------------------------------------------------
+
+// KickUser - Remove a user from a document, requires the respective user and
+// document IDs.
 func (c *Impl) KickUser(documentID, userID string, timeout time.Duration) error {
 	c.log.Debugf("attempting to kick user %v from document %v\n", documentID, userID)
 
@@ -228,10 +243,9 @@ func (c *Impl) GetUsers(timeout time.Duration) (map[string][]string, error) {
 	return list, nil
 }
 
-/*
-EditDocument - Locates or creates a Binder for an existing document and returns that Binder for
-subscribing to. Returns an error if there was a problem locating the document.
-*/
+// EditDocument - Locates or creates a Binder for an existing document and
+// returns that Binder for subscribing to. Returns an error if there was a
+// problem locating the document.
 func (c *Impl) EditDocument(
 	userID, token, documentID string, timeout time.Duration,
 ) (binder.Portal, error) {
@@ -252,9 +266,7 @@ func (c *Impl) EditDocument(
 		c.binderMutex.Unlock()
 		return openBinder.Subscribe(userID, timeout)
 	}
-	openBinder, err := binder.New(
-		documentID, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats,
-	)
+	openBinder, err := c.newBinder(documentID)
 	if err != nil {
 		c.binderMutex.Unlock()
 
@@ -269,11 +281,9 @@ func (c *Impl) EditDocument(
 	return openBinder.Subscribe(userID, timeout)
 }
 
-/*
-ReadDocument - Locates or creates a Binder for an existing document and returns that Binder for
-subscribing to with read only privileges. Returns an error if there was a problem locating the
-document.
-*/
+// ReadDocument - Locates or creates a Binder for an existing document and
+// returns that Binder for subscribing to with read only privileges. Returns an
+// error if there was a problem locating the document.
 func (c *Impl) ReadDocument(
 	userID, token, documentID string, timeout time.Duration,
 ) (binder.Portal, error) {
@@ -295,9 +305,7 @@ func (c *Impl) ReadDocument(
 		c.binderMutex.Unlock()
 		return openBinder.SubscribeReadOnly(userID, timeout)
 	}
-	openBinder, err := binder.New(
-		documentID, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats,
-	)
+	openBinder, err := c.newBinder(documentID)
 	if err != nil {
 		c.binderMutex.Unlock()
 
@@ -312,11 +320,10 @@ func (c *Impl) ReadDocument(
 	return openBinder.SubscribeReadOnly(userID, timeout)
 }
 
-/*
-CreateDocument - Creates a fresh Binder for a new document, which is subsequently stored, returns an
-error if either the document ID is already currently in use, or if there is a problem storing the
-new document. May require authentication, if so a userID is supplied.
-*/
+// CreateDocument - Creates a fresh Binder for a new document, which is
+// subsequently stored, returns an error if either the document ID is already
+// currently in use, or if there is a problem storing the new document. May
+// require authentication, if so a userID is supplied.
 func (c *Impl) CreateDocument(
 	userID, token string, doc store.Document, timeout time.Duration,
 ) (binder.Portal, error) {
@@ -336,9 +343,7 @@ func (c *Impl) CreateDocument(
 		c.log.Errorf("Failed to create new document: %v\n", err)
 		return nil, err
 	}
-	openBinder, err := binder.New(
-		doc.ID, c.store, c.config.BinderConfig, c.errorChan, c.log, c.stats,
-	)
+	openBinder, err := c.newBinder(doc.ID)
 	if err != nil {
 		c.stats.Incr("curator.bind_new.failed", 1)
 		c.log.Errorf("Failed to bind to new document: %v\n", err)
@@ -352,4 +357,4 @@ func (c *Impl) CreateDocument(
 	return openBinder.Subscribe(userID, timeout)
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------

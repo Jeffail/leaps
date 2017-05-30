@@ -57,7 +57,7 @@ func TestNewCurator(t *testing.T) {
 	log, stats := loggerAndStats()
 	auth, storage := authAndStore(log, stats)
 
-	cur, err := New(NewConfig(), log, stats, auth, storage)
+	cur, err := New(NewConfig(), log, stats, auth, storage, nil)
 	if err != nil {
 		t.Errorf("Create curator error: %v", err)
 		return
@@ -75,7 +75,7 @@ func TestReadOnlyCurator(t *testing.T) {
 		Content: "hello world2",
 	})
 
-	curator, err := New(NewConfig(), log, stats, auth, storage)
+	curator, err := New(NewConfig(), log, stats, auth, storage, nil)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -127,7 +127,7 @@ func TestPermissions(t *testing.T) {
 	_, storage := authAndStore(log, stats)
 	auth := dummyAuth{level: acl.NoAccess}
 
-	cur, err := New(NewConfig(), log, stats, &auth, storage)
+	cur, err := New(NewConfig(), log, stats, &auth, storage, nil)
 	if err != nil {
 		t.Errorf("Create curator error: %v", err)
 		return
@@ -187,7 +187,7 @@ func TestGetUsers(t *testing.T) {
 		}
 	}
 
-	curator, err := New(NewConfig(), log, stats, auth, storage)
+	curator, err := New(NewConfig(), log, stats, auth, storage, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -270,7 +270,7 @@ func TestCuratorBinderKicking(t *testing.T) {
 	conf := NewConfig()
 	conf.BinderConfig.CloseInactivityPeriodMS = 1
 
-	curator, err := New(conf, log, stats, auth, storage)
+	curator, err := New(conf, log, stats, auth, storage, nil)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -317,7 +317,7 @@ func TestCuratorBinderClosure(t *testing.T) {
 	conf := NewConfig()
 	conf.BinderConfig.CloseInactivityPeriodMS = 1
 
-	curator, err := New(conf, log, stats, auth, storage)
+	curator, err := New(conf, log, stats, auth, storage, nil)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return
@@ -373,7 +373,7 @@ func TestCuratorClients(t *testing.T) {
 	log, stats := loggerAndStats()
 	auth, storage := authAndStore(log, stats)
 
-	curator, err := New(NewConfig(), log, stats, auth, storage)
+	curator, err := New(NewConfig(), log, stats, auth, storage, nil)
 	if err != nil {
 		t.Errorf("error: %v", err)
 		return

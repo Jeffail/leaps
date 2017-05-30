@@ -64,8 +64,9 @@ func NewConfig() Config {
 type impl struct {
 	id       string
 	config   Config
-	otBuffer *text.OTBuffer
+	otBuffer TransformSink
 	block    store.Type
+	auditor  TransformAuditor
 
 	log   log.Modular
 	stats metrics.Aggregator
@@ -94,12 +95,14 @@ func New(
 	errorChan chan<- Error,
 	log log.Modular,
 	stats metrics.Aggregator,
+	auditor TransformAuditor,
 ) (Type, error) {
 	binder := impl{
 		id:               id,
 		config:           config,
 		otBuffer:         text.NewOTBuffer(config.OTBufferConfig),
 		block:            block,
+		auditor:          auditor,
 		log:              log.NewModule(":binder"),
 		stats:            stats,
 		clients:          make([]*binderClient, 0),
@@ -348,12 +351,16 @@ func (b *impl) processTransform(request transformSubmission) {
 	var version int
 
 	b.log.Debugf("Received transform: %q\n", fmt.Sprintf("%v", request.transform))
-	dispatch, version, err = b.otBuffer.PushTransform(request.transform)
 
+	dispatch, version, err = b.otBuffer.PushTransform(request.transform)
 	if err != nil {
 		b.stats.Incr("binder.process_job.error", 1)
 		b.sendClientError(request.errorChan, err)
 		return
+	}
+	// If we have an auditor then send it our transforms.
+	if b.auditor != nil {
+		b.auditor.OnTransform(dispatch)
 	}
 	select {
 	case request.versionChan <- version:

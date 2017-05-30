@@ -251,7 +251,7 @@ func TestHttpServer(t *testing.T) {
 	logger, stats := loggerAndStats()
 	auth, storage := authAndStore(logger, stats)
 
-	curator, err := curator.New(curator.NewConfig(), logger, stats, auth, storage)
+	curator, err := curator.New(curator.NewConfig(), logger, stats, auth, storage, nil)
 	if err != nil {
 		t.Errorf("Curator error: %v", err)
 	}

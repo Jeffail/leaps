@@ -77,9 +77,63 @@ func TestFailedInitialFlush(t *testing.T) {
 	logger, stats := loggerAndStats()
 	storage := testStore{documents: nil}
 
-	_, err := New("KILL_ME", &storage, NewConfig(), errChan, logger, stats)
+	_, err := New("KILL_ME", &storage, NewConfig(), errChan, logger, stats, nil)
 	if err == nil {
 		t.Error("Expected error from failed initial flush")
+	}
+}
+
+type dumbAuditor struct {
+	transforms []text.OTransform
+}
+
+func (d *dumbAuditor) OnTransform(t text.OTransform) error {
+	d.transforms = append(d.transforms, t)
+	return nil
+}
+
+func TestAuditor(t *testing.T) {
+	errChan := make(chan Error, 10)
+
+	logger, stats := loggerAndStats()
+	doc := store.NewDocument("hello world")
+
+	storage := testStore{documents: map[string]store.Document{
+		"KILL_ME": doc,
+	}}
+
+	auditor := &dumbAuditor{}
+
+	binder, err := New("KILL_ME", &storage, NewConfig(), errChan, logger, stats, auditor)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+	defer binder.Close()
+
+	if exp, actual := "KILL_ME", binder.ID(); exp != actual {
+		t.Errorf("Wrong result from ID call: %v != %v", exp, actual)
+	}
+
+	testClient, err := binder.Subscribe("", time.Second)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	testClient.SendTransform(text.OTransform{Position: 0, Insert: "hello", Version: 2}, time.Second)
+
+	if exp, actual := 1, len(auditor.transforms); exp != actual {
+		t.Errorf("Wrong count of audits: %v != %v", exp, actual)
+		return
+	}
+	if exp, actual := "hello", auditor.transforms[0].Insert; exp != actual {
+		t.Errorf("Wrong value within audits: %v != %v", exp, actual)
+	}
+	if exp, actual := 0, auditor.transforms[0].Position; exp != actual {
+		t.Errorf("Wrong value within audits: %v != %v", exp, actual)
+	}
+	if exp, actual := 2, auditor.transforms[0].Version; exp != actual {
+		t.Errorf("Wrong value within audits: %v != %v", exp, actual)
 	}
 }
 
@@ -93,7 +147,7 @@ func TestGracefullShutdown(t *testing.T) {
 		"KILL_ME": doc,
 	}}
 
-	binder, err := New("KILL_ME", &storage, NewConfig(), errChan, logger, stats)
+	binder, err := New("KILL_ME", &storage, NewConfig(), errChan, logger, stats, nil)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -131,7 +185,7 @@ func TestClientExitAndShutdown(t *testing.T) {
 	conf.ClientKickPeriodMS = 1        // Basically do not block at all on clients
 	conf.CloseInactivityPeriodMS = 500 // 1 second of inactivity before we close
 
-	binder, err := New("KILL_ME", &storage, conf, errChan, logger, stats)
+	binder, err := New("KILL_ME", &storage, conf, errChan, logger, stats, nil)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -185,7 +239,7 @@ func TestClientAdminTasks(t *testing.T) {
 		"KILL_ME": doc,
 	}}
 
-	binder, err := New("KILL_ME", &store, NewConfig(), errChan, logger, stats)
+	binder, err := New("KILL_ME", &store, NewConfig(), errChan, logger, stats, nil)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -259,7 +313,7 @@ func TestKickLockedUsers(t *testing.T) {
 	conf := NewConfig()
 	conf.ClientKickPeriodMS = 1
 
-	binder, err := New("KILL_ME", &store, conf, errChan, logger, stats)
+	binder, err := New("KILL_ME", &store, conf, errChan, logger, stats, nil)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return
@@ -302,6 +356,7 @@ func TestUpdates(t *testing.T) {
 		errChan,
 		logger,
 		stats,
+		nil,
 	)
 	if err != nil {
 		t.Errorf("error: %v", err)
@@ -380,6 +435,7 @@ func TestUpdatesSameUserID(t *testing.T) {
 		errChan,
 		logger,
 		stats,
+		nil,
 	)
 	if err != nil {
 		t.Errorf("error: %v", err)
@@ -451,6 +507,7 @@ func TestNew(t *testing.T) {
 		errChan,
 		logger,
 		stats,
+		nil,
 	)
 	if err != nil {
 		t.Errorf("error: %v", err)
@@ -509,6 +566,7 @@ func TestReadOnlyPortals(t *testing.T) {
 		errChan,
 		logger,
 		stats,
+		nil,
 	)
 	if err != nil {
 		t.Errorf("error: %v", err)
@@ -609,6 +667,7 @@ func TestClients(t *testing.T) {
 		errChan,
 		logger,
 		stats,
+		nil,
 	)
 	if err != nil {
 		t.Errorf("error: %v", err)
@@ -731,6 +790,7 @@ func TestBinderStories(t *testing.T) {
 			errChan,
 			logger,
 			stats,
+			nil,
 		)
 		if err != nil {
 			t.Errorf("error: %v", err)

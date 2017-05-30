@@ -136,7 +136,7 @@ If a path is not specified the current directory is shared instead.
 
 	// Curator of documents
 	curatorConf := curator.NewConfig()
-	curator, err := curator.New(curatorConf, logger, stats, authenticator, docStore)
+	curator, err := curator.New(curatorConf, logger, stats, authenticator, docStore, nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
 		return

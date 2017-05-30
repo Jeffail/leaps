@@ -29,7 +29,7 @@ import (
 	"time"
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // Errors for the internal Operational Transform model.
 var (
@@ -52,13 +52,12 @@ func NewOTBufferConfig() OTBufferConfig {
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-/*
-OTBuffer - Buffers a growing stack of operational transforms, adjusting any out of date transforms
-as they are added. When the stack is flushed into a document any expired transforms are deleted,
-transforms that are not yet expired will be kept as they are used for adjustments.
-*/
+// OTBuffer - Buffers a growing stack of operational transforms, adjusting any
+// out of date transforms as they are added. When the stack is flushed into a
+// document any expired transforms are deleted, transforms that are not yet
+// expired will be kept as they are used for adjustments.
 type OTBuffer struct {
 	config    OTBufferConfig
 	Version   int
@@ -76,13 +75,12 @@ func NewOTBuffer(config OTBufferConfig) *OTBuffer {
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-/*
-PushTransform - Inserts a transform onto the unapplied stack and increments the version number of
-the document. Whilst doing so it fixes the transform in relation to earlier transforms it was
-unaware of, this fixed version gets sent back for distributing across other clients.
-*/
+// PushTransform - Inserts a transform onto the unapplied stack and increments
+// the version number of the document. Whilst doing so it fixes the transform in
+// relation to earlier transforms it was unaware of, this fixed version gets
+// sent back for distributing across other clients.
 func (m *OTBuffer) PushTransform(ot OTransform) (OTransform, int, error) {
 	if ot.Delete < 0 {
 		return OTransform{}, 0, ErrTransformNegDelete
@@ -132,11 +130,10 @@ func (m *OTBuffer) GetVersion() int {
 	return m.Version
 }
 
-/*
-FlushTransforms - apply all unapplied transforms and append them to the applied stack, then remove
-old entries from the applied stack. Accepts retention as an indicator for how many seconds applied
-transforms should be retained. Returns a bool indicating whether any changes were applied.
-*/
+// FlushTransforms - apply all unapplied transforms and append them to the
+// applied stack, then remove old entries from the applied stack. Accepts
+// retention as an indicator for how many seconds applied transforms should be
+// retained. Returns a bool indicating whether any changes were applied.
 func (m *OTBuffer) FlushTransforms(content *string, secondsRetention int64) (bool, error) {
 	transforms := m.Unapplied[:]
 	m.Unapplied = []OTransform{}
@@ -200,4 +197,4 @@ func applyTransform(content *[]rune, ot *OTransform) error {
 	return nil
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------

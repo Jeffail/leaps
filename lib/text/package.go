@@ -20,9 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*
-Package text - Contains logic for manipulating text based operational transforms, applying them to
-documents and caching them within state machines for easy management. This package has utilities for
-both servers and clients.
-*/
+// Package text - Contains logic for manipulating text based operational
+// transforms, applying them to documents and caching them within state machines
+// for easy management. This package has utilities for both servers and clients.
 package text

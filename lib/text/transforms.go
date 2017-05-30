@@ -26,12 +26,10 @@ import (
 	"bytes"
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-/*
-OTransform - A representation of a transformation relating to a leaps document. This can either be a
-text addition, a text deletion, or both.
-*/
+// OTransform - A representation of a transformation relating to a leaps
+// document. This can either be a text addition, a text deletion, or both.
 type OTransform struct {
 	Position  int    `json:"position"`
 	Delete    int    `json:"num_delete"`
@@ -40,7 +38,7 @@ type OTransform struct {
 	TReceived int64  `json:"received,omitempty"`
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 func intMin(left, right int) int {
 	if left < right {
@@ -57,21 +55,23 @@ func intMax(left, right int) int {
 }
 
 /*
-FixOutOfDateTransform - When a transform created for a specific version is later determined to come
-after one or more other transforms it can be fixed. This fix translates the transform such that
-being applied in the correct order will preserve the original intention.
+FixOutOfDateTransform - When a transform created for a specific version is later
+determined to come after one or more other transforms it can be fixed. This fix
+translates the transform such that being applied in the correct order will
+preserve the original intention.
 
-In order to apply these fixes this function should be called with the target transform and the
-actual versioned transform that the target currently 'believes' it is. So, for example, if the
-transform was written for version 7 and was actually 10 you would call FixOutOfDateTransform in this
-order:
+In order to apply these fixes this function should be called with the target
+transform and the actual versioned transform that the target currently
+'believes' it is. So, for example, if the transform was written for version 7
+and was actually 10 you would call FixOutOfDateTransform in this order:
 
 FixOutOfDateTransform(target, version7)
 FixOutOfDateTransform(target, version8)
 FixOutOfDateTransform(target, version9)
 
-Once the transform is adjusted through this fix it can be harmlessly dispatched to all other clients
-which will end up with the same document as the client that submitted this transform.
+Once the transform is adjusted through this fix it can be harmlessly dispatched
+to all other clients which will end up with the same document as the client that
+submitted this transform.
 
 NOTE: These fixes do not regard or alter the versions of either transform.
 */
@@ -109,19 +109,23 @@ func FixOutOfDateTransform(sub, pre *OTransform) {
 }
 
 /*
-FixPrematureTransform - Used by clients to fix incoming and outgoing transforms when local changes
-have been applied to a document before being routed through the server.
+FixPrematureTransform - Used by clients to fix incoming and outgoing transforms
+when local changes have been applied to a document before being routed through
+the server.
 
-In order for a client UI to be unblocking it must apply local changes as the user types them before
-knowing the correct order of the change. Therefore, it is possible to apply a local change before
-receiving incoming transforms that are meant to be applied beforehand.
+In order for a client UI to be unblocking it must apply local changes as the
+user types them before knowing the correct order of the change. Therefore, it is
+possible to apply a local change before receiving incoming transforms that are
+meant to be applied beforehand.
 
-As a solution to those situations this function allows a client to alter and incoming interations
-such that if they were to be applied to the local document after our local change they would result
-in the same document. The outgoing transform is also modified for sending out to the server.
+As a solution to those situations this function allows a client to alter and
+incoming interations such that if they were to be applied to the local document
+after our local change they would result in the same document. The outgoing
+transform is also modified for sending out to the server.
 
-It is possible that the local change has already been dispatched to the server, in which case it is
-the servers responsibility to fix the transform so that other clients end up at the same result.
+It is possible that the local change has already been dispatched to the server,
+in which case it is the servers responsibility to fix the transform so that
+other clients end up at the same result.
 
 NOTE: These fixes do not regard or alter the versions of either transform.
 */
@@ -161,11 +165,10 @@ func FixPrematureTransform(unapplied, unsent *OTransform) {
 	}
 }
 
-/*
-MergeTransforms - Takes two transforms (the next to be sent, and the one that follows) and attempts
-to merge them into one transform. This will not be possible with some combinations, and the function
-returns a boolean to indicate whether the merge was successful.
-*/
+// MergeTransforms - Takes two transforms (the next to be sent, and the one that
+// follows) and attempts to merge them into one transform. This will not be
+// possible with some combinations, and the function returns a boolean to
+// indicate whether the merge was successful.
 func MergeTransforms(first, second *OTransform) bool {
 	var overlap, remainder int
 
@@ -195,4 +198,4 @@ func MergeTransforms(first, second *OTransform) bool {
 	return false
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
