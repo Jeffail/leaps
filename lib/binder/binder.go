@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jeffail/leaps/lib/audit"
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/lib/text"
 	"github.com/jeffail/leaps/lib/util"
@@ -66,7 +67,7 @@ type impl struct {
 	config   Config
 	otBuffer TransformSink
 	block    store.Type
-	auditor  TransformAuditor
+	auditor  audit.Auditor
 
 	log   log.Modular
 	stats metrics.Aggregator
@@ -95,7 +96,7 @@ func New(
 	errorChan chan<- Error,
 	log log.Modular,
 	stats metrics.Aggregator,
-	auditor TransformAuditor,
+	auditor audit.Auditor,
 ) (Type, error) {
 	binder := impl{
 		id:               id,

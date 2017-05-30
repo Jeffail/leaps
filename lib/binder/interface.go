@@ -31,20 +31,6 @@ import (
 
 //------------------------------------------------------------------------------
 
-// TransformAuditor - A type that receives all transforms from a running binder
-// as they arrive. The purpose of this type is to expose the flowing data to
-// other components.
-type TransformAuditor interface {
-	// OnTransform - Is called by binder threads synchronously for each received
-	// transform. Therefore, the implementation must be thread safe and avoid
-	// blocking. An implementation may wish to perform validation on the
-	// transform, in the case of a 'fail' an error should be returned, which
-	// will prevent the transform from being applied.
-	OnTransform(tform text.OTransform) error
-}
-
-//------------------------------------------------------------------------------
-
 // TransformSink - A type that consumes transforms,
 type TransformSink interface {
 	// PushTransform - Process a newly received transform and return the

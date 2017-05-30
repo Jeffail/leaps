@@ -25,6 +25,7 @@ package curator
 import (
 	"time"
 
+	"github.com/jeffail/leaps/lib/audit"
 	"github.com/jeffail/leaps/lib/binder"
 	"github.com/jeffail/leaps/lib/store"
 )
@@ -35,7 +36,7 @@ import (
 // string identified operational transform binders.
 type AuditorContainer interface {
 	// Get - Return a managed Auditor type for a binder ID.
-	Get(binderID string) (binder.TransformAuditor, error)
+	Get(binderID string) (audit.Auditor, error)
 }
 
 //------------------------------------------------------------------------------

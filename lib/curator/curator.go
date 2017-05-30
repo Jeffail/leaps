@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/jeffail/leaps/lib/acl"
+	"github.com/jeffail/leaps/lib/audit"
 	"github.com/jeffail/leaps/lib/binder"
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/lib/util"
@@ -163,7 +164,7 @@ func (c *Impl) loop() {
 }
 
 func (c *Impl) newBinder(id string) (binder.Type, error) {
-	var auditor binder.TransformAuditor
+	var auditor audit.Auditor
 	var err error
 	if c.auditors != nil {
 		if auditor, err = c.auditors.Get(id); err != nil {
