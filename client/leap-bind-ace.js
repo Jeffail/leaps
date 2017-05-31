@@ -284,22 +284,29 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 	var live_document = this._ace.getSession().getDocument();
 	var nl = live_document.getNewLineCharacter();
 
-	switch (e.data.action) {
-	case "insertText":
-		tform.position = position_to_u_index(live_document, e.data.range.start, 0);
-		tform.insert = new leap_str(e.data.text);
+	switch (e.action) {
+	case "insert":
+		var nlines = e.lines.length;
+		tform.position = position_to_u_index(live_document, e.start, 0);
+		if ( nlines > 1 ) {
+			console.log(e);
+			tform.insert = new leap_str(e.lines.join(nl));
+		} else {
+			console.log(e);
+			tform.insert = new leap_str(e.lines[0]);
+		}
 		break;
-	case "insertLines":
-		tform.position = position_to_u_index(live_document, e.data.range.start, 0);
-		tform.insert = new leap_str(e.data.lines.join(nl) + nl);
-		break;
-	case "removeText":
-		tform.position = position_to_u_index(live_document, e.data.range.start, 0);
-		tform.num_delete = (new leap_str(e.data.text)).u_str().length;
-		break;
-	case "removeLines":
-		tform.position = position_to_u_index(live_document, e.data.range.start, 0);
-		tform.num_delete = (new leap_str(e.data.lines.join(nl))).u_str().length + nl.length;
+	case "remove":
+		var nlines = e.lines.length;
+		tform.position = position_to_u_index(live_document, e.start, 0);
+		if ( nlines > 1 ) {
+			console.log(e);
+			tform.num_delete = (new leap_str(e.lines.join(nl))).u_str().length;
+		} else {
+			console.log(e);
+			console.log((new leap_str(e.lines[0])).u_str().length);
+			tform.num_delete = (new leap_str(e.lines[0])).u_str().length;
+		}
 		break;
 	}
 
