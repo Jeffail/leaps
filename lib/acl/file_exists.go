@@ -38,17 +38,19 @@ import (
 
 // FileExistsConfig - A config object for the FileExists acl object.
 type FileExistsConfig struct {
-	Path          string `json:"path" yaml:"path"`
-	ShowHidden    bool   `json:"show_hidden" yaml:"show_hidden"`
-	RefreshPeriod int64  `json:"refresh_period_s" yaml:"refresh_period_s"`
+	Path            string   `json:"path" yaml:"path"`
+	ShowHidden      bool     `json:"show_hidden" yaml:"show_hidden"`
+	RefreshPeriod   int64    `json:"refresh_period_s" yaml:"refresh_period_s"`
+	ReservedIgnores []string `json:"ignore_files" yaml:"ignore_files"`
 }
 
 // NewFileExistsConfig - Returns a default config object for a FileExists object.
 func NewFileExistsConfig() FileExistsConfig {
 	return FileExistsConfig{
-		Path:          "",
-		ShowHidden:    false,
-		RefreshPeriod: 10,
+		Path:            "",
+		ShowHidden:      false,
+		RefreshPeriod:   10,
+		ReservedIgnores: []string{".leapsignore"},
 	}
 }
 
@@ -80,6 +82,9 @@ func NewFileExists(config FileExistsConfig, logger log.Modular) *FileExists {
 // extractIgnores - Parses a .leapsignore file for ignore patterns (one per line).
 func (f *FileExists) extractIgnores(ignoreFilePath string) []string {
 	ignorePatterns := []string{}
+	for _, p := range f.config.ReservedIgnores {
+		ignorePatterns = append(ignorePatterns, p)
+	}
 
 	file, err := os.Open(ignoreFilePath)
 	if err != nil {

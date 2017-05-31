@@ -23,7 +23,6 @@ THE SOFTWARE.
 package text
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"time"
@@ -140,7 +139,7 @@ func (m *OTBuffer) FlushTransforms(content *string, secondsRetention int64) (boo
 
 	lenContent := len(*content)
 
-	runeContent := bytes.Runes([]byte(*content))
+	runeContent := []rune(*content)
 
 	var i, j int
 	var err error
@@ -149,7 +148,7 @@ func (m *OTBuffer) FlushTransforms(content *string, secondsRetention int64) (boo
 		if uint64(lenContent) > m.config.MaxDocumentSize {
 			return i > 0, ErrTransformTooLong
 		}
-		if err = applyTransform(&runeContent, &transforms[i]); err != nil {
+		if err = ApplyTransform(&runeContent, &transforms[i]); err != nil {
 			break
 		}
 	}
@@ -172,8 +171,8 @@ func (m *OTBuffer) FlushTransforms(content *string, secondsRetention int64) (boo
 	return i > 0, err
 }
 
-// applyTransform - Apply a specific transform to some content.
-func applyTransform(content *[]rune, ot *OTransform) error {
+// ApplyTransform - Apply a specific transform to some content.
+func ApplyTransform(content *[]rune, ot *OTransform) error {
 	if ot.Delete < 0 {
 		return ErrTransformNegDelete
 	}
@@ -184,7 +183,7 @@ func applyTransform(content *[]rune, ot *OTransform) error {
 	}
 
 	start := (*content)[:ot.Position]
-	middle := bytes.Runes([]byte(ot.Insert))
+	middle := []rune(ot.Insert)
 	end := (*content)[ot.Position+ot.Delete:]
 
 	startLen, middleLen, endLen := len(start), len(middle), len(end)

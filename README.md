@@ -4,9 +4,18 @@ Leaps is a service for collaboratively editing your local files over a web UI,
 using operational transforms to ensure zero-collision synchronization across any
 number of editing clients.
 
+## Run
+
 Simply navigate to a directory you want to share, run `leaps`, open the hosted
-page in your browser and direct any friends on your LAN to the same page. You
-can now collectively edit any documents in that directory.
+page (default `http://localhost:8080`) in your browser and direct any friends on
+your LAN to the same page. You can now collaboratively edit any documents in
+that directory.
+
+Your files will be written to in the background as you edit. If you aren't using
+version control, or simply want extra protection, you can run leaps in safe mode
+with the `--safe` flag. In safe mode any changes you make will be placed in a
+`.leaps_cot.json` file, which you can then apply to your files once you are
+happy by running with the `--commit` flag.
 
 ![Screenshot](leaps_ss.png "Leaps screenshot")
 

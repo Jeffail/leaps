@@ -261,7 +261,7 @@ func TestClientAdminTasks(t *testing.T) {
 	}
 
 	if err = binder.KickUser("Doesnotexist", time.Second); err == nil {
-		t.Error("Expected error when kicking non existant user")
+		t.Error("Expected error when kicking non existent user")
 	}
 
 	for i := 0; i < nClients; i++ {

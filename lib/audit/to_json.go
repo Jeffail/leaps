@@ -22,8 +22,10 @@ package audit
 
 import (
 	"encoding/json"
+	"os"
 	"sync"
 
+	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/lib/text"
 )
 
@@ -85,6 +87,35 @@ func (t *ToJSON) Get(binderID string) (Auditor, error) {
 	return a, nil
 }
 
+// Reapply - Reapply the audited changes to a document store.
+func (t *ToJSON) Reapply(docStore store.Type) error {
+	t.mut.Lock()
+	defer t.mut.Unlock()
+
+	for k, v := range t.documents {
+		doc, err := docStore.Read(k)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return err
+		}
+		rContent := []rune(doc.Content)
+		v.mut.Lock()
+		for i := range v.Transforms {
+			if err = text.ApplyTransform(&rContent, &v.Transforms[i]); err != nil {
+				return err
+			}
+		}
+		v.mut.Unlock()
+		doc.Content = string(rContent)
+		if err = docStore.Update(doc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Serialise - Return a JSON serialised copy of all audits.
 func (t *ToJSON) Serialise() ([]byte, error) {
 	t.mut.Lock()
@@ -95,10 +126,32 @@ func (t *ToJSON) Serialise() ([]byte, error) {
 	for k, v := range t.documents {
 		v.mut.Lock()
 		collection[k] = v.Transforms
+	}
+
+	data, err := json.Marshal(collection)
+
+	for _, v := range t.documents {
 		v.mut.Unlock()
 	}
 
-	return json.Marshal(collection)
+	return data, err
+}
+
+// Deserialise - Repopulate all audits based on a JSON serialised copy.
+func (t *ToJSON) Deserialise(data []byte) error {
+	t.mut.Lock()
+	defer t.mut.Unlock()
+
+	collection := map[string][]text.OTransform{}
+	if err := json.Unmarshal(data, &collection); err != nil {
+		return err
+	}
+
+	for k, v := range collection {
+		t.documents[k] = &CompressedAuditor{Transforms: v}
+	}
+
+	return nil
 }
 
 //------------------------------------------------------------------------------

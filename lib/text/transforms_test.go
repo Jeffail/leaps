@@ -137,7 +137,7 @@ func TestPrematureTransforms(t *testing.T) {
 		contentOrdered := bytes.Runes([]byte(test.Content))
 
 		// Apply our local transform to the client doc immediately
-		applyTransform(&contentClient, &test.LocalTform)
+		ApplyTransform(&contentClient, &test.LocalTform)
 
 		// Take a copy of our local tform to represent the servers' copy
 		remoteOT := test.LocalTform
@@ -149,8 +149,8 @@ func TestPrematureTransforms(t *testing.T) {
 
 			// Apply the remote tform in the correct original order for both
 			// the server and idealistic docs
-			applyTransform(&contentOrdered, &test.RemoteTforms[i])
-			applyTransform(&contentServer, &test.RemoteTforms[i])
+			ApplyTransform(&contentOrdered, &test.RemoteTforms[i])
+			ApplyTransform(&contentServer, &test.RemoteTforms[i])
 
 			// Fix our premature clients tform with respect to remote tform
 			FixPrematureTransform(&test.RemoteTforms[i], &test.LocalTform)
@@ -162,11 +162,11 @@ func TestPrematureTransforms(t *testing.T) {
 			}
 
 			// Apply the fixed remote tform to our client doc
-			applyTransform(&contentClient, &test.RemoteTforms[i])
+			ApplyTransform(&contentClient, &test.RemoteTforms[i])
 		}
 
-		applyTransform(&contentOrdered, &test.LocalTform)
-		applyTransform(&contentServer, &remoteOT)
+		ApplyTransform(&contentOrdered, &test.LocalTform)
+		ApplyTransform(&contentServer, &remoteOT)
 
 		if exp, act := test.Result, string(contentClient); exp != act {
 			t.Errorf("Wrong client doc result from story %s, %v != %v", test.Name, exp, act)

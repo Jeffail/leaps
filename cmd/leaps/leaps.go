@@ -26,16 +26,19 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
 	gopath "path"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"golang.org/x/net/websocket"
 
 	"github.com/jeffail/leaps/lib/acl"
+	"github.com/jeffail/leaps/lib/audit"
 	"github.com/jeffail/leaps/lib/curator"
 	leaphttp "github.com/jeffail/leaps/lib/http"
 	"github.com/jeffail/leaps/lib/store"
@@ -43,18 +46,31 @@ import (
 	"github.com/jeffail/util/metrics"
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // Flags
 var (
 	httpAddress *string
+	safeMode    *bool
+	applyLcot   *bool
 	showHidden  *bool
 	debugWWWDir *string
 	logLevel    *string
 	subdirPath  *string
+	showVersion *bool
+)
+
+// Build Information
+var (
+	version   = "0.0.0"
+	dateBuilt = "-"
 )
 
 func init() {
+	showVersion = flag.Bool("version", false, "Show version information")
+	safeMode = flag.Bool("safe", false, `Do not write changes directly to local files.
+	Instead, store them in a temporary file that can be committed afterwards with the --commit flag`)
+	applyLcot = flag.Bool("commit", false, "Commit changes made from leaps in safe mode to your local files and then exit")
 	httpAddress = flag.String("address", ":8080", "The HTTP address to bind to")
 	showHidden = flag.Bool("all", false, "Display all files, including hidden")
 	debugWWWDir = flag.String("use_www", "", "Serve alternative web files from this dir")
@@ -62,7 +78,7 @@ func init() {
 	subdirPath = flag.String("path", "/", "Subdirectory (when running leaps in a webserver subdirectory as example.com/myleaps)")
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 var endpoints = []interface{}{}
 
@@ -78,7 +94,26 @@ func handle(path, description string, handler http.HandlerFunc) {
 	})
 }
 
-//--------------------------------------------------------------------------------------------------
+func writeAudit(path string, auditor *audit.ToJSON) error {
+	data, err := auditor.Serialise()
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, data, 0644)
+}
+
+func readAudit(path string, auditor *audit.ToJSON, docStore store.Type) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if err = auditor.Deserialise(data); err != nil {
+		return err
+	}
+	return auditor.Reapply(docStore)
+}
+
+//------------------------------------------------------------------------------
 
 func main() {
 	var (
@@ -96,10 +131,17 @@ If a path is not specified the current directory is shared instead.
 
 	flag.Parse()
 
+	if *showVersion {
+		fmt.Printf("Version: %v\nDate: %v\n", version, dateBuilt)
+		os.Exit(0)
+	}
+
 	targetPath := "."
 	if flag.NArg() == 1 {
 		targetPath = flag.Arg(0)
 	}
+
+	leapsCOTPath := filepath.Join(targetPath, ".leaps_cot.json")
 
 	// Logging and metrics aggregation
 	logConf := log.NewLoggerConfig()
@@ -118,28 +160,77 @@ If a path is not specified the current directory is shared instead.
 	}
 	defer stats.Close()
 
-	logger.Infoln("Launching a leaps instance, use CTRL+C to close.")
-
 	// Document storage engine
-	docStore, err := store.NewFile(".")
+	docStore, err := store.NewFile(targetPath, !*safeMode || *applyLcot)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Document store error: %v\n", err))
-		return
+		os.Exit(1)
 	}
 
 	// Authenticator
 	storeConf := acl.NewFileExistsConfig()
 	storeConf.Path = targetPath
 	storeConf.ShowHidden = *showHidden
+	storeConf.ReservedIgnores = append(storeConf.ReservedIgnores, leapsCOTPath)
 
 	authenticator := acl.NewFileExists(storeConf, logger)
 
+	// Auditors
+	auditors := audit.NewToJSON()
+
+	// This flag means the user wants uncommitted changes to be written to disk
+	// and then we exit.
+	if *applyLcot {
+		if err := readAudit(leapsCOTPath, auditors, docStore); err != nil && !os.IsNotExist(err) {
+			logger.Errorf("Failed to read previously uncommitted changes: %v\n", err)
+			os.Exit(1)
+		}
+		if err := os.Remove(leapsCOTPath); err != nil {
+			logger.Errorf("Changes were successfully committed, but the old audit was not removed: %v\n", err)
+			logger.Errorln("You should remove %v manually before running leaps again")
+			os.Exit(1)
+		}
+		logger.Infoln("Successfully committed changes to disk.")
+		os.Exit(0)
+	}
+
+	// This flag means we are not allowed to write changes directly, so instead
+	// we write to a Compressed-OT file.
+	if *safeMode {
+		if err := readAudit(leapsCOTPath, auditors, docStore); err != nil && !os.IsNotExist(err) {
+			logger.Errorf("Failed to read previously uncommitted changes: %v\n", err)
+			os.Exit(1)
+		}
+		go func() {
+			for {
+				select {
+				case <-time.After(time.Second * 10):
+					if err := writeAudit(leapsCOTPath, auditors); err != nil {
+						logger.Errorf("Failed to write changes to %v: %v\n", leapsCOTPath, err)
+					}
+				case <-closeChan:
+					return
+				}
+			}
+		}()
+		// Use defer to commit final audit before exiting.
+		defer func() {
+			if err := writeAudit(leapsCOTPath, auditors); err != nil {
+				logger.Errorf("Failed to write changes to %v: %v\n", leapsCOTPath, err)
+			}
+		}()
+		logger.Warnf("Changes are being written to %v.\n", leapsCOTPath)
+		logger.Warnln("In order to apply these changes you can commit them with `leaps --commit`")
+	} else {
+		logger.Infoln("Writing changes directly to the filesystem")
+	}
+
 	// Curator of documents
 	curatorConf := curator.NewConfig()
-	curator, err := curator.New(curatorConf, logger, stats, authenticator, docStore, nil)
+	curator, err := curator.New(curatorConf, logger, stats, authenticator, docStore, auditors)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Curator error: %v\n", err))
-		return
+		os.Exit(1)
 	}
 	defer curator.Close()
 
@@ -197,6 +288,8 @@ If a path is not specified the current directory is shared instead.
 	http.Handle(gopath.Join("/", *subdirPath, "/leaps/ws"),
 		websocket.Handler(leaphttp.WebsocketHandler(curator, time.Second, logger, stats)))
 
+	logger.Infoln("Launching a leaps instance, use CTRL+C to close.")
+
 	go func() {
 		logger.Infof("Serving HTTP requests at: %v%v\n", *httpAddress, *subdirPath)
 		if httperr := http.ListenAndServe(*httpAddress, nil); httperr != nil {
@@ -211,8 +304,9 @@ If a path is not specified the current directory is shared instead.
 	// Wait for termination signal
 	select {
 	case <-sigChan:
+		close(closeChan)
 	case <-closeChan:
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
