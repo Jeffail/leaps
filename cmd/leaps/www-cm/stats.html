@@ -1,0 +1,72 @@
+<html>
+	<head>
+		<script type="text/javascript">
+			var get_data = function(onsuccess) {
+				"use strict";
+
+				var xmlhttp;
+				if (window.XMLHttpRequest)  {
+					// code for IE7+, Firefox, Chrome, Opera, Safari
+					xmlhttp=new XMLHttpRequest();
+				} else {
+					// code for IE6, IE5
+					xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+				}
+
+				xmlhttp.onreadystatechange = function() {
+					if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+						console.log("Received: " + xmlhttp.responseText);
+						onsuccess(xmlhttp.responseText);
+					}
+				};
+
+				xmlhttp.open("GET", "/stats", true);
+				xmlhttp.send(null);
+			};
+			window.onload = function() {
+				"use strict";
+
+				var updated_at = document.getElementById("timestamp");
+				var stats_area = document.getElementById("stats");
+
+				var poll_for_stats = function() {
+					get_data(function(data) {
+						var stats_obj = JSON.parse(data);
+						stats_area.innerHTML = JSON.stringify(stats_obj, null, 4);
+						updated_at.innerHTML = (new Date()).toUTCString();
+					});
+				};
+
+				// Grab stats every second
+				setInterval(poll_for_stats, 1000);
+
+				poll_for_stats();
+			};
+		</script>
+		<style>
+			body {
+				background-color: #f0f0f0;
+				color: #3c3c3c;
+				text-align: center;
+				padding: 20px;
+				font-family: sans-serif;
+			}
+			#stats {
+				box-shadow: inset 0px 0px 4px #7c7c7c;
+				margin: 20px auto;
+				padding: 20px;
+				width: 80%;
+				min-width: 300px;
+				background-color: #fcfcfc;
+				color: #3c3c3c;
+				text-align: left;
+				border-radius: 1em 4em 1em 4em;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Leaps Stats</h1>
+		<div>Last updated: <span id="timestamp">Never</span>.</div>
+		<pre id="stats">Waiting for response from server...</pre>
+	</body>
+</html>

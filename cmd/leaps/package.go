@@ -23,15 +23,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*
-Package main - This package creates the leaps command line binary. The client www directory is
-embedded inside the binary using go-bindata (https://github.com/jteeuwen/go-bindata) and
-go-bindata-assetfs (https://github.com/elazarl/go-bindata-assetfs) for easy deployment.
-
-To rebuild the generated files:
-
-go get github.com/jteeuwen/go-bindata/...
-go get github.com/elazarl/go-bindata-assetfs/...
-go generate
-*/
+// Package main - This package creates the leaps command line binary. The client
+// www directory is embedded inside the binary using go-bindata
+// (https://github.com/jteeuwen/go-bindata) and go-bindata-assetfs
+// (https://github.com/elazarl/go-bindata-assetfs) for easy deployment.
+//
+// To rebuild the generated files:
+//
+// go get github.com/jteeuwen/go-bindata/...
+// go get github.com/elazarl/go-bindata-assetfs/...
+// go generate
 package main

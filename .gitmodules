@@ -34,3 +34,6 @@
 [submodule "vendor/golang.org/x/net"]
 	path = vendor/golang.org/x/net
 	url = https://go.googlesource.com/net
+[submodule "vendor/github.com/codemirror/codemirror"]
+	path = vendor/github.com/codemirror/codemirror
+	url = https://github.com/codemirror/codemirror

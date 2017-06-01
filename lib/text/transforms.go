@@ -184,7 +184,7 @@ func MergeTransforms(first, second *OTransform) bool {
 	if second.Position == first.Position {
 		remainder = intMax(0, second.Delete-fLength)
 		first.Delete += remainder
-		first.Insert = second.Insert + first.Insert[second.Delete:]
+		first.Insert = second.Insert + first.Insert[second.Delete-remainder:]
 		return true
 	}
 	if second.Position > first.Position && second.Position < (first.Position+fLength) {

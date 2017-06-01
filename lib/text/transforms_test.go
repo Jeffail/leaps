@@ -47,6 +47,11 @@ func TestTransformMerge(t *testing.T) {
 		},
 		{
 			first:  OTransform{Position: 5, Insert: "hello", Delete: 4},
+			second: OTransform{Position: 5, Insert: " world", Delete: 7},
+			result: OTransform{Position: 5, Insert: " world", Delete: 6},
+		},
+		{
+			first:  OTransform{Position: 5, Insert: "hello", Delete: 4},
 			second: OTransform{Position: 10, Insert: " world", Delete: 3},
 			result: OTransform{Position: 5, Insert: "hello world", Delete: 7},
 		},
