@@ -148,6 +148,7 @@
 /*------------------------------------------------------------------------------
                         List of CodeMirror Key Mappings
 ------------------------------------------------------------------------------*/
+
 var keymaps = {
 	none : "default",
 	vim : "vim",
@@ -164,7 +165,12 @@ var leaps_client = null;
 var username = "anon";
 
 var users = {};
-var file_paths = {};
+var file_paths = {
+	root: true,
+	name: "Files",
+	path: "Files",
+	children: []
+};
 
 var theme = "zenburn";// "default";
 var binding = "none";
@@ -320,56 +326,48 @@ var join_new_document = function(document_id) {
                        File Path Acquire and Listing
 ------------------------------------------------------------------------------*/
 
-function apply_paths(old_paths, new_paths) {
-	for (var property in new_paths) {
-		if (new_paths.hasOwnProperty(property)) {
-			if ( typeof old_paths[property] !== 'object' ) {
-				old_paths[property] = new_paths[property];
+function inject_paths(root, paths_list) {
+	var i = 0, l = 0, j = 0, k = 0, m = 0, n = 0;
+
+	var children = [];
+
+	for ( i = 0, l = paths_list.length; i < l; i++ ) {
+		var ptr = children;
+		var split_path = paths_list[i].split('/');
+
+		for ( j = 0, k = split_path.length - 1; j < k; j++ ) {
+			var next_ptr = null;
+			for ( m = 0, n = ptr.length; m < n; m++ ) {
+				if ( ptr[m].name === split_path[j] ) {
+					next_ptr = ptr[m].children;
+				}
+			}
+			if ( next_ptr === null ) {
+				var new_children = [];
+				ptr.push({
+					name: split_path[j],
+					children: new_children
+				});
+				ptr = new_children;
 			} else {
-				apply_paths(old_paths[property], new_paths[property]);
+				ptr = next_ptr;
 			}
 		}
+
+		ptr.push({
+			name: split_path[k],
+			path: paths_list[i]
+		});
 	}
-	for (var property in old_paths) {
-		if (old_paths.hasOwnProperty(property)) {
-			if ( typeof new_paths[property] !== 'object' ) {
-				delete old_paths[property];
-			}
-		}
-	}
-}
 
-function create_paths_obj(path_array) {
-var i = 0, l = 0, j = 0, k = 0;
-
-if ( typeof paths_list !== 'object' ) {
-	console.error("paths list wrong type", typeof paths_list);
-	return;
-}
-if ( typeof users_map !== 'object' ) {
-console.error("users map wrong type", typeof users_map);
-return;
-}
-
-for ( i = 0, l = paths_list.length; i < l; i++ ) {
-var split_path = paths_list[i].split('/');
-var ptr = this.files_obj;
-for ( j = 0, k = split_path.length - 1; j < k; j++ ) {
-if ( 'object' !== typeof ptr[split_path[j]] ) {
-ptr[split_path[j]] = {};
-}
-ptr = ptr[split_path[j]];
-}
-ptr[split_path[split_path.length - 1]] = paths_list[i];
-}
+	root.children = children;
 }
 
 function get_paths() {
 	AJAX_REQUEST(window.location.pathname + "files", function(data) {
 		try {
 			var data_arrays = JSON.parse(data);
-			var new_paths = create_paths_obj(data_arrays);
-			apply_paths(file_paths, new_paths);
+			inject_paths(file_paths, data_arrays.paths);
 		} catch (e) {
 			console.error("paths parse error", e);
 		}
@@ -411,6 +409,7 @@ var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
 /*------------------------------------------------------------------------------
                            Vue.js UI bindings
 ------------------------------------------------------------------------------*/
+
 window.onload = function() {
 	// define the item component
 	Vue.component('item', {
@@ -450,7 +449,7 @@ window.onload = function() {
 	CodeMirror.modeURL = "cm/mode/%N/%N.js";
 
 	get_paths();
-	setTimeout(get_paths, 5000);
+	setInterval(get_paths, 5000);
 };
 
 })();
