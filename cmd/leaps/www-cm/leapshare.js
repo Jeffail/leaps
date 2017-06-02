@@ -146,120 +146,13 @@
 }));
 
 /*------------------------------------------------------------------------------
-                  File Extensions to CodeMirror Languages
-------------------------------------------------------------------------------*/
-var langs = {
-	as: "actionscript",
-	txt: "asciidoc",
-	s: "assembly_x86",
-	S: "assembly_x86",
-	asm: "assembly_x86",
-	cpp: "c_cpp",
-	hpp: "c_cpp",
-	cx: "c_cpp",
-	hx: "c_cpp",
-	c: "c_cpp",
-	h: "c_cpp",
-	clj: "clojure",
-	cljs: "clojure",
-	edn: "clojure",
-	coffee: "coffee",
-	cs: "csharp",
-	css: "css",
-	dart: "dart",
-	d: "d",
-	erl: "erlang",
-	hrl: "erlang",
-	go: "golang",
-	hs: "haskell",
-	lhs: "haskell",
-	html: "html",
-	htm: "html",
-	java: "java",
-	js: "javascript",
-	json: "json",
-	jsp: "jsp",
-	jl: "julia",
-	tex: "latex",
-	less: "less",
-	lisp: "lisp",
-	lsp: "lisp",
-	l: "lisp",
-	cl: "lisp",
-	fasl: "lisp",
-	lua: "lua",
-	mk: "makefile",
-	md: "markdown",
-	m: "matlab",
-	ml: "ocaml",
-	pl: "perl",
-	pm: "perl",
-	t: "perl",
-	pod: "perl",
-	php: "php",
-	ps: "powershell",
-	py: "python",
-	rb: "ruby",
-	rs: "rust",
-	rlib: "rust",
-	sass: "sass",
-	scss: "sass",
-	scala: "scala",
-	scm: "scheme",
-	ss: "scheme",
-	sh: "sh",
-	bash: "sh",
-	sql: "sql",
-	vb: "vbscript",
-	xml: "xml",
-	yaml: "yaml",
-	yml: "yaml",
-};
-
-/*------------------------------------------------------------------------------
-                           List of CodeMirror Themes
-------------------------------------------------------------------------------*/
-var themes = {
-	ambiance : "Ambiance",
-	chaos : "Chaos",
-	chrome : "Chrome",
-	clouds : "Clouds",
-	clouds_midnight : "Clouds/Midnight",
-	cobalt : "Cobalt",
-	crimson_editor : "Crimson",
-	dawn : "Dawn",
-	dreamweaver : "Dreamweaver",
-	eclipse : "Eclipse",
-	github : "Github",
-	idle_fingers : "Idle Fingers",
-	katzenmilch : "Katzenmilch",
-	kuroir : "Kurior",
-	merbivore : "Merbivore",
-	merbivore_soft : "Merbivore Soft",
-	mono_industrial : "Mono Industrial",
-	monokai : "Monokai",
-	pastel_on_dark : "Pastel on Dark",
-	solarized_dark : "Solarized Dark",
-	solarized_light : "Solarized Light",
-	terminal : "Terminal",
-	textmate : "Textmate",
-	tomorrow : "Tomorrow",
-	tomorrow_night_blue : "Tomorrow Night Blue",
-	tomorrow_night_bright : "Tomorrow Night Bright",
-	tomorrow_night_eighties : "Tomorrow Night Eighties",
-	tomorrow_night : "Tomorrow Night",
-	twilight : "Twilight",
-	vibrant_ink : "Vibrant Ink",
-	xcode : "XCode"
-};
-
-/*------------------------------------------------------------------------------
                         List of CodeMirror Key Mappings
 ------------------------------------------------------------------------------*/
 var keymaps = {
-	none : "Standard",
-	vim : "Vim",
-	emacs : "Emacs"
+	none : "default",
+	vim : "vim",
+	emacs : "emacs",
+	sublime : "sublime"
 };
 
 /*------------------------------------------------------------------------------
@@ -271,8 +164,9 @@ var leaps_client = null;
 var username = "anon";
 
 var users = {};
+var file_paths = {};
 
-var theme = "dawn";
+var theme = "zenburn";// "default";
 var binding = "none";
 var useTabs = true;
 var wrapLines = true;
@@ -338,6 +232,11 @@ var user_id_to_color = function(user_id) {
 
 var last_document_joined = "";
 
+function configure_codemirror() {
+	cm_editor.setOption("theme", theme);
+	cm_editor.setOption("keyMap", keymaps[binding]);
+}
+
 var join_new_document = function(document_id) {
 	if ( leaps_client !== null ) {
 		leaps_client.close();
@@ -345,19 +244,25 @@ var join_new_document = function(document_id) {
 	}
 
 	if ( cm_editor !== null ) {
-		// TODO: Clean up
+		cm_editor.getWrapperElement().parentNode.removeChild(cm_editor.getWrapperElement());
+		cm_editor = null;
 	}
 
 	users = {};
 
-	// TODO: Create cm_editor
-	cm_editor = CodeMirror(document.getElementById("editor"));
+	var default_options = CodeMirror.defaults;
+	default_options.lineNumbers = true;
 
-	var filetype = "asciidoc";
+	cm_editor = CodeMirror(document.getElementById("editor"), default_options);
+
+	configure_codemirror();
+
 	try {
 		var ext = document_id.substr(document_id.lastIndexOf(".") + 1);
-		if ( typeof langs[ext] === 'string' ) {
-			filetype = langs[ext];
+		var info = CodeMirror.findModeByExtension(ext);
+		if (info.mode) {
+			cm_editor.setOption("mode", info.mime);
+			CodeMirror.autoLoadMode(cm_editor, info.mode);
 		}
 	} catch (e) {}
 
@@ -365,6 +270,9 @@ var join_new_document = function(document_id) {
 	leaps_client.bind_codemirror(cm_editor);
 
 	leaps_client.on("error", function(err) {
+		if ( cm_editor !== null ) {
+			cm_editor.options.readOnly = true;
+		}
 		if ( leaps_client !== null ) {
 			console.error(err);
 			leaps_client.close();
@@ -412,18 +320,63 @@ var join_new_document = function(document_id) {
                        File Path Acquire and Listing
 ------------------------------------------------------------------------------*/
 
-function get_paths(after) {
+function apply_paths(old_paths, new_paths) {
+	for (var property in new_paths) {
+		if (new_paths.hasOwnProperty(property)) {
+			if ( typeof old_paths[property] !== 'object' ) {
+				old_paths[property] = new_paths[property];
+			} else {
+				apply_paths(old_paths[property], new_paths[property]);
+			}
+		}
+	}
+	for (var property in old_paths) {
+		if (old_paths.hasOwnProperty(property)) {
+			if ( typeof new_paths[property] !== 'object' ) {
+				delete old_paths[property];
+			}
+		}
+	}
+}
+
+function create_paths_obj(path_array) {
+var i = 0, l = 0, j = 0, k = 0;
+
+if ( typeof paths_list !== 'object' ) {
+	console.error("paths list wrong type", typeof paths_list);
+	return;
+}
+if ( typeof users_map !== 'object' ) {
+console.error("users map wrong type", typeof users_map);
+return;
+}
+
+for ( i = 0, l = paths_list.length; i < l; i++ ) {
+var split_path = paths_list[i].split('/');
+var ptr = this.files_obj;
+for ( j = 0, k = split_path.length - 1; j < k; j++ ) {
+if ( 'object' !== typeof ptr[split_path[j]] ) {
+ptr[split_path[j]] = {};
+}
+ptr = ptr[split_path[j]];
+}
+ptr[split_path[split_path.length - 1]] = paths_list[i];
+}
+}
+
+function get_paths() {
 	AJAX_REQUEST(window.location.pathname + "files", function(data) {
 		try {
-			var paths_list = JSON.parse(data);
-			after(paths_list.paths, paths_list.users);
+			var data_arrays = JSON.parse(data);
+			var new_paths = create_paths_obj(data_arrays);
+			apply_paths(file_paths, new_paths);
 		} catch (e) {
 			console.error("paths parse error", e);
 		}
 	}, function(code, message) {
 		console.error("get_paths error", code, message);
 	});
-};
+}
 
 var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
 	var xmlhttp;
@@ -455,8 +408,49 @@ var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
 	}
 };
 
+/*------------------------------------------------------------------------------
+                           Vue.js UI bindings
+------------------------------------------------------------------------------*/
 window.onload = function() {
-	join_new_document("index.html");
+	// define the item component
+	Vue.component('item', {
+		template: '#file-template',
+		props: {
+			model: Object
+		},
+		data: function () {
+			return {
+				open: true
+			};
+		},
+		computed: {
+			is_folder: function () {
+				return this.model.children &&
+					this.model.children.length;
+			}
+		},
+		methods: {
+			toggle: function () {
+				if (this.is_folder) {
+					this.open = !this.open;
+				} else {
+					join_new_document(this.model.path);
+				}
+			}
+		}
+	});
+
+	(new Vue({
+		el: '#file-list',
+		data: {
+			file_data: file_paths
+		}
+	}));
+
+	CodeMirror.modeURL = "cm/mode/%N/%N.js";
+
+	get_paths();
+	setTimeout(get_paths, 5000);
 };
 
 })();

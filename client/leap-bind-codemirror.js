@@ -93,6 +93,7 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 
 		binder._blind_eye_turned = true;
 		binder._codemirror.getDoc().setValue(doc.content);
+		binder._codemirror.getDoc().clearHistory();
 
 		binder._ready = true;
 		binder._blind_eye_turned = false;
@@ -121,8 +122,6 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 leap_bind_codemirror.prototype._apply_transform = function(transform) {
 	this._blind_eye_turned = true;
 
-	console.log("Received: " + JSON.stringify(transform));
-
 	var live_document = this._codemirror.getDoc();
 	var start_position = pos_from_u_index(live_document, transform.position), end_position = start_position;
 
@@ -136,6 +135,9 @@ leap_bind_codemirror.prototype._apply_transform = function(transform) {
 	}
 
 	live_document.replaceRange(insert, start_position, end_position);
+	var history = live_document.getHistory();
+	history.done = history.done.slice(0, -2);
+	live_document.setHistory(history);
 
 	this._blind_eye_turned = false;
 

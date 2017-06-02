@@ -1,13 +1,49 @@
 <html>
 	<head>
-		<script type="text/javascript" src="cm/codemirror.js"></script>
+		<script type="text/javascript" src="vuejs/vue.min.js"></script>
+		<script type="text/javascript" src="cm/lib/codemirror.js"></script>
+		<script type="text/javascript" src="cm/keymap/emacs.js"></script>
+		<script type="text/javascript" src="cm/keymap/vim.js"></script>
+		<script type="text/javascript" src="cm/keymap/sublime.js"></script>
+		<script type="text/javascript" src="cm/addon/mode/loadmode.js"></script>
+		<script type="text/javascript" src="cm/addon/search/searchcursor.js"></script>
+		<script type="text/javascript" src="cm/addon/dialog/dialog.js"></script>
+		<script type="text/javascript" src="cm/mode/meta.js"></script>
 		<script type="text/javascript" src="leaps.js"></script>
 		<script type="text/javascript" src="leap-bind-codemirror.js"></script>
 		<script type="text/javascript" src="leapshare.js"></script>
-		<link href="cm/codemirror.css" type="text/css" rel="stylesheet">
+		<link href="cm/lib/codemirror.css" type="text/css" rel="stylesheet">
+		<link href="cm/theme/zenburn.css" type="text/css" rel="stylesheet">
+		<link href="cm/addon/dialog/dialog.css" type="text/css" rel="stylesheet">
+
+		<!-- TEMPLATES -->
+		<script type="text/x-template" id="file-template">
+			<li>
+				<div
+					:class="{bold: is_folder}"
+					@click="toggle">
+					{{model.name}}
+					<span v-if="is_folder">[{{open ? '-' : '+'}}]</span>
+				</div>
+				<ul v-show="open" v-if="is_folder">
+					<item
+						class="item"
+						v-for="model in model.children"
+						:model="model">
+					</item>
+				</ul>
+			</li>
+		</script>
+		<!-- !TEMPLATES -->
 	</head>
 	<body>
 		<div id="editor">
 		</div>
+		<ul id="file-list">
+			<item
+				class="item"
+				:model="file_data">
+			</item>
+		</ul>
 	</body>
 </html>

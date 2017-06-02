@@ -37,3 +37,6 @@
 [submodule "vendor/github.com/codemirror/codemirror"]
 	path = vendor/github.com/codemirror/codemirror
 	url = https://github.com/codemirror/codemirror
+[submodule "vendor/github.com/vuejs/vue"]
+	path = vendor/github.com/vuejs/vue
+	url = https://github.com/vuejs/vue
