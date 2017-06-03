@@ -24,6 +24,7 @@
 					@click="toggle">
 					{{model.name}}
 					<span v-if="is_folder">[{{open ? '-' : '+'}}]</span>
+					<span v-if="!is_folder">{{model.num_users > 0 ? '('+model.num_users+')' : ''}}</span>
 				</div>
 				<ul v-show="open" v-if="is_folder">
 					<item

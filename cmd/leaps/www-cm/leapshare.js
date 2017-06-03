@@ -326,7 +326,7 @@ var join_new_document = function(document_id) {
                        File Path Acquire and Listing
 ------------------------------------------------------------------------------*/
 
-function inject_paths(root, paths_list) {
+function inject_paths(root, paths_list, users_obj) {
 	var i = 0, l = 0, j = 0, k = 0, m = 0, n = 0;
 
 	var children = [];
@@ -354,9 +354,14 @@ function inject_paths(root, paths_list) {
 			}
 		}
 
+		var users_count = 0;
+		if ( users_obj[paths_list[i]] !== undefined ) {
+			users_count = users_obj[paths_list[i]].length;
+		}
 		ptr.push({
 			name: split_path[k],
-			path: paths_list[i]
+			path: paths_list[i],
+			num_users: users_count
 		});
 	}
 
@@ -367,7 +372,7 @@ function get_paths() {
 	AJAX_REQUEST(window.location.pathname + "files", function(data) {
 		try {
 			var data_arrays = JSON.parse(data);
-			inject_paths(file_paths, data_arrays.paths);
+			inject_paths(file_paths, data_arrays.paths, data_arrays.users);
 		} catch (e) {
 			console.error("paths parse error", e);
 		}
@@ -449,7 +454,7 @@ window.onload = function() {
 	CodeMirror.modeURL = "cm/mode/%N/%N.js";
 
 	get_paths();
-	setInterval(get_paths, 5000);
+	setInterval(get_paths, 1000);
 };
 
 })();
