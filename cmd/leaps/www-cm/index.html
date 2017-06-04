@@ -45,11 +45,12 @@
 			</file-item>
 		</ul>
 		<div id="message-list" class="fw-font">
-			<div v-for="message in messages" :class="{bold: message.sys_msg||message.error_msg, red: message.error_msg}">
+			<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
 				<span>[{{message.timestamp}}] </span>
 				<span v-if="message.name">&lt;{{message.name}}&gt; </span>
 				<span>{{message.content}}</span>
 			</div>
 		</div>
+		<input id="chat-bar" type="text" placeholder="chat">
 	</body>
 </html>

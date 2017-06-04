@@ -173,6 +173,10 @@ var file_paths = {
 };
 var collapsed_dirs = {};
 
+var messages_obj = {
+	messages: []
+};
+
 var theme = "zenburn";// "default";
 var binding = "none";
 var useTabs = true;
@@ -223,6 +227,7 @@ var join_new_document = function(document_id) {
 	leaps_client.bind_codemirror(cm_editor);
 
 	leaps_client.on("error", function(err) {
+		show_err_message(err);
 		if ( cm_editor !== null ) {
 			cm_editor.options.readOnly = true;
 		}
@@ -234,6 +239,10 @@ var join_new_document = function(document_id) {
 	});
 
 	leaps_client.on("disconnect", function(err) {
+		show_sys_message("Closed " + last_document_joined);
+		if ( cm_editor !== null ) {
+			cm_editor.options.readOnly = true;
+		}
 		if ( leaps_client !== null ) {
 			last_document_joined = "";
 		}
@@ -246,11 +255,12 @@ var join_new_document = function(document_id) {
 	leaps_client.on("document", function() {
 		cm_editor.options.readOnly = false;
 		last_document_joined = document_id;
+		show_sys_message("Opened " + document_id);
 	});
 
 	leaps_client.on("user", function(user_update) {
 		if ( 'string' === typeof user_update.message.content ) {
-			// TODO: Show message
+			show_user_message(user_update.client.user_id, user_update.message.content);
 		}
 
 		var refresh_user_list = !users.hasOwnProperty(user_update.client.session_id);
@@ -269,6 +279,48 @@ var join_new_document = function(document_id) {
 	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
 	leaps_client.connect(protocol + "//" + window.location.host + window.location.pathname + "leaps/ws");
 };
+
+/*------------------------------------------------------------------------------
+                                  Messages
+------------------------------------------------------------------------------*/
+
+function clip_messages() {
+	if ( messages_obj.messages.length > 200 ) {
+		messages_obj.messages = messages_obj.messages.slice(-200);
+	}
+}
+
+function show_user_message(username, content) {
+	var now = new Date();
+	messages_obj.messages.push({
+		timestamp: now.toLocaleTimeString(),
+		name: username,
+		content: content
+	});
+	clip_messages();
+}
+
+function show_sys_message(content) {
+	var now = new Date();
+	messages_obj.messages.push({
+		timestamp: now.toLocaleTimeString(),
+		is_sys: true,
+		name: "INFO",
+		content: content
+	});
+	clip_messages();
+}
+
+function show_err_message(content) {
+	var now = new Date();
+	messages_obj.messages.push({
+		timestamp: now.toLocaleTimeString(),
+		is_err: true,
+		name: "ERROR",
+		content: content
+	});
+	clip_messages();
+}
 
 /*------------------------------------------------------------------------------
                        File Path Acquire and Listing
@@ -364,14 +416,6 @@ var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
                            Vue.js UI bindings
 ------------------------------------------------------------------------------*/
 
-var messages = [
-   	{
-		timestamp: "1 - 1 - 3",
-		content: "this is an error",
-		error_msg: true
-	}
-];
-
 window.onload = function() {
 	// define the item component
 	Vue.component('file-item', {
@@ -395,12 +439,11 @@ window.onload = function() {
 				if (this.is_folder) {
 					this.open = !this.open;
 					if ( !this.open ) {
-						collapsed_dirs[this.model.path] = true
+						collapsed_dirs[this.model.path] = true;
 					} else {
 						delete collapsed_dirs[this.model.path];
 					}
 					Cookies.set("collapsed_dirs", collapsed_dirs, { path: '' });
-					console.log(JSON.stringify(collapsed_dirs));
 				} else {
 					join_new_document(this.model.path);
 				}
@@ -417,16 +460,35 @@ window.onload = function() {
 
 	(new Vue({
 		el: '#message-list',
-		data: {
-			messages: messages
-		}
+		data: messages_obj
 	}));
+
+	var chat_bar = document.getElementById("chat-bar");
+	chat_bar.onkeypress = function(e) {
+		if ( typeof e !== 'object' ) {
+			e = window.event;
+		}
+		var keyCode = e.keyCode || e.which;
+		if ( keyCode == '13' && chat_bar.value.length > 0 ) {
+			if ( leaps_client !== null ) {
+				leaps_client.send_message(chat_bar.value);
+				show_user_message(username, chat_bar.value);
+				chat_bar.value = "";
+				return false;
+			} else {
+				show_err_message(
+					"You must open a document in order to send messages, " +
+					"they will be readable by other users editing that document"
+				);
+				return true;
+			}
+		}
+	};
 
 	CodeMirror.modeURL = "cm/mode/%N/%N.js";
 
 	try {
 		collapsed_dirs = JSON.parse(Cookies.get("collapsed_dirs"));
-		console.log(JSON.stringify(collapsed_dirs));
 	} catch (e) {}
 	get_paths();
 	setInterval(get_paths, 1000);
