@@ -178,61 +178,6 @@ var useTabs = true;
 var wrapLines = true;
 
 /*------------------------------------------------------------------------------
-                      Leaps Editor User Cursor Helpers
-------------------------------------------------------------------------------*/
-
-var HSVtoRGB = function(h, s, v) {
-	var r, g, b, i, f, p, q, t;
-	if (h && s === undefined && v === undefined) {
-		s = h.s, v = h.v, h = h.h;
-	}
-	i = Math.floor(h * 6);
-	f = h * 6 - i;
-	p = v * (1 - s);
-	q = v * (1 - f * s);
-	t = v * (1 - (1 - f) * s);
-	switch (i % 6) {
-		case 0: r = v, g = t, b = p; break;
-		case 1: r = q, g = v, b = p; break;
-		case 2: r = p, g = v, b = t; break;
-		case 3: r = p, g = q, b = v; break;
-		case 4: r = t, g = p, b = v; break;
-		case 5: r = v, g = p, b = q; break;
-	}
-	return {
-		r: Math.floor(r * 255),
-		g: Math.floor(g * 255),
-		b: Math.floor(b * 255)
-	};
-};
-
-var hash = function(str) {
-	var hash = 0, i, chr, len;
-	if ('string' !== typeof str || str.length === 0) {
-		return hash;
-	}
-	for (i = 0, len = str.length; i < len; i++) {
-		chr   = str.charCodeAt(i);
-		hash  = ((hash << 5) - hash) + chr;
-		hash |= 0; // Convert to 32bit integer
-	}
-	return hash;
-};
-
-var user_id_to_color = function(user_id) {
-	var id_hash = hash(user_id);
-	if ( id_hash < 0 ) {
-		id_hash = id_hash * -1;
-	}
-
-	var hue = ( id_hash % 10000 ) / 10000;
-	var rgb = HSVtoRGB(hue, 1, 0.8);
-
-	return "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 1)";
-};
-
-
-/*------------------------------------------------------------------------------
                         Leaps Editor Bootstrapping
 ------------------------------------------------------------------------------*/
 
@@ -260,6 +205,7 @@ var join_new_document = function(document_id) {
 	default_options.lineNumbers = true;
 
 	cm_editor = CodeMirror(document.getElementById("editor"), default_options);
+	cm_editor.options.readOnly = true;
 
 	configure_codemirror();
 
@@ -297,6 +243,7 @@ var join_new_document = function(document_id) {
 	});
 
 	leaps_client.on("document", function() {
+		cm_editor.options.readOnly = false;
 		last_document_joined = document_id;
 	});
 
@@ -310,7 +257,7 @@ var join_new_document = function(document_id) {
 
 		if ( typeof user_update.message.active === 'boolean' && !user_update.message.active ) {
 			refresh_user_list = true;
-			delete users[user_update.client.session_id]
+			delete users[user_update.client.session_id];
 		}
 
 		if ( refresh_user_list ) {

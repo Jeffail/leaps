@@ -60,15 +60,13 @@ leap_str.prototype.str = function() {
 	return this._str;
 };
 
-try {
-	// Returns the underlying unicode codepoint array. We define this with eval
-	// in order to support older browsers.
-	leap_str.prototype.u_str = eval('(function() { if ( undefined === this._u_str ) { this._u_str = [...this._str]; } return this._u_str; })');
-} catch (e) {
-	leap_str.prototype.u_str = function() { return this._str.split(''); };
-	console.warn("JS Engine without ES6 support detected: this will result in" +
-		" unexpected behaviour when working with larger unicode codepoints.");
-}
+// Returns the underlying unicode codepoint array.
+leap_str.prototype.u_str = function() {
+	if ( undefined === this._u_str ) {
+		this._u_str = [...this._str];
+	}
+	return this._u_str;
+};
 
 /*--------------------------------------------------------------------------------------------------
  */

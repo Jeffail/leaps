@@ -82,10 +82,16 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 	this._ready = false;
 	this._blind_eye_turned = false;
 
+	this._cursors = {};
+
 	var binder = this;
 
 	this._codemirror.on('beforeChange', function(instance, e) {
 		binder._convert_to_transform.apply(binder, [ e ]);
+	});
+
+	this._leap_client.subscribe_event("user", function(update) {
+		binder.update_user_info(update);
 	});
 
 	this._leap_client.subscribe_event("document", function(doc) {
@@ -116,6 +122,7 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 			clearTimeout(binder._pos_interval);
 		}
 	});
+
 };
 
 // apply_transform, applies a single transform to the codemirror document.
@@ -172,12 +179,6 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
 
 	if ( tform.insert.length <= 0 && tform.num_delete <= 0 ) {
 		return;
-		/*
-		this._leap_client._dispatch_event.apply(this._leap_client,
-			[ this._leap_client.EVENT_TYPE.ERROR, [
-				"Change resulted in invalid transform"
-			] ]);
-		*/
 	}
 
 	this._content = this._leap_client.apply(tform, this._content);
@@ -200,6 +201,123 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
 };
 
 //------------------------------------------------------------------------------
+
+function HSVtoRGB(h, s, v) {
+	var r, g, b, i, f, p, q, t;
+	if (h && s === undefined && v === undefined) {
+		s = h.s, v = h.v, h = h.h;
+	}
+	i = Math.floor(h * 6);
+	f = h * 6 - i;
+	p = v * (1 - s);
+	q = v * (1 - f * s);
+	t = v * (1 - (1 - f) * s);
+	switch (i % 6) {
+		case 0: r = v, g = t, b = p; break;
+		case 1: r = q, g = v, b = p; break;
+		case 2: r = p, g = v, b = t; break;
+		case 3: r = p, g = q, b = v; break;
+		case 4: r = t, g = p, b = v; break;
+		case 5: r = v, g = p, b = q; break;
+	}
+	return {
+		r: Math.floor(r * 255),
+		g: Math.floor(g * 255),
+		b: Math.floor(b * 255)
+	};
+}
+
+function hash(str) {
+	var hash = 0, i, chr, len;
+	if ('string' !== typeof str || str.length === 0) {
+		return hash;
+	}
+	for (i = 0, len = str.length; i < len; i++) {
+		chr   = str.charCodeAt(i);
+		hash  = ((hash << 5) - hash) + chr;
+		hash |= 0; // Convert to 32bit integer
+	}
+	return hash;
+}
+
+function id_to_color(id) {
+	var id_hash = hash(id);
+	if ( id_hash < 0 ) {
+		id_hash = id_hash * -1;
+	}
+
+	var hue = ( id_hash % 10000 ) / 10000;
+	var rgb = HSVtoRGB(hue, 1, 0.8);
+
+	return "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 1)";
+}
+
+function dom_from_update(cm, update) {
+	var line_height = cm.defaultTextHeight();
+	var stretch = 4;
+	var height = line_height + stretch;
+
+	var label_height = 30;
+
+	var thickness = 2;
+
+	// TODO: If line is above, below or too far right to view
+	var root = document.createElement('div');
+	root.style.position = 'absolute';
+
+	var bar = document.createElement('div');
+	bar.style.position = 'relative';
+	bar.style.top = '-' + height + 'px';
+	bar.style.height = height + 'px';
+	bar.style.width =  thickness + 'px';
+	bar.style.backgroundColor = id_to_color(update.client.session_id);
+
+	var label = document.createElement('div');
+	label.style.position = 'relative';
+	label.style.top = '-' + (height + label_height) + 'px';
+	label.style.padding = thickness + 'px';
+	label.style.backgroundColor = id_to_color(update.client.session_id);
+	label.style.color = "#fcfcfc";
+	label.appendChild(document.createTextNode(update.client.user_id));
+
+	root.appendChild(bar);
+	root.appendChild(label);
+
+	return root;
+}
+
+// update_user_info updates any visual state of other users within the
+// CodeMirror screen.
+leap_bind_codemirror.prototype.update_user_info = function(update) {
+	if ( this._cursors.hasOwnProperty(update.client.session_id) ) {
+		if ( update.message.active ) {
+			if ( this._cursors[update.client.session_id].position !== update.message.position ) {
+				this._cursors[update.client.session_id].position = update.message.position;
+				this._codemirror.addWidget(
+					pos_from_u_index(this._codemirror.getDoc(), update.message.position),
+					this._cursors[update.client.session_id].dom, false
+				);
+			}
+		} else {
+			let dom = this._cursors[update.client.session_id].dom;
+			dom.parentNode.removeChild(dom);
+			delete this._cursors[update.client.session_id];
+		}
+	} else if ( update.message.active ) {
+		let dom = dom_from_update(this._codemirror, update);
+		this._cursors[update.client.session_id] = {
+			position: update.message.position,
+			dom: dom
+		};
+		this._codemirror.addWidget(
+			pos_from_u_index(this._codemirror.getDoc(), update.message.position),
+			dom, false
+		);
+	}
+};
+
+//------------------------------------------------------------------------------
+
 
 try {
 	if ( window.leap_client !== undefined && typeof(window.leap_client) === "function" ) {
