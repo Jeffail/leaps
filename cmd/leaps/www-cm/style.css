@@ -1,0 +1,26 @@
+body {
+	font-family: "Open Sans", sans-serif;
+}
+
+.fw-font {
+	font-family: "Open Sans Mono", monospace;
+}
+
+.bold {
+	font-weight: bold;
+}
+
+.compressed-list {
+	list-style-type: none;
+	margin: 0;
+	margin-left: 1em;
+	padding: 0;
+}
+
+.clickable {
+	cursor: pointer;
+}
+
+.red {
+	color: #bf5661;
+}

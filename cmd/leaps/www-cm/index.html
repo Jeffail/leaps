@@ -12,26 +12,26 @@
 		<script type="text/javascript" src="leaps.js"></script>
 		<script type="text/javascript" src="leap-bind-codemirror.js"></script>
 		<script type="text/javascript" src="leapshare.js"></script>
+		<link href="style.css" type="text/css" rel="stylesheet">
 		<link href="cm/lib/codemirror.css" type="text/css" rel="stylesheet">
 		<link href="cm/theme/zenburn.css" type="text/css" rel="stylesheet">
 		<link href="cm/addon/dialog/dialog.css" type="text/css" rel="stylesheet">
 
 		<!-- TEMPLATES -->
 		<script type="text/x-template" id="file-template">
-			<li>
-				<div
+			<li class="clickable">
+				<div v-if="!model.root"
 					:class="{bold: is_folder}"
 					@click="toggle">
 					{{model.name}}
 					<span v-if="is_folder">[{{open ? '-' : '+'}}]</span>
-					<span v-if="!is_folder">{{model.num_users > 0 ? '('+model.num_users+')' : ''}}</span>
+					<span v-if="!is_folder">{{model.num_users > 0 ? '('+model.num_users+' users)' : ''}}</span>
 				</div>
-				<ul v-show="open" v-if="is_folder">
-					<item
-						class="item"
+				<ul class="compressed-list" v-show="open" v-if="is_folder">
+					<file-item
 						v-for="model in model.children"
 						:model="model">
-					</item>
+					</file-item>
 				</ul>
 			</li>
 		</script>
@@ -40,11 +40,16 @@
 	<body>
 		<div id="editor">
 		</div>
-		<ul id="file-list">
-			<item
-				class="item"
-				:model="file_data">
-			</item>
+		<ul id="file-list" class="compressed-list fw-font">
+			<file-item :model="file_data">
+			</file-item>
 		</ul>
+		<div id="message-list" class="fw-font">
+			<div v-for="message in messages" :class="{bold: message.sys_msg||message.error_msg, red: message.error_msg}">
+				<span>[{{message.timestamp}}] </span>
+				<span v-if="message.name">&lt;{{message.name}}&gt; </span>
+				<span>{{message.content}}</span>
+			</div>
+		</div>
 	</body>
 </html>

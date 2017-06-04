@@ -171,6 +171,7 @@ var file_paths = {
 	path: "Files",
 	children: []
 };
+var collapsed_dirs = {};
 
 var theme = "zenburn";// "default";
 var binding = "none";
@@ -293,6 +294,7 @@ function inject_paths(root, paths_list, users_obj) {
 				var new_children = [];
 				ptr.push({
 					name: split_path[j],
+					path: split_path.slice(0, j+1).join('/'),
 					children: new_children
 				});
 				ptr = new_children;
@@ -362,16 +364,24 @@ var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
                            Vue.js UI bindings
 ------------------------------------------------------------------------------*/
 
+var messages = [
+   	{
+		timestamp: "1 - 1 - 3",
+		content: "this is an error",
+		error_msg: true
+	}
+];
+
 window.onload = function() {
 	// define the item component
-	Vue.component('item', {
+	Vue.component('file-item', {
 		template: '#file-template',
 		props: {
 			model: Object
 		},
 		data: function () {
 			return {
-				open: true
+				open: !collapsed_dirs[this.model.path]
 			};
 		},
 		computed: {
@@ -384,6 +394,13 @@ window.onload = function() {
 			toggle: function () {
 				if (this.is_folder) {
 					this.open = !this.open;
+					if ( !this.open ) {
+						collapsed_dirs[this.model.path] = true
+					} else {
+						delete collapsed_dirs[this.model.path];
+					}
+					Cookies.set("collapsed_dirs", collapsed_dirs, { path: '' });
+					console.log(JSON.stringify(collapsed_dirs));
 				} else {
 					join_new_document(this.model.path);
 				}
@@ -398,8 +415,19 @@ window.onload = function() {
 		}
 	}));
 
+	(new Vue({
+		el: '#message-list',
+		data: {
+			messages: messages
+		}
+	}));
+
 	CodeMirror.modeURL = "cm/mode/%N/%N.js";
 
+	try {
+		collapsed_dirs = JSON.parse(Cookies.get("collapsed_dirs"));
+		console.log(JSON.stringify(collapsed_dirs));
+	} catch (e) {}
 	get_paths();
 	setInterval(get_paths, 1000);
 };
