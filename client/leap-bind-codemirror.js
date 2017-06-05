@@ -109,6 +109,12 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 			var position = u_index_from_pos(live_document, live_document.getCursor());
 			binder._leap_client.update_cursor.apply(binder._leap_client, [ position ]);
 		}, leap_client._POSITION_POLL_PERIOD);
+
+		binder._codemirror.on("cursorActivity", function() {
+			var live_document = binder._codemirror.getDoc();
+			var position = u_index_from_pos(live_document, live_document.getCursor());
+			binder._leap_client.update_cursor.apply(binder._leap_client, [ position ]);
+		});
 	});
 
 	this._leap_client.subscribe_event("transforms", function(transforms) {
@@ -264,6 +270,7 @@ function dom_from_update(cm, update) {
 	// TODO: If line is above, below or too far right to view
 	var root = document.createElement('div');
 	root.style.position = 'absolute';
+	root.style.zIndex = 200;
 
 	var bar = document.createElement('div');
 	bar.style.position = 'relative';

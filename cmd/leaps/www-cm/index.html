@@ -38,8 +38,16 @@
 		<!-- !TEMPLATES -->
 	</head>
 	<body>
+		<div id="settings">
+			<input type="checkbox" id="input-light-theme" checked=false>
+			<input type="checkbox" id="input-use-tabs" checked=true>
+			<select v-model="binding_obj.binding" id="input-select-binding" v-on:change="on_change">
+				<option v-for="(value, key) in bindings" b-bind:value="value">{{key}}</option>
+			</select>
+		</div>
 		<div id="editor">
 		</div>
+		<input id="username-bar" type="text" placeholder="username" class="fw-font">
 		<ul id="file-list" class="compressed-list fw-font">
 			<file-item :model="file_data">
 			</file-item>
@@ -51,6 +59,11 @@
 				<span>{{message.content}}</span>
 			</div>
 		</div>
-		<input id="chat-bar" type="text" placeholder="chat">
+		<div id="users-list" class="fw-font">
+			<div v-for="value in users">
+				<span>{{value}}</span>
+			</div>
+		</div>
+		<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
 	</body>
 </html>

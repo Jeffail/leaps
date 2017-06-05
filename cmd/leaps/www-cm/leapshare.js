@@ -149,11 +149,16 @@
                         List of CodeMirror Key Mappings
 ------------------------------------------------------------------------------*/
 
-var keymaps = {
-	none : "default",
-	vim : "vim",
-	emacs : "emacs",
-	sublime : "sublime"
+var cm_keymaps = {
+	None : "default",
+	Vim : "vim",
+	Emacs : "emacs",
+	Sublime : "sublime"
+};
+
+var cm_themes = {
+	light: "default",
+	dark: "zenburn"
 };
 
 /*------------------------------------------------------------------------------
@@ -162,7 +167,7 @@ var keymaps = {
 
 var cm_editor = null;
 var leaps_client = null;
-var username = "anon";
+var username = Cookies.get("username") || "anon";
 
 var users = {};
 var file_paths = {
@@ -177,10 +182,15 @@ var messages_obj = {
 	messages: []
 };
 
-var theme = "zenburn";// "default";
-var binding = "none";
-var useTabs = true;
-var wrapLines = true;
+// Configuration options
+var theme = Cookies.get("theme") || "dark"; // light or dark
+var binding_obj = {
+	binding: Cookies.get("binding") || "None"
+};
+var use_tabs = Cookies.get("use_tabs") || true;
+var indent_unit = parseInt(Cookies.get("indent_unit")) || 4;
+var wrap_lines = Cookies.get("wrap_lines") || false;
+var hide_numbers = Cookies.get("hide_numbers") || false;
 
 /*------------------------------------------------------------------------------
                         Leaps Editor Bootstrapping
@@ -189,11 +199,17 @@ var wrapLines = true;
 var last_document_joined = "";
 
 function configure_codemirror() {
-	cm_editor.setOption("theme", theme);
-	cm_editor.setOption("keyMap", keymaps[binding]);
+	if ( cm_editor !== null ) {
+		cm_editor.setOption("theme", cm_themes[theme]);
+		cm_editor.setOption("keyMap", cm_keymaps[binding_obj.binding]);
+		cm_editor.setOption("indentWithTabs", use_tabs);
+		cm_editor.setOption("indentUnit", indent_unit);
+		cm_editor.setOption("lineWrapping", wrap_lines);
+		cm_editor.setOption("lineNumbers", !hide_numbers);
+	}
 }
 
-var join_new_document = function(document_id) {
+function join_new_document(document_id) {
 	if ( leaps_client !== null ) {
 		leaps_client.close();
 		leaps_client = null;
@@ -204,10 +220,15 @@ var join_new_document = function(document_id) {
 		cm_editor = null;
 	}
 
-	users = {};
+	// Clear existing users list
+	for (var key in users) {
+		if (users.hasOwnProperty(key)) {
+			// Must use Vue.delete otherwise update is not triggered
+			Vue.delete(users, key);
+		}
+	}
 
 	var default_options = CodeMirror.defaults;
-	default_options.lineNumbers = true;
 
 	cm_editor = CodeMirror(document.getElementById("editor"), default_options);
 	cm_editor.options.readOnly = true;
@@ -222,6 +243,9 @@ var join_new_document = function(document_id) {
 			CodeMirror.autoLoadMode(cm_editor, info.mode);
 		}
 	} catch (e) {}
+
+	// Set the hash of our URL to the path
+	window.location.hash = "path:" + document_id;
 
 	leaps_client = new leap_client();
 	leaps_client.bind_codemirror(cm_editor);
@@ -264,21 +288,18 @@ var join_new_document = function(document_id) {
 		}
 
 		var refresh_user_list = !users.hasOwnProperty(user_update.client.session_id);
-		users[user_update.client.session_id] = user_update.client.user_id;
+		Vue.set(users, user_update.client.session_id, user_update.client.user_id);
 
 		if ( typeof user_update.message.active === 'boolean' && !user_update.message.active ) {
 			refresh_user_list = true;
-			delete users[user_update.client.session_id];
-		}
-
-		if ( refresh_user_list ) {
-			// TODO: Refresh user list
+			// Must use Vue.delete otherwise update is not triggered
+			Vue.delete(users, user_update.client.session_id);
 		}
 	});
 
 	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
 	leaps_client.connect(protocol + "//" + window.location.host + window.location.pathname + "leaps/ws");
-};
+}
 
 /*------------------------------------------------------------------------------
                                   Messages
@@ -382,7 +403,7 @@ function get_paths() {
 	});
 }
 
-var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
+function AJAX_REQUEST(path, onsuccess, onerror, data) {
 	var xmlhttp;
 	if (window.XMLHttpRequest)  {
 		// code for IE7+, Firefox, Chrome, Opera, Safari
@@ -411,6 +432,60 @@ var AJAX_REQUEST = function(path, onsuccess, onerror, data) {
 		xmlhttp.send();
 	}
 };
+
+/*------------------------------------------------------------------------------
+                           Input field bindings
+------------------------------------------------------------------------------*/
+
+function text_input(element, on_change) {
+	if ( typeof element === 'string' ) {
+		element = document.getElementById(element);
+	}
+	element.onkeypress = function(e) {
+		if ( typeof e !== 'object' ) {
+			e = window.event;
+		}
+		var keyCode = e.keyCode || e.which;
+		if ( keyCode == '13' ) {
+			on_change(element, element.value);
+		}
+	};
+}
+
+function init_input_fields() {
+	var username_bar = document.getElementById("username-bar");
+	username_bar.value = username;
+	text_input(username_bar, function(ele, content) {
+		if ( content === username ) {
+			return;
+		}
+		if ( content.length === 0 ) {
+			content = "anon";
+			username_bar.value = content;
+		}
+		username = content;
+		Cookies.set("username", username, { path: '' });
+		if ( last_document_joined.length > 0 ) {
+			join_new_document(last_document_joined);
+		}
+	});
+
+	// Set up chat bar
+	text_input("chat-bar", function(ele, content) {
+		if ( content.length > 0 ) {
+			if ( leaps_client !== null ) {
+				leaps_client.send_message(content);
+				show_user_message(username, content);
+				ele.value = "";
+			} else {
+				show_err_message(
+					"You must open a document in order to send messages, " +
+					"they will be readable by other users editing that document"
+				);
+			}
+		}
+	});
+}
 
 /*------------------------------------------------------------------------------
                            Vue.js UI bindings
@@ -451,39 +526,24 @@ window.onload = function() {
 		}
 	});
 
+	(new Vue({ el: '#file-list', data: { file_data: file_paths } }));
+	(new Vue({ el: '#message-list', data: messages_obj }));
+	(new Vue({ el: '#users-list', data: { users: users } }));
 	(new Vue({
-		el: '#file-list',
+		el: '#input-select-binding',
 		data: {
-			file_data: file_paths
-		}
-	}));
-
-	(new Vue({
-		el: '#message-list',
-		data: messages_obj
-	}));
-
-	var chat_bar = document.getElementById("chat-bar");
-	chat_bar.onkeypress = function(e) {
-		if ( typeof e !== 'object' ) {
-			e = window.event;
-		}
-		var keyCode = e.keyCode || e.which;
-		if ( keyCode == '13' && chat_bar.value.length > 0 ) {
-			if ( leaps_client !== null ) {
-				leaps_client.send_message(chat_bar.value);
-				show_user_message(username, chat_bar.value);
-				chat_bar.value = "";
-				return false;
-			} else {
-				show_err_message(
-					"You must open a document in order to send messages, " +
-					"they will be readable by other users editing that document"
-				);
-				return true;
+			bindings: cm_keymaps,
+			binding_obj: binding_obj
+		},
+		methods: {
+			on_change: function() {
+				Cookies.set("binding", binding_obj.binding, { path: '' });
+				configure_codemirror();
 			}
 		}
-	};
+	}));
+
+	init_input_fields();
 
 	CodeMirror.modeURL = "cm/mode/%N/%N.js";
 
@@ -492,6 +552,12 @@ window.onload = function() {
 	} catch (e) {}
 	get_paths();
 	setInterval(get_paths, 1000);
+
+	// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
+	if ( window.location.hash.length > 0 &&
+		window.location.hash.substr(1, 5) === "path:" ) {
+		join_new_document(window.location.hash.substr(6));
+	}
 };
 
 })();
