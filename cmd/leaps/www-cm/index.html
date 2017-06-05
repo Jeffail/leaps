@@ -9,6 +9,7 @@
 		<script type="text/javascript" src="cm/addon/search/searchcursor.js"></script>
 		<script type="text/javascript" src="cm/addon/dialog/dialog.js"></script>
 		<script type="text/javascript" src="cm/mode/meta.js"></script>
+		<script type="text/javascript" src="cookie.js"></script>
 		<script type="text/javascript" src="leaps.js"></script>
 		<script type="text/javascript" src="leap-bind-codemirror.js"></script>
 		<script type="text/javascript" src="leapshare.js"></script>
@@ -39,10 +40,21 @@
 	</head>
 	<body>
 		<div id="settings">
-			<input type="checkbox" id="input-light-theme" checked=false>
-			<input type="checkbox" id="input-use-tabs" checked=true>
-			<select v-model="binding_obj.binding" id="input-select-binding" v-on:change="on_change">
-				<option v-for="(value, key) in bindings" b-bind:value="value">{{key}}</option>
+			<label for="input-hide-numbers">Hide line numbers</label>
+			<input type="checkbox" id="input-hide-numbers" v-model="config.hide_numbers" v-on:change="on_config_change">
+
+			<label for="input-wrap-lines">Wrap lines</label>
+			<input type="checkbox" id="input-wrap-lines" v-model="config.wrap_lines" v-on:change="on_config_change">
+
+			<label for="input-use-tabs">Use tabs</label>
+			<input type="checkbox" id="input-use-tabs" v-model="config.use_tabs" v-on:change="on_config_change">
+
+			<select v-model="config.theme" v-on:change="on_config_change">
+				<option v-for="(value, key) in themes">{{key}}</option>
+			</select>
+
+			<select v-model="config.binding" v-on:change="on_config_change">
+				<option v-for="(value, key) in bindings">{{key}}</option>
 			</select>
 		</div>
 		<div id="editor">

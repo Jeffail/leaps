@@ -1,150 +1,6 @@
 (function() {
 "use strict";
 
-// Cookies.get(key)
-// Cookies.set(key, value, { path: '' });
-
-/*!
- * JavaScript Cookie v2.1.1
- * https://github.com/js-cookie/js-cookie
- *
- * Copyright 2006, 2015 Klaus Hartl & Fagner Brack
- * Released under the MIT license
- */
-;(function (factory) {
-	if (typeof define === 'function' && define.amd) {
-		define(factory);
-	} else if (typeof exports === 'object') {
-		module.exports = factory();
-	} else {
-		var OldCookies = window.Cookies;
-		var api = window.Cookies = factory();
-		api.noConflict = function () {
-			window.Cookies = OldCookies;
-			return api;
-		};
-	}
-}(function () {
-	function extend () {
-		var i = 0;
-		var result = {};
-		for (; i < arguments.length; i++) {
-			var attributes = arguments[ i ];
-			for (var key in attributes) {
-				result[key] = attributes[key];
-			}
-		}
-		return result;
-	}
-
-	function init (converter) {
-		function api (key, value, attributes) {
-			var result;
-			if (typeof document === 'undefined') {
-				return;
-			}
-
-			// Write
-
-			if (arguments.length > 1) {
-				attributes = extend({
-					path: '/'
-				}, api.defaults, attributes);
-
-				if (typeof attributes.expires === 'number') {
-					var expires = new Date();
-					expires.setMilliseconds(expires.getMilliseconds() + attributes.expires * 864e+5);
-					attributes.expires = expires;
-				}
-
-				try {
-					result = JSON.stringify(value);
-					if (/^[\{\[]/.test(result)) {
-						value = result;
-					}
-				} catch (e) {}
-
-				if (!converter.write) {
-					value = encodeURIComponent(String(value))
-						.replace(/%(23|24|26|2B|3A|3C|3E|3D|2F|3F|40|5B|5D|5E|60|7B|7D|7C)/g, decodeURIComponent);
-				} else {
-					value = converter.write(value, key);
-				}
-
-				key = encodeURIComponent(String(key));
-				key = key.replace(/%(23|24|26|2B|5E|60|7C)/g, decodeURIComponent);
-				key = key.replace(/[\(\)]/g, escape);
-
-				return (document.cookie = [
-					key, '=', value,
-					attributes.expires && '; expires=' + attributes.expires.toUTCString(), // use expires attribute, max-age is not supported by IE
-					attributes.path    && '; path=' + attributes.path,
-					attributes.domain  && '; domain=' + attributes.domain,
-					attributes.secure ? '; secure' : ''
-				].join(''));
-			}
-
-			// Read
-
-			if (!key) {
-				result = {};
-			}
-
-			// To prevent the for loop in the first place assign an empty array
-			// in case there are no cookies at all. Also prevents odd result when
-			// calling "get()"
-			var cookies = document.cookie ? document.cookie.split('; ') : [];
-			var rdecode = /(%[0-9A-Z]{2})+/g;
-			var i = 0;
-
-			for (; i < cookies.length; i++) {
-				var parts = cookies[i].split('=');
-				var name = parts[0].replace(rdecode, decodeURIComponent);
-				var cookie = parts.slice(1).join('=');
-
-				if (cookie.charAt(0) === '"') {
-					cookie = cookie.slice(1, -1);
-				}
-
-				try {
-					cookie = converter.read ?
-						converter.read(cookie, name) : converter(cookie, name) ||
-						cookie.replace(rdecode, decodeURIComponent);
-
-					if (key === name) {
-						result = cookie;
-						break;
-					}
-
-					if (!key) {
-						result[name] = cookie;
-					}
-				} catch (e) { console.error(e); }
-			}
-
-			return result;
-		}
-
-		api.set = api;
-		api.get = function (key) {
-			return api(key);
-		};
-		api.defaults = {};
-
-		api.remove = function (key, attributes) {
-			api(key, '', extend(attributes, {
-				expires: -1
-			}));
-		};
-
-		api.withConverter = init;
-
-		return api;
-	}
-
-	return init(function () {});
-}));
-
 /*------------------------------------------------------------------------------
                         List of CodeMirror Key Mappings
 ------------------------------------------------------------------------------*/
@@ -157,8 +13,8 @@ var cm_keymaps = {
 };
 
 var cm_themes = {
-	light: "default",
-	dark: "zenburn"
+	Light: "default",
+	Dark: "zenburn"
 };
 
 /*------------------------------------------------------------------------------
@@ -183,14 +39,14 @@ var messages_obj = {
 };
 
 // Configuration options
-var theme = Cookies.get("theme") || "dark"; // light or dark
-var binding_obj = {
-	binding: Cookies.get("binding") || "None"
+var config = {
+	theme: Cookies.get("theme") || "Dark",
+	binding: Cookies.get("binding") || "None",
+	use_tabs: (Cookies.get("use_tabs") === 'false') ? false : true,
+	indent_unit: parseInt(Cookies.get("indent_unit")) || 4,
+	wrap_lines: (Cookies.get("wrap_lines") === 'true') ? true : false,
+	hide_numbers: (Cookies.get("hide_numbers") === 'true') ? true : false
 };
-var use_tabs = Cookies.get("use_tabs") || true;
-var indent_unit = parseInt(Cookies.get("indent_unit")) || 4;
-var wrap_lines = Cookies.get("wrap_lines") || false;
-var hide_numbers = Cookies.get("hide_numbers") || false;
 
 /*------------------------------------------------------------------------------
                         Leaps Editor Bootstrapping
@@ -200,12 +56,12 @@ var last_document_joined = "";
 
 function configure_codemirror() {
 	if ( cm_editor !== null ) {
-		cm_editor.setOption("theme", cm_themes[theme]);
-		cm_editor.setOption("keyMap", cm_keymaps[binding_obj.binding]);
-		cm_editor.setOption("indentWithTabs", use_tabs);
-		cm_editor.setOption("indentUnit", indent_unit);
-		cm_editor.setOption("lineWrapping", wrap_lines);
-		cm_editor.setOption("lineNumbers", !hide_numbers);
+		cm_editor.setOption("theme", cm_themes[config.theme]);
+		cm_editor.setOption("keyMap", cm_keymaps[config.binding]);
+		cm_editor.setOption("indentWithTabs", config.use_tabs);
+		cm_editor.setOption("indentUnit", config.indent_unit);
+		cm_editor.setOption("lineWrapping", config.wrap_lines);
+		cm_editor.setOption("lineNumbers", !config.hide_numbers);
 	}
 }
 
@@ -530,14 +386,20 @@ window.onload = function() {
 	(new Vue({ el: '#message-list', data: messages_obj }));
 	(new Vue({ el: '#users-list', data: { users: users } }));
 	(new Vue({
-		el: '#input-select-binding',
+		el: '#settings',
 		data: {
+			themes: cm_themes,
 			bindings: cm_keymaps,
-			binding_obj: binding_obj
+			config: config
 		},
 		methods: {
-			on_change: function() {
-				Cookies.set("binding", binding_obj.binding, { path: '' });
+			on_config_change: function() {
+				Cookies.set("theme", config.theme, { path: '' });
+				Cookies.set("binding", config.binding, { path: '' });
+				Cookies.set("use_tabs", config.use_tabs, { path: '' });
+				Cookies.set("indent_unit", config.indent_unit, { path: '' });
+				Cookies.set("wrap_lines", config.wrap_lines, { path: '' });
+				Cookies.set("hide_numbers", config.hide_numbers, { path: '' });
 				configure_codemirror();
 			}
 		}
