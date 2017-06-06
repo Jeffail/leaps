@@ -13,10 +13,11 @@
 		<script type="text/javascript" src="leaps.js"></script>
 		<script type="text/javascript" src="leap-bind-codemirror.js"></script>
 		<script type="text/javascript" src="leapshare.js"></script>
-		<link href="style.css" type="text/css" rel="stylesheet">
+		<link href="font-awesome/css/font-awesome.min.css" type="text/css" rel="stylesheet">
 		<link href="cm/lib/codemirror.css" type="text/css" rel="stylesheet">
 		<link href="cm/theme/zenburn.css" type="text/css" rel="stylesheet">
 		<link href="cm/addon/dialog/dialog.css" type="text/css" rel="stylesheet">
+		<link href="style.css" type="text/css" rel="stylesheet">
 
 		<!-- TEMPLATES -->
 		<script type="text/x-template" id="file-template">
@@ -26,7 +27,7 @@
 					@click="toggle">
 					{{model.name}}
 					<span v-if="is_folder">[{{open ? '-' : '+'}}]</span>
-					<span v-if="!is_folder">{{model.num_users > 0 ? '('+model.num_users+' users)' : ''}}</span>
+					<span class="bold" v-if="!is_folder">{{model.num_users > 0 ? '('+model.num_users+' users)' : ''}}</span>
 				</div>
 				<ul class="compressed-list" v-show="open" v-if="is_folder">
 					<file-item
@@ -38,8 +39,10 @@
 		</script>
 		<!-- !TEMPLATES -->
 	</head>
-	<body>
-		<div id="settings">
+	<body class="dark">
+		<div id="settings" style="display:none">
+			<i id="settings-close-btn" class="fa fa-lg fa-close clickable" aria-hidden="true"></i>
+
 			<label for="input-hide-numbers">Hide line numbers</label>
 			<input type="checkbox" id="input-hide-numbers" v-model="config.hide_numbers" v-on:change="on_config_change">
 
@@ -49,6 +52,9 @@
 			<label for="input-use-tabs">Use tabs</label>
 			<input type="checkbox" id="input-use-tabs" v-model="config.use_tabs" v-on:change="on_config_change">
 
+			<label for="input-indent-unit">Indent unit</label>
+			<input type="number" id="input-indent-unit" v-model="config.indent_unit" v-on:change="on_config_change">
+
 			<select v-model="config.theme" v-on:change="on_config_change">
 				<option v-for="(value, key) in themes">{{key}}</option>
 			</select>
@@ -57,25 +63,43 @@
 				<option v-for="(value, key) in bindings">{{key}}</option>
 			</select>
 		</div>
-		<div id="editor">
+		<div style="display:none">
+			<aside>
+				<div id="users-list" class="fw-font">
+					<div v-for="value in users">
+						<span>{{value}}</span>
+					</div>
+				</div>
+				<div id="message-list" class="fw-font">
+					<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
+						<span>[{{message.timestamp}}] </span>
+						<span v-if="message.name">&lt;{{message.name}}&gt; </span>
+						<span>{{message.content}}</span>
+					</div>
+				</div>
+				<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
+			</aside>
 		</div>
-		<input id="username-bar" type="text" placeholder="username" class="fw-font">
-		<ul id="file-list" class="compressed-list fw-font">
-			<file-item :model="file_data">
-			</file-item>
-		</ul>
-		<div id="message-list" class="fw-font">
-			<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
-				<span>[{{message.timestamp}}] </span>
-				<span v-if="message.name">&lt;{{message.name}}&gt; </span>
-				<span>{{message.content}}</span>
+		<header class="flexbox-container">
+			<div class="icon-container">
+				<a class="undecorated" href="https://github.com/jeffail/leaps">
+					<h1 class="inline">Leaps</h1><img src="leaps_logo.png" class="inline logo">
+				</a>
+			</div>
+			<div class="buttons-container">
+				<i id="settings-open-btn" class="fa fa-lg fa-cog clickable" aria-hidden="true"></i>
+				<input id="username-bar" type="text" placeholder="username" class="fw-font">
+			</div>
+		</header>
+		<div id="main">
+			<nav>
+				<ul id="file-list" class="root-compressed-list fw-font">
+					<file-item :model="file_data">
+					</file-item>
+				</ul>
+			</nav>
+			<div id="editor">
 			</div>
 		</div>
-		<div id="users-list" class="fw-font">
-			<div v-for="value in users">
-				<span>{{value}}</span>
-			</div>
-		</div>
-		<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
 	</body>
 </html>

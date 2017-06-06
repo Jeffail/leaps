@@ -1,5 +1,11 @@
+/* FONT STUFF */
+
 body {
 	font-family: "Open Sans", sans-serif;
+}
+
+h1 {
+	font-size: 1.5em;
 }
 
 .fw-font {
@@ -8,6 +14,108 @@ body {
 
 .bold {
 	font-weight: bold;
+}
+
+/* COLOURS */
+
+.light {
+	color: #3c3c3c;
+	background-color: #fcfcfc;
+}
+
+.dark {
+	background-color: #3c3c3c;
+	color: #fcfcfc;
+}
+
+.red {
+	color: #bf5661;
+}
+
+/* LAYOUT */
+
+body, html {
+	margin: 0;
+	padding: 0;
+}
+
+html, body {
+	height: 100%;
+	width: 100%;
+}
+
+header {
+	vertical-align: middle;
+	padding: auto;
+	height: 50px;
+}
+
+.flexbox-container {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+header > .buttons-container, header > .icon-container {
+	flex-grow: 0;
+	padding-left: 20px;
+	padding-right: 20px;
+}
+
+.logo {
+	height: 40px;
+}
+
+.CodeMirror {
+	position: relative;
+	height: auto;
+}
+
+#main {
+	position: absolute;
+	z-index: 10;
+	top: 50px;
+	bottom: 0;
+	right: 0;
+	left: 0;
+
+	display: flex;
+}
+
+#main > nav {
+	position: relative;
+	overflow: scroll;
+	min-width: 150px;
+	flex-basis: 150px;
+	flex-shrink: 0;
+	flex-grow: 1;
+}
+
+#editor {
+	position: relative;
+	flex-grow: 6;
+	flex-shrink: 0;
+	flex-basis: 0;
+}
+
+/* OTHER */
+
+.inline {
+	display: inline-block;
+	vertical-align: middle;
+	padding: 0;
+	margin: 0;
+}
+
+.undecorated {
+	color: inherit;
+	text-decoration: none;
+}
+
+.root-compressed-list, .root-compressed-list > .compressed-list {
+	list-style-type: none;
+	margin: 0 !important;
+	padding: 0;
 }
 
 .compressed-list {
@@ -19,8 +127,4 @@ body {
 
 .clickable {
 	cursor: pointer;
-}
-
-.red {
-	color: #bf5661;
 }

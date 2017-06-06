@@ -40,13 +40,29 @@ var messages_obj = {
 
 // Configuration options
 var config = {
-	theme: Cookies.get("theme") || "Dark",
-	binding: Cookies.get("binding") || "None",
-	use_tabs: (Cookies.get("use_tabs") === 'false') ? false : true,
-	indent_unit: parseInt(Cookies.get("indent_unit")) || 4,
-	wrap_lines: (Cookies.get("wrap_lines") === 'true') ? true : false,
-	hide_numbers: (Cookies.get("hide_numbers") === 'true') ? true : false
+	theme: "Dark",
+	binding: "None",
+	use_tabs: true,
+	indent_unit: 4,
+	wrap_lines: false,
+	hide_numbers: false
 };
+
+// Load config from cookies
+(function() {
+	var conf_str = Cookies.get("config");
+	if ( conf_str !== undefined && conf_str.length > 0 ) {
+		try {
+			config = JSON.parse(conf_str);
+		} catch(e) {
+			console.error(err);
+		}
+	}
+})();
+
+function save_config() {
+	Cookies.set("config", JSON.stringify(config), { path: '' });
+}
 
 /*------------------------------------------------------------------------------
                         Leaps Editor Bootstrapping
@@ -85,9 +101,10 @@ function join_new_document(document_id) {
 	}
 
 	var default_options = CodeMirror.defaults;
+	default_options.readOnly = true;
+	default_options.viewPortMargin = "Infinity";
 
 	cm_editor = CodeMirror(document.getElementById("editor"), default_options);
-	cm_editor.options.readOnly = true;
 
 	configure_codemirror();
 
@@ -341,6 +358,14 @@ function init_input_fields() {
 			}
 		}
 	});
+
+	var settings_window = document.getElementById("settings");
+	document.getElementById("settings-open-btn").onclick = function() {
+		settings_window.style.display = "";
+	};
+	document.getElementById("settings-close-btn").onclick = function() {
+		settings_window.style.display = "none";
+	};
 }
 
 /*------------------------------------------------------------------------------
@@ -394,12 +419,7 @@ window.onload = function() {
 		},
 		methods: {
 			on_config_change: function() {
-				Cookies.set("theme", config.theme, { path: '' });
-				Cookies.set("binding", config.binding, { path: '' });
-				Cookies.set("use_tabs", config.use_tabs, { path: '' });
-				Cookies.set("indent_unit", config.indent_unit, { path: '' });
-				Cookies.set("wrap_lines", config.wrap_lines, { path: '' });
-				Cookies.set("hide_numbers", config.hide_numbers, { path: '' });
+				save_config();
 				configure_codemirror();
 			}
 		}
