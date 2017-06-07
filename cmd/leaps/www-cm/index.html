@@ -84,7 +84,10 @@
 				</nav>
 				<div id="users-list" class="flexbox-container-wrapped border-top border-bottom fw-font">
 					<div v-if="Object.keys(users).length === 0"><span>You are alone &#128542;</span></div>
-					<div v-for="(value, key) in users" v-bind:style="style(key)" class="clickable bold">
+					<div v-for="(value, key) in users"
+						v-bind:style="style(key)"
+						v-on:click="go_to(value.position)"
+						class="clickable bold">
 						<span>{{value.name}}</span>
 					</div>
 				</div>

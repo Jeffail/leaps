@@ -183,6 +183,14 @@ function join_new_document(document_id) {
 	leaps_client.connect(protocol + "//" + window.location.host + window.location.pathname + "leaps/ws");
 }
 
+function cursor_to_position(position) {
+	if ( cm_editor !== null ) {
+		var pos = leap_client.pos_from_u_index(cm_editor.getDoc(), position);
+		cm_editor.setCursor(pos);
+		cm_editor.focus();
+	}
+}
+
 /*------------------------------------------------------------------------------
                                   Messages
 ------------------------------------------------------------------------------*/
@@ -448,6 +456,9 @@ window.onload = function() {
 					color: "#fcfcfc",
 					backgroundColor: leap_client.session_id_to_colour(id)
 				}
+			},
+			go_to: function(position) {
+				cursor_to_position(position);
 			}
 		}
 	}));

@@ -332,6 +332,8 @@ try {
 			this._codemirror = new leap_bind_codemirror(this, codemirror_object);
 		};
 		window.leap_client.session_id_to_colour = id_to_colour;
+		window.leap_client.pos_from_u_index = pos_from_u_index;
+		window.leap_client.u_index_from_pos = u_index_from_pos;
 	}
 } catch (e) {
 }
