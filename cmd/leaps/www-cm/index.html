@@ -23,7 +23,7 @@
 		<script type="text/x-template" id="file-template">
 			<li class="clickable">
 				<div v-if="!model.root"
-					:class="{bold: is_folder}"
+					:class="{bold: is_folder, blue: is_open}"
 					@click="toggle">
 					{{model.name}}
 					<span v-if="is_folder">[{{open ? '-' : '+'}}]</span>
@@ -39,7 +39,7 @@
 		</script>
 		<!-- !TEMPLATES -->
 	</head>
-	<body class="dark">
+	<body class="dark flexbox-container-fill-rows">
 		<div id="settings" style="display:none">
 			<i id="settings-close-btn" class="fa fa-lg fa-close clickable" aria-hidden="true"></i>
 
@@ -63,24 +63,7 @@
 				<option v-for="(value, key) in bindings">{{key}}</option>
 			</select>
 		</div>
-		<div style="display:none">
-			<aside>
-				<div id="users-list" class="fw-font">
-					<div v-for="value in users">
-						<span>{{value}}</span>
-					</div>
-				</div>
-				<div id="message-list" class="fw-font">
-					<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
-						<span>[{{message.timestamp}}] </span>
-						<span v-if="message.name">&lt;{{message.name}}&gt; </span>
-						<span>{{message.content}}</span>
-					</div>
-				</div>
-				<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
-			</aside>
-		</div>
-		<header class="flexbox-container">
+		<header class="flexbox-container-spaced border-bottom">
 			<div class="icon-container">
 				<a class="undecorated" href="https://github.com/jeffail/leaps">
 					<h1 class="inline">Leaps</h1><img src="leaps_logo.png" class="inline logo">
@@ -92,12 +75,29 @@
 			</div>
 		</header>
 		<div id="main">
-			<nav>
-				<ul id="file-list" class="root-compressed-list fw-font">
-					<file-item :model="file_data">
-					</file-item>
-				</ul>
-			</nav>
+			<div id="side-bar" class="border-right">
+				<nav>
+					<ul id="file-list" class="root-compressed-list fw-font">
+						<file-item :model="file_data">
+						</file-item>
+					</ul>
+				</nav>
+				<div id="users-list" class="flexbox-container-wrapped border-top border-bottom fw-font">
+					<div v-if="Object.keys(users).length === 0"><span>You are alone &#128542;</span></div>
+					<div v-for="(value, key) in users" v-bind:style="style(key)" class="clickable bold">
+						<span>{{value.name}}</span>
+					</div>
+				</div>
+				<div id="message-list" class="fw-font">
+					<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
+						<span>[{{message.timestamp}}]</span>
+						<span v-if="message.name"> </span>
+						<span v-bind:style="message.name_style" class="bold" v-if="message.name">&lt;{{message.name}}&gt;</span>
+						<span> {{message.content}}</span>
+					</div>
+				</div>
+				<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
+			</div>
 			<div id="editor">
 			</div>
 		</div>

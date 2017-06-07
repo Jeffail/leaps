@@ -246,7 +246,7 @@ function hash(str) {
 	return hash;
 }
 
-function id_to_color(id) {
+function id_to_colour(id) {
 	var id_hash = hash(id);
 	if ( id_hash < 0 ) {
 		id_hash = id_hash * -1;
@@ -277,13 +277,13 @@ function dom_from_update(cm, update) {
 	bar.style.top = '-' + height + 'px';
 	bar.style.height = height + 'px';
 	bar.style.width =  thickness + 'px';
-	bar.style.backgroundColor = id_to_color(update.client.session_id);
+	bar.style.backgroundColor = id_to_colour(update.client.session_id);
 
 	var label = document.createElement('div');
 	label.style.position = 'relative';
 	label.style.top = '-' + (height + label_height) + 'px';
 	label.style.padding = thickness + 'px';
-	label.style.backgroundColor = id_to_color(update.client.session_id);
+	label.style.backgroundColor = id_to_colour(update.client.session_id);
 	label.style.color = "#fcfcfc";
 	label.appendChild(document.createTextNode(update.client.user_id));
 
@@ -331,6 +331,7 @@ try {
 		window.leap_client.prototype.bind_codemirror = function(codemirror_object) {
 			this._codemirror = new leap_bind_codemirror(this, codemirror_object);
 		};
+		window.leap_client.session_id_to_colour = id_to_colour;
 	}
 } catch (e) {
 }

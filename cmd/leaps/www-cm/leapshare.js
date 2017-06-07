@@ -27,6 +27,7 @@ var username = Cookies.get("username") || "anon";
 
 var users = {};
 var file_paths = {
+	opened: '',
 	root: true,
 	name: "Files",
 	path: "Files",
@@ -68,9 +69,20 @@ function save_config() {
                         Leaps Editor Bootstrapping
 ------------------------------------------------------------------------------*/
 
-var last_document_joined = "";
+function replace_classname(old_class, new_class) {
+	var old_elements = document.getElementsByClassName(old_class);
+	var i = old_elements.length;
+	while ( i-- ) {
+		old_elements[i].className = old_elements[i].className.replace(old_class, new_class);
+	}
+}
 
 function configure_codemirror() {
+	if ( config.theme === 'Light' ) {
+		replace_classname("dark", "light");
+	} else {
+		replace_classname("light", "dark");
+	}
 	if ( cm_editor !== null ) {
 		cm_editor.setOption("theme", cm_themes[config.theme]);
 		cm_editor.setOption("keyMap", cm_keymaps[config.binding]);
@@ -117,9 +129,6 @@ function join_new_document(document_id) {
 		}
 	} catch (e) {}
 
-	// Set the hash of our URL to the path
-	window.location.hash = "path:" + document_id;
-
 	leaps_client = new leap_client();
 	leaps_client.bind_codemirror(cm_editor);
 
@@ -136,12 +145,9 @@ function join_new_document(document_id) {
 	});
 
 	leaps_client.on("disconnect", function(err) {
-		show_sys_message("Closed " + last_document_joined);
+		show_sys_message("Closed " + document_id);
 		if ( cm_editor !== null ) {
 			cm_editor.options.readOnly = true;
-		}
-		if ( leaps_client !== null ) {
-			last_document_joined = "";
 		}
 	});
 
@@ -150,21 +156,24 @@ function join_new_document(document_id) {
 	});
 
 	leaps_client.on("document", function() {
+		file_paths.opened = document_id;
 		cm_editor.options.readOnly = false;
-		last_document_joined = document_id;
 		show_sys_message("Opened " + document_id);
+
+		// Set the hash of our URL to the path
+		window.location.hash = "path:" + document_id;
 	});
 
 	leaps_client.on("user", function(user_update) {
 		if ( 'string' === typeof user_update.message.content ) {
-			show_user_message(user_update.client.user_id, user_update.message.content);
+			show_user_message(user_update.client.user_id, user_update.client.session_id, user_update.message.content);
 		}
 
-		var refresh_user_list = !users.hasOwnProperty(user_update.client.session_id);
-		Vue.set(users, user_update.client.session_id, user_update.client.user_id);
-
+		Vue.set(users, user_update.client.session_id, {
+			name: user_update.client.user_id,
+			position: user_update.message.position
+		});
 		if ( typeof user_update.message.active === 'boolean' && !user_update.message.active ) {
-			refresh_user_list = true;
 			// Must use Vue.delete otherwise update is not triggered
 			Vue.delete(users, user_update.client.session_id);
 		}
@@ -182,13 +191,24 @@ function clip_messages() {
 	if ( messages_obj.messages.length > 200 ) {
 		messages_obj.messages = messages_obj.messages.slice(-200);
 	}
+	setTimeout(function() {
+		// Yield for the Vue renderer before scrolling.
+		var messages_ele = document.getElementById("message-list");
+		messages_ele.scrollTop = messages_ele.scrollHeight;
+	}, 1);
 }
 
-function show_user_message(username, content) {
+function show_user_message(username, session, content) {
 	var now = new Date();
+	var name_style = {};
+	if ( session !== null ) {
+		name_style.backgroundColor = leap_client.session_id_to_colour(session);
+		name_style.color = "#fcfcfc";
+	}
 	messages_obj.messages.push({
 		timestamp: now.toLocaleTimeString(),
 		name: username,
+		name_style: name_style,
 		content: content
 	});
 	clip_messages();
@@ -338,17 +358,17 @@ function init_input_fields() {
 		}
 		username = content;
 		Cookies.set("username", username, { path: '' });
-		if ( last_document_joined.length > 0 ) {
-			join_new_document(last_document_joined);
+		if ( file_paths.opened.length > 0 ) {
+			join_new_document(file_paths.opened);
 		}
 	});
 
-	// Set up chat bar
-	text_input("chat-bar", function(ele, content) {
+	var chat_bar = document.getElementById("chat-bar");
+	text_input(chat_bar, function(ele, content) {
 		if ( content.length > 0 ) {
 			if ( leaps_client !== null ) {
 				leaps_client.send_message(content);
-				show_user_message(username, content);
+				show_user_message(username, null, content);
 				ele.value = "";
 			} else {
 				show_err_message(
@@ -358,6 +378,10 @@ function init_input_fields() {
 			}
 		}
 	});
+	var message_list = document.getElementById("message-list");
+	message_list.onclick = function() {
+		chat_bar.focus();
+	};
 
 	var settings_window = document.getElementById("settings");
 	document.getElementById("settings-open-btn").onclick = function() {
@@ -385,6 +409,12 @@ window.onload = function() {
 			};
 		},
 		computed: {
+			is_open: function() {
+				if ( this.model.path.length <= file_paths.opened.length ) {
+					return file_paths.opened.substring(0, this.model.path.length) === this.model.path;
+				}
+				return false;
+			},
 			is_folder: function () {
 				return this.model.children &&
 					this.model.children.length;
@@ -409,7 +439,18 @@ window.onload = function() {
 
 	(new Vue({ el: '#file-list', data: { file_data: file_paths } }));
 	(new Vue({ el: '#message-list', data: messages_obj }));
-	(new Vue({ el: '#users-list', data: { users: users } }));
+	(new Vue({
+		el: '#users-list',
+		data: { users: users },
+		methods: {
+			style: function(id) {
+				return {
+					color: "#fcfcfc",
+					backgroundColor: leap_client.session_id_to_colour(id)
+				}
+			}
+		}
+	}));
 	(new Vue({
 		el: '#settings',
 		data: {
@@ -435,11 +476,19 @@ window.onload = function() {
 	get_paths();
 	setInterval(get_paths, 1000);
 
-	// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
-	if ( window.location.hash.length > 0 &&
-		window.location.hash.substr(1, 5) === "path:" ) {
-		join_new_document(window.location.hash.substr(6));
-	}
+	window.onhashchange = function() {
+		// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
+		if ( window.location.hash.length > 0 &&
+			window.location.hash.substr(1, 5) === "path:" ) {
+			var new_path = window.location.hash.substr(6);
+			if ( new_path !== file_paths.opened ) {
+				join_new_document(window.location.hash.substr(6));
+			}
+		}
+	};
+
+	// Event isn't triggered on page load but we might want to check.
+	window.onhashchange();
 };
 
 })();

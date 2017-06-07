@@ -2,10 +2,11 @@
 
 body {
 	font-family: "Open Sans", sans-serif;
+	font-size: 0.8em;
 }
 
 h1 {
-	font-size: 1.5em;
+	font-size: 1.8em;
 }
 
 .fw-font {
@@ -20,7 +21,23 @@ h1 {
 
 .light {
 	color: #3c3c3c;
-	background-color: #fcfcfc;
+	background-color: #f0f0f0;
+}
+
+.light .border-bottom {
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.light .border-right {
+	border-right: 1px solid #e0e0e0;
+}
+
+.light .border-left {
+	border-left: 1px solid #e0e0e0;
+}
+
+.light .border-top {
+	border-top: 1px solid #e0e0e0;
 }
 
 .dark {
@@ -28,8 +45,28 @@ h1 {
 	color: #fcfcfc;
 }
 
+.dark .border-bottom {
+	border-bottom: 1px solid #5c5c5c;
+}
+
+.dark .border-right {
+	border-right: 1px solid #5c5c5c;
+}
+
+.dark .border-left {
+	border-left: 1px solid #5c5c5c;
+}
+
+.dark .border-top {
+	border-top: 1px solid #5c5c5c;
+}
+
 .red {
 	color: #bf5661;
+}
+
+.blue {
+	color: #1878eb;
 }
 
 /* LAYOUT */
@@ -50,7 +87,12 @@ header {
 	height: 50px;
 }
 
-.flexbox-container {
+.flexbox-container-wrapped {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.flexbox-container-spaced {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -58,6 +100,7 @@ header {
 
 header > .buttons-container, header > .icon-container {
 	flex-grow: 0;
+	flex-basis: auto;
 	padding-left: 20px;
 	padding-right: 20px;
 }
@@ -69,30 +112,60 @@ header > .buttons-container, header > .icon-container {
 .CodeMirror {
 	position: relative;
 	height: auto;
+	font-size: 1.2em;
 }
 
 #main {
 	position: absolute;
-	z-index: 10;
-	top: 50px;
-	bottom: 0;
-	right: 0;
-	left: 0;
-
+	top: 51px;
+	bottom: 0px;
+	width: 100%;
 	display: flex;
+	align-items: stretch;
 }
 
-#main > nav {
-	position: relative;
-	overflow: scroll;
+#side-bar {
 	min-width: 150px;
 	flex-basis: 150px;
 	flex-shrink: 0;
 	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+#side-bar > nav {
+	overflow: auto;
+	max-height: 50%;
+	flex-grow: 0;
+	flex-shrink: 0;
+	margin: 10px;
+}
+
+#message-list {
+	margin: 10px;
+	min-height: 100px;
+	overflow: auto;
+	flex-grow: 1;
+}
+
+#chat-bar {
+	height: 30px;
+	flex-grow: 0;
+	flex-shrink: 0;
+}
+
+#users-list {
+	padding: 10px;
+}
+
+#users-list > div {
+	margin: 2px;
+	padding: 5px;
 }
 
 #editor {
 	position: relative;
+	overflow: auto;
 	flex-grow: 6;
 	flex-shrink: 0;
 	flex-basis: 0;

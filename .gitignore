@@ -2,7 +2,7 @@ node_modules
 bin
 releases
 ./leaps
-static/share_dir/ace
 certificate.key
 certificate.cert
 .htpasswd
+.leaps_cot.json
