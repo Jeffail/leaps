@@ -39,53 +39,52 @@
 		</script>
 		<!-- !TEMPLATES -->
 	</head>
-	<body class="dark">
-		<div id="settings" class="shaded" style="display:none">
-			<div id="settings-window" class="foreground">
-				<i id="settings-close-btn" class="fa fa-lg fa-close clickable" aria-hidden="true"></i>
-				<h2>Settings</h2>
-				<div>
-					<div class="setting-container">
-						<label class="border-right" for="input-use-tabs">Use tabs</label>
-						<input type="checkbox" id="input-use-tabs" v-model="config.use_tabs" v-on:change="on_config_change">
-					</div>
-					<div class="setting-container">
-						<label class="border-right" for="input-wrap-lines">Wrap lines</label>
-						<input type="checkbox" id="input-wrap-lines" v-model="config.wrap_lines" v-on:change="on_config_change">
-					</div>
-					<div class="setting-container">
-						<label class="border-right" for="input-hide-numbers">Hide line numbers</label>
-						<input type="checkbox" id="input-hide-numbers" v-model="config.hide_numbers" v-on:change="on_config_change">
-					</div>
-					<div class="setting-container">
-						<label class="border-right" for="input-indent-unit">Indent unit</label>
-						<input type="number" id="input-indent-unit" v-model="config.indent_unit" v-on:change="on_config_change">
-					</div>
-					<div class="setting-container">
-						<label class="border-right" for="theme-select">Theme</label>
-						<select id="theme-select" v-model="config.theme" v-on:change="on_config_change">
-							<option v-for="(value, key) in themes">{{key}}</option>
-						</select>
-					</div>
-					<div class="setting-container">
-						<label class="border-right" for="binding-select">Key Binding</label>
-						<select id="binding-select" v-model="config.binding" v-on:change="on_config_change">
-							<option v-for="(value, key) in bindings">{{key}}</option>
-						</select>
+	<body id="app" class="dark app-shadow">
+			<div id="settings" style="display:none">
+				<div id="settings-window" class="settings-shadow lighter">
+					<i id="settings-close-btn" class="fa fa-2x fa-arrow-left clickable" aria-hidden="true"></i>
+					<h2>Settings</h2>
+					<div>
+						<div class="setting-container">
+							<label class="border-right" for="input-use-tabs">Use tabs</label>
+							<input type="checkbox" id="input-use-tabs" v-model="config.use_tabs" v-on:change="on_config_change">
+						</div>
+						<div class="setting-container">
+							<label class="border-right" for="input-wrap-lines">Wrap lines</label>
+							<input type="checkbox" id="input-wrap-lines" v-model="config.wrap_lines" v-on:change="on_config_change">
+						</div>
+						<div class="setting-container">
+							<label class="border-right" for="input-hide-numbers">Hide line numbers</label>
+							<input type="checkbox" id="input-hide-numbers" v-model="config.hide_numbers" v-on:change="on_config_change">
+						</div>
+						<div class="setting-container">
+							<label class="border-right" for="input-indent-unit">Indent unit</label>
+							<input type="number" id="input-indent-unit" v-model="config.indent_unit" v-on:change="on_config_change">
+						</div>
+						<div class="setting-container">
+							<label class="border-right" for="theme-select">Theme</label>
+							<select id="theme-select" v-model="config.theme" v-on:change="on_config_change">
+								<option v-for="(value, key) in themes">{{key}}</option>
+							</select>
+						</div>
+						<div class="setting-container">
+							<label class="border-right" for="binding-select">Key Binding</label>
+							<select id="binding-select" v-model="config.binding" v-on:change="on_config_change">
+								<option v-for="(value, key) in bindings">{{key}}</option>
+							</select>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-		<div id="app" class="app-shadow">
 			<header class="flexbox-container-spaced foreground border-bottom">
+				<div class="buttons-container">
+					<i id="settings-open-btn" class="fa fa-2x fa-cog clickable" aria-hidden="true"></i>
+					<input id="username-bar" type="text" placeholder="username" class="fw-font">
+				</div>
 				<div class="icon-container">
 					<a class="undecorated" href="https://github.com/jeffail/leaps">
 						<h1 class="inline">Leaps</h1><img src="leaps_logo.png" class="inline logo">
 					</a>
-				</div>
-				<div class="buttons-container">
-					<i id="settings-open-btn" class="fa fa-2x fa-cog clickable" aria-hidden="true"></i>
-					<input id="username-bar" type="text" placeholder="username" class="fw-font">
 				</div>
 			</header>
 			<div id="main">
@@ -117,7 +116,6 @@
 				</div>
 				<div id="editor" class="foreground">
 				</div>
-			</div>
 		</div>
 	</body>
 </html>

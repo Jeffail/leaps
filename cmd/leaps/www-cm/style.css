@@ -33,6 +33,10 @@ input {
 	background-color: #f0f0f0;
 }
 
+.light .lighter {
+	background-color: #fcfcfc;
+}
+
 .light .border-bottom {
 	border-bottom: 1px solid #e0e0e0;
 }
@@ -61,17 +65,25 @@ input {
 	border-color: #3c3c3c;
 }
 
-.light .app-shadow {
+.light.app-shadow {
 	box-shadow: 4px 4px 15px #9c9c9c;
 }
 
+.light .settings-shadow {
+	box-shadow: 2px 2px 5px #9c9c9c;
+}
+
 .dark {
-	background-color: #5c5c5c;
+	background-color: #7c7c7c;
 	color: #fcfcfc;
 }
 
 .dark .foreground {
 	background-color: #3c3c3c;
+}
+
+.dark .lighter {
+	background-color: #4c4c4c;
 }
 
 .dark .border-bottom {
@@ -102,8 +114,12 @@ input {
 	border-color: #fcfcfc;
 }
 
-.dark .app-shadow {
+.dark.app-shadow {
 	box-shadow: 4px 4px 15px #2c2c2c;
+}
+
+.dark .settings-shadow {
+	box-shadow: 2px 2px 5px #2c2c2c;
 }
 
 .red {
@@ -126,27 +142,25 @@ body, html {
 }
 
 body {
-	height: 100%;
-	width: 100%;
 }
 
 #settings {
 	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	right: 0;
+	width: 100%;
+	height: 100%;
 	z-index: 500;
 	display: flex;
 	justify-content: center;
 }
 
 #settings-window {
-	padding: 20px;
-	margin: auto;
-	max-height: 100%;
+	box-sizing: border-box;
+	position: absolute;
+	left: 0;
+	top: 0;
+	padding: 10px 20px 10px 20px;
+	height: 100%;
 	max-width: 100%;
-	border-radius: 10px;
 }
 
 #settings-window > div {
@@ -157,7 +171,11 @@ body {
 
 #settings-window > h2 {
 	text-align: center;
-	margin-top: 0;
+	margin: 5px;
+}
+
+#settings-window > i {
+	float: left;
 }
 
 .setting-container {
@@ -210,7 +228,7 @@ header > .buttons-container, header > .icon-container {
 }
 
 #username-bar {
-	margin-left: 5px;
+	margin-left: 10px;
 }
 
 .logo {
@@ -291,11 +309,9 @@ header > .buttons-container, header > .icon-container {
 and (min-width: 1200px)
 and (min-height: 850px) {
 	#app {
-		margin-top: 5vh;
+		margin-top: 2vh;
 		width: 90vw;
-		height: 90vh;
-		max-width: 1600px;
-		max-height: 1000px;
+		height: 96vh;
 	}
 }
 
