@@ -1,4 +1,4 @@
-//go:generate go-bindata-assetfs ./www
+//go:generate go-bindata-assetfs ./www/...
 //go:generate gofmt -s -w ./bindata_assetfs.go
 
 /*

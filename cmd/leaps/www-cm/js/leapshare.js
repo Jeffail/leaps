@@ -493,7 +493,7 @@ window.onload = function() {
 
 	init_input_fields();
 
-	CodeMirror.modeURL = "cm/mode/%N/%N.js";
+	CodeMirror.modeURL = "mode/%N/%N.js";
 
 	try {
 		collapsed_dirs = JSON.parse(Cookies.get("collapsed_dirs"));
