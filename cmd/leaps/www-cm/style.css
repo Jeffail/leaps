@@ -17,10 +17,19 @@ h1 {
 	font-weight: bold;
 }
 
+input {
+	font-size: 1.1em;
+	padding: 0 10px 5px 10px;
+}
+
 /* COLOURS */
 
 .light {
 	color: #3c3c3c;
+	background-color: #d0d0d0;
+}
+
+.light .foreground {
 	background-color: #f0f0f0;
 }
 
@@ -40,9 +49,25 @@ h1 {
 	border-top: 1px solid #e0e0e0;
 }
 
+.light input {
+	border: 0;
+	border-bottom: 4px solid #6c6c6c;
+	border-radius: 10px;
+	background-color: rgba(0,0,0,0);
+	color: #3c3c3c;
+}
+
+.light input:focus {
+	border-color: #3c3c3c;
+}
+
 .dark {
-	background-color: #3c3c3c;
+	background-color: #5c5c5c;
 	color: #fcfcfc;
+}
+
+.dark .foreground {
+	background-color: #3c3c3c;
 }
 
 .dark .border-bottom {
@@ -61,12 +86,28 @@ h1 {
 	border-top: 1px solid #5c5c5c;
 }
 
+.dark input {
+	border: 0;
+	border-bottom: 4px solid #d0d0d0;
+	border-radius: 10px;
+	background-color: rgba(0,0,0,0);
+	color: #fcfcfc;
+}
+
+.dark input:focus {
+	border-color: #fcfcfc;
+}
+
 .red {
 	color: #bf5661;
 }
 
 .blue {
 	color: #1878eb;
+}
+
+.shaded {
+	background-color: rgba(0, 0, 0, 0.4);
 }
 
 /* LAYOUT */
@@ -83,8 +124,8 @@ html, body {
 
 header {
 	vertical-align: middle;
-	padding: auto;
 	height: 50px;
+	margin: auto;
 }
 
 .flexbox-container-wrapped {
@@ -105,8 +146,66 @@ header > .buttons-container, header > .icon-container {
 	padding-right: 20px;
 }
 
+.buttons-container > * {
+	vertical-align: middle;
+}
+
+#username-bar {
+	margin-left: 5px;
+}
+
 .logo {
 	height: 40px;
+}
+
+#settings {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 500;
+	display: flex;
+	justify-content: center;
+}
+
+#settings-window {
+	padding: 20px;
+	margin: auto;
+	max-height: 100%;
+	max-width: 100%;
+	border-radius: 10px;
+}
+
+#settings-window > div {
+	display: table;
+	margin-top: 10px;
+	overflow: auto;
+}
+
+#settings-window > h2 {
+	text-align: center;
+	margin-top: 0px;
+}
+
+.setting-container {
+	margin: 5px;
+	display: table-row;
+}
+
+.setting-container label, .setting-container input, .setting-container select {
+	display: table-cell;
+}
+
+.setting-container label {
+	text-align: right;
+	padding: 15px 10px 10px 10px;
+}
+
+.setting-container select, .setting-container input {
+	text-align: left;
+	vertical-align: middle;
+	margin-left: 10px;
 }
 
 .CodeMirror {
@@ -122,6 +221,7 @@ header > .buttons-container, header > .icon-container {
 	width: 100%;
 	display: flex;
 	align-items: stretch;
+	justify-content: center;
 }
 
 #side-bar {
@@ -135,7 +235,7 @@ header > .buttons-container, header > .icon-container {
 
 #side-bar > nav {
 	overflow: auto;
-	max-height: 50%;
+	max-height: 40%;
 	flex-grow: 0;
 	flex-shrink: 0;
 	margin: 10px;
@@ -143,13 +243,13 @@ header > .buttons-container, header > .icon-container {
 
 #message-list {
 	margin: 10px;
-	min-height: 100px;
+	min-height: 20px;
 	overflow: auto;
 	flex-grow: 1;
 }
 
 #chat-bar {
-	height: 30px;
+	margin: 5px;
 	flex-grow: 0;
 	flex-shrink: 0;
 }

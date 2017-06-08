@@ -68,9 +68,9 @@ var (
 
 func init() {
 	showVersion = flag.Bool("version", false, "Show version information")
-	safeMode = flag.Bool("safe", false, `Do not write changes directly to local files.
-	Instead, store them in a temporary file that can be committed afterwards with the --commit flag`)
-	applyLcot = flag.Bool("commit", false, "Commit changes made from leaps in safe mode to your local files and then exit")
+	safeMode = flag.Bool("safe", false, `Do not write changes directly to local files. Instead, store them in a temporary file that can be
+committed afterwards with the --commit flag`)
+	applyLcot = flag.Bool("commit", false, "Commit changes made from leaps in safe mode to your local files and then exit (look at --safe)")
 	httpAddress = flag.String("address", ":8080", "The HTTP address to bind to")
 	showHidden = flag.Bool("all", false, "Display all files, including hidden")
 	debugWWWDir = flag.String("use_www", "", "Serve alternative web files from this dir")

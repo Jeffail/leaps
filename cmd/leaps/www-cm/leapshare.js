@@ -398,6 +398,20 @@ function init_input_fields() {
 	document.getElementById("settings-close-btn").onclick = function() {
 		settings_window.style.display = "none";
 	};
+	settings_window.onclick = function() {
+		settings_window.style.display = "none";
+	};
+
+	var settings_inner_window = document.getElementById("settings-window");
+	settings_inner_window.onclick = function(e) {
+		if (!e) {
+			e = window.event;
+		}
+		if (e.stopPropagation) {
+			e.stopPropagation();
+		}
+		return true;
+	};
 }
 
 /*------------------------------------------------------------------------------
