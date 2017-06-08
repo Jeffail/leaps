@@ -61,6 +61,10 @@ input {
 	border-color: #3c3c3c;
 }
 
+.light .app-shadow {
+	box-shadow: 4px 4px 15px #9c9c9c;
+}
+
 .dark {
 	background-color: #5c5c5c;
 	color: #fcfcfc;
@@ -98,6 +102,10 @@ input {
 	border-color: #fcfcfc;
 }
 
+.dark .app-shadow {
+	box-shadow: 4px 4px 15px #2c2c2c;
+}
+
 .red {
 	color: #bf5661;
 }
@@ -117,14 +125,65 @@ body, html {
 	padding: 0;
 }
 
-html, body {
+body {
 	height: 100%;
 	width: 100%;
+}
+
+#settings {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 500;
+	display: flex;
+	justify-content: center;
+}
+
+#settings-window {
+	padding: 20px;
+	margin: auto;
+	max-height: 100%;
+	max-width: 100%;
+	border-radius: 10px;
+}
+
+#settings-window > div {
+	display: table;
+	margin-top: 10px;
+	overflow: auto;
+}
+
+#settings-window > h2 {
+	text-align: center;
+	margin-top: 0;
+}
+
+.setting-container {
+	margin: 5px;
+	display: table-row;
+}
+
+.setting-container label, .setting-container input, .setting-container select {
+	display: table-cell;
+}
+
+.setting-container label {
+	text-align: right;
+	padding: 15px 10px 10px 10px;
+}
+
+.setting-container select, .setting-container input {
+	text-align: left;
+	vertical-align: middle;
+	margin-left: 10px;
 }
 
 header {
 	vertical-align: middle;
 	height: 50px;
+	width: 100%;
 	margin: auto;
 }
 
@@ -158,67 +217,24 @@ header > .buttons-container, header > .icon-container {
 	height: 40px;
 }
 
-#settings {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	z-index: 500;
-	display: flex;
-	justify-content: center;
-}
-
-#settings-window {
-	padding: 20px;
-	margin: auto;
-	max-height: 100%;
-	max-width: 100%;
-	border-radius: 10px;
-}
-
-#settings-window > div {
-	display: table;
-	margin-top: 10px;
-	overflow: auto;
-}
-
-#settings-window > h2 {
-	text-align: center;
-	margin-top: 0px;
-}
-
-.setting-container {
-	margin: 5px;
-	display: table-row;
-}
-
-.setting-container label, .setting-container input, .setting-container select {
-	display: table-cell;
-}
-
-.setting-container label {
-	text-align: right;
-	padding: 15px 10px 10px 10px;
-}
-
-.setting-container select, .setting-container input {
-	text-align: left;
-	vertical-align: middle;
-	margin-left: 10px;
-}
-
 .CodeMirror {
-	position: relative;
-	height: auto;
 	font-size: 1.2em;
+	height: auto;
+}
+
+#app {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	margin: auto;
 }
 
 #main {
 	position: absolute;
 	top: 51px;
-	bottom: 0px;
-	width: 100%;
+	bottom: 0;
+	left: 0;
+	right: 0;
 	display: flex;
 	align-items: stretch;
 	justify-content: center;
@@ -269,6 +285,18 @@ header > .buttons-container, header > .icon-container {
 	flex-grow: 6;
 	flex-shrink: 0;
 	flex-basis: 0;
+}
+
+@media screen
+and (min-width: 1200px)
+and (min-height: 850px) {
+	#app {
+		margin-top: 5vh;
+		width: 90vw;
+		height: 90vh;
+		max-width: 1600px;
+		max-height: 1000px;
+	}
 }
 
 /* OTHER */

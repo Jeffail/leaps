@@ -39,7 +39,7 @@
 		</script>
 		<!-- !TEMPLATES -->
 	</head>
-	<body class="dark flexbox-container-fill-rows">
+	<body class="dark">
 		<div id="settings" class="shaded" style="display:none">
 			<div id="settings-window" class="foreground">
 				<i id="settings-close-btn" class="fa fa-lg fa-close clickable" aria-hidden="true"></i>
@@ -76,45 +76,47 @@
 				</div>
 			</div>
 		</div>
-		<header class="flexbox-container-spaced foreground border-bottom">
-			<div class="icon-container">
-				<a class="undecorated" href="https://github.com/jeffail/leaps">
-					<h1 class="inline">Leaps</h1><img src="leaps_logo.png" class="inline logo">
-				</a>
-			</div>
-			<div class="buttons-container">
-				<i id="settings-open-btn" class="fa fa-2x fa-cog clickable" aria-hidden="true"></i>
-				<input id="username-bar" type="text" placeholder="username" class="fw-font">
-			</div>
-		</header>
-		<div id="main">
-			<div id="side-bar" class="foreground border-right">
-				<nav>
-					<ul id="file-list" class="root-compressed-list fw-font">
-						<file-item :model="file_data">
-						</file-item>
-					</ul>
-				</nav>
-				<div id="users-list" class="flexbox-container-wrapped border-top border-bottom fw-font">
-					<div v-if="Object.keys(users).length === 0"><span>You are alone &#128542;</span></div>
-					<div v-for="(value, key) in users"
-						v-bind:style="style(key)"
-						v-on:click="go_to(value.position)"
-						class="clickable bold">
-						<span>{{value.name}}</span>
-					</div>
+		<div id="app" class="app-shadow">
+			<header class="flexbox-container-spaced foreground border-bottom">
+				<div class="icon-container">
+					<a class="undecorated" href="https://github.com/jeffail/leaps">
+						<h1 class="inline">Leaps</h1><img src="leaps_logo.png" class="inline logo">
+					</a>
 				</div>
-				<div id="message-list" class="fw-font">
-					<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
-						<span>[{{message.timestamp}}]</span>
-						<span v-if="message.name"> </span>
-						<span v-bind:style="message.name_style" class="bold" v-if="message.name">&lt;{{message.name}}&gt;</span>
-						<span> {{message.content}}</span>
-					</div>
+				<div class="buttons-container">
+					<i id="settings-open-btn" class="fa fa-2x fa-cog clickable" aria-hidden="true"></i>
+					<input id="username-bar" type="text" placeholder="username" class="fw-font">
 				</div>
-				<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
-			</div>
-			<div id="editor" class="foreground">
+			</header>
+			<div id="main">
+				<div id="side-bar" class="foreground border-right">
+					<nav>
+						<ul id="file-list" class="root-compressed-list fw-font">
+							<file-item :model="file_data">
+							</file-item>
+						</ul>
+					</nav>
+					<div id="users-list" class="flexbox-container-wrapped border-top border-bottom fw-font">
+						<div v-if="Object.keys(users).length === 0"><span>You are alone &#128542;</span></div>
+						<div v-for="(value, key) in users"
+							v-bind:style="style(key)"
+							v-on:click="go_to(value.position)"
+							class="clickable bold">
+							<span>{{value.name}}</span>
+						</div>
+					</div>
+					<div id="message-list" class="fw-font">
+						<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
+							<span>[{{message.timestamp}}]</span>
+							<span v-if="message.name"> </span>
+							<span v-bind:style="message.name_style" class="bold" v-if="message.name">&lt;{{message.name}}&gt;</span>
+							<span> {{message.content}}</span>
+						</div>
+					</div>
+					<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
+				</div>
+				<div id="editor" class="foreground">
+				</div>
 			</div>
 		</div>
 	</body>
