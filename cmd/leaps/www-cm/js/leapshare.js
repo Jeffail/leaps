@@ -169,11 +169,17 @@ function join_new_document(document_id) {
 			show_user_message(user_update.client.user_id, user_update.client.session_id, user_update.message.content);
 		}
 
+		if ( !users.hasOwnProperty(user_update.client.session_id) && user_update.message.active ) {
+			show_sys_message("User " + user_update.client.user_id + " joined");
+		}
 		Vue.set(users, user_update.client.session_id, {
 			name: user_update.client.user_id,
 			position: user_update.message.position
 		});
 		if ( typeof user_update.message.active === 'boolean' && !user_update.message.active ) {
+			if ( users.hasOwnProperty(user_update.client.session_id) ) {
+				show_sys_message("User " + user_update.client.user_id + " left");
+			}
 			// Must use Vue.delete otherwise update is not triggered
 			Vue.delete(users, user_update.client.session_id);
 		}
