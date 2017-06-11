@@ -259,8 +259,8 @@ header > .buttons-container, header > .icon-container {
 }
 
 #side-bar {
-	min-width: 150px;
-	flex-basis: 150px;
+	min-width: 180px;
+	flex-basis: 180px;
 	flex-shrink: 0;
 	flex-grow: 1;
 	display: flex;
@@ -282,6 +282,10 @@ header > .buttons-container, header > .icon-container {
 	flex-grow: 1;
 }
 
+#message-list > div {
+	padding-top: 3px;
+}
+
 #chat-bar {
 	margin: 5px;
 	flex-grow: 0;
@@ -289,12 +293,15 @@ header > .buttons-container, header > .icon-container {
 }
 
 #users-list {
-	padding: 10px;
+	padding: 5px;
+	overflow: auto;
+	max-height: 50px;
+	min-height: 20px;
 }
 
 #users-list > div {
 	margin: 2px;
-	padding: 5px;
+	padding: 3px;
 }
 
 #editor {

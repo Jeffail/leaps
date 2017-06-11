@@ -27,7 +27,7 @@
 					@click="toggle">
 					{{model.name}}
 					<span v-if="is_folder">[{{open ? '-' : '+'}}]</span>
-					<span class="bold" v-if="!is_folder">{{model.num_users > 0 ? '('+model.num_users+' users)' : ''}}</span>
+					<span class="bold" v-if="!is_folder">{{sub_count > 0 ? '('+sub_count+' users)' : ''}}</span>
 				</div>
 				<ul class="compressed-list" v-show="open" v-if="is_folder">
 					<file-item
@@ -99,9 +99,9 @@
 						<div v-if="Object.keys(users).length === 0"><span>You are alone &#128542;</span></div>
 						<div v-for="(value, key) in users"
 							v-bind:style="style(key)"
-							v-on:click="go_to(value.position)"
+							v-on:click="go_to(value)"
 							class="clickable bold">
-							<span>{{value.name}}</span>
+							<span>{{value.username}}</span>
 						</div>
 					</div>
 					<div id="message-list" class="fw-font">

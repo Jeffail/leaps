@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -207,7 +208,7 @@ func TestClientExitAndShutdown(t *testing.T) {
 	// Block testClient2 transform chan so that it gets kicked.
 	// We read the message channel instead, waiting for it to be closed.
 	select {
-	case _, open := <-testClient2.UpdateReadChan():
+	case _, open := <-testClient2.MetadataReadChan():
 		if open {
 			t.Error("Received unexpected update to lazy client")
 		}
@@ -226,77 +227,6 @@ func TestClientExitAndShutdown(t *testing.T) {
 	case <-time.After(time.Second * 5):
 		t.Error("Empty binder was not closed")
 	}
-	binder.Close()
-}
-
-func TestClientAdminTasks(t *testing.T) {
-	errChan := make(chan Error, 10)
-
-	logger, stats := loggerAndStats()
-	doc := store.NewDocument("hello world")
-
-	store := testStore{documents: map[string]store.Document{
-		"KILL_ME": doc,
-	}}
-
-	binder, err := New("KILL_ME", &store, NewConfig(), errChan, logger, stats, nil)
-	if err != nil {
-		t.Errorf("Error: %v", err)
-		return
-	}
-
-	nClients := 10
-
-	portals := make([]Portal, nClients)
-	clientIDs := make([]string, nClients)
-
-	for i := 0; i < nClients; i++ {
-		clientIDs[i] = util.GenerateStampedUUID()
-		var err error
-		portals[i], err = binder.Subscribe(clientIDs[i], time.Second)
-		if err != nil {
-			t.Errorf("Subscribe error: %v\n", err)
-			return
-		}
-	}
-
-	if err = binder.KickUser("Doesnotexist", time.Second); err == nil {
-		t.Error("Expected error when kicking non existent user")
-	}
-
-	for i := 0; i < nClients; i++ {
-		remainingClients, err := binder.GetUsers(time.Second)
-		if err != nil {
-			t.Errorf("Get users error: %v\n", err)
-			return
-		}
-		if len(remainingClients) != len(clientIDs) {
-			t.Errorf("Wrong number of remaining clients: %v != %v\n", len(remainingClients), len(clientIDs))
-			return
-		}
-		for _, val := range clientIDs {
-			found := false
-			for _, c := range remainingClients {
-				if val == c {
-					found = true
-					break
-				}
-			}
-			if !found {
-				t.Errorf("Client not found in binder: %v\n", val)
-				return
-			}
-		}
-
-		killID := clientIDs[0]
-		clientIDs = clientIDs[1:]
-
-		if err = binder.KickUser(killID, time.Second); err != nil {
-			t.Errorf("Kick user error: %v\n", err)
-			return
-		}
-	}
-
 	binder.Close()
 }
 
@@ -382,43 +312,44 @@ func TestUpdates(t *testing.T) {
 		return
 	}
 
-	if userID1 != portal1.UserID() {
-		t.Errorf("Binder portal wrong user ID: %v != %v", userID1, portal1.UserID())
+	if pUserID := portal1.ClientMetadata(); !reflect.DeepEqual(userID1, pUserID) {
+		t.Errorf("Binder portal wrong user ID: %v != %v", userID1, pUserID)
 	}
-	if userID2 != portal2.UserID() {
-		t.Errorf("Binder portal wrong user ID: %v != %v", userID2, portal2.UserID())
+	if pUserID := portal2.ClientMetadata(); !reflect.DeepEqual(userID2, pUserID) {
+		t.Errorf("Binder portal wrong user ID: %v != %v", userID2, pUserID)
 	}
 
 	for i := 0; i < 100; i++ {
-		portal1.SendMessage(Message{})
+		portal1.SendMetadata(i)
 
-		message := <-portal2.UpdateReadChan()
-		if message.ClientInfo.UserID != userID1 {
+		message := <-portal2.MetadataReadChan()
+		if !reflect.DeepEqual(message.Client, userID1) {
 			t.Errorf(
 				"Received incorrect user ID: %v != %v",
-				message.ClientInfo.UserID, portal1.UserID(),
+				message.Client, userID1,
 			)
 		}
-		if message.ClientInfo.SessionID != portal1.SessionID() {
+		if !reflect.DeepEqual(message.Metadata, i) {
 			t.Errorf(
-				"Received incorrect session ID: %v != %v",
-				message.ClientInfo.SessionID, portal1.SessionID(),
+				"Received incorrect metadata content: %v != %v",
+				message.Metadata, i,
 			)
 		}
 
-		portal2.SendMessage(Message{})
+		portal2.SendMetadata(i)
 
-		message2 := <-portal1.UpdateReadChan()
-		if message2.ClientInfo.UserID != userID2 {
+		message2 := <-portal1.MetadataReadChan()
+		if !reflect.DeepEqual(message2.Client, userID2) {
 			t.Errorf(
 				"Received incorrect user ID: %v != %v",
-				message2.ClientInfo.UserID, portal2.UserID(),
+				message2.Client, userID2,
 			)
 		}
-		if message2.ClientInfo.SessionID != portal2.SessionID() {
+		if !reflect.DeepEqual(message2.Metadata, i) {
 			t.Errorf(
-				"Received incorrect session ID: %v != %v",
-				message2.ClientInfo.SessionID, portal2.SessionID())
+				"Received incorrect metadata content: %v != %v",
+				message2.Metadata, i,
+			)
 		}
 	}
 }
@@ -453,43 +384,31 @@ func TestUpdatesSameUserID(t *testing.T) {
 	portal1, _ := binder.Subscribe(userID, time.Second)
 	portal2, _ := binder.Subscribe(userID, time.Second)
 
-	if userID != portal1.UserID() {
-		t.Errorf("Binder portal wrong user ID: %v != %v", userID, portal1.UserID())
+	if pUserID := portal1.ClientMetadata(); !reflect.DeepEqual(userID, pUserID) {
+		t.Errorf("Binder portal wrong user ID: %v != %v", userID, pUserID)
 	}
-	if userID != portal2.UserID() {
-		t.Errorf("Binder portal wrong user ID: %v != %v", userID, portal2.UserID())
+	if pUserID := portal2.ClientMetadata(); !reflect.DeepEqual(userID, pUserID) {
+		t.Errorf("Binder portal wrong user ID: %v != %v", userID, pUserID)
 	}
 
 	for i := 0; i < 100; i++ {
-		portal1.SendMessage(Message{})
+		portal1.SendMetadata(nil)
 
-		message := <-portal2.UpdateReadChan()
-		if message.ClientInfo.UserID != userID {
+		message := <-portal2.MetadataReadChan()
+		if !reflect.DeepEqual(message.Client, portal1.ClientMetadata()) {
 			t.Errorf(
 				"Received incorrect user ID: %v != %v",
-				message.ClientInfo.UserID, portal1.UserID(),
-			)
-		}
-		if message.ClientInfo.SessionID != portal1.SessionID() {
-			t.Errorf(
-				"Received incorrect session ID: %v != %v",
-				message.ClientInfo.SessionID, portal1.SessionID(),
+				message.Client, portal1.ClientMetadata(),
 			)
 		}
 
-		portal2.SendMessage(Message{})
+		portal2.SendMetadata(nil)
 
-		message2 := <-portal1.UpdateReadChan()
-		if message2.ClientInfo.UserID != userID {
+		message2 := <-portal1.MetadataReadChan()
+		if !reflect.DeepEqual(message2.Client, portal2.ClientMetadata()) {
 			t.Errorf(
 				"Received incorrect token: %v != %v",
-				message2.ClientInfo.UserID, portal2.UserID(),
-			)
-		}
-		if message2.ClientInfo.SessionID != portal2.SessionID() {
-			t.Errorf(
-				"Received incorrect session ID: %v != %v",
-				message2.ClientInfo.SessionID, portal2.SessionID(),
+				message2.Client, portal2.ClientMetadata(),
 			)
 		}
 	}

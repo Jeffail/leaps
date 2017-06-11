@@ -54,31 +54,25 @@ var leap_bind_textarea = function(leap_client, text_area) {
 		this.error = "event listeners not implemented on this browser, are you from the past?";
 	}
 
-	this._leap_client.subscribe_event("document", function(doc) {
-		binder._content = binder._text_area.value = doc.content;
+	this._leap_client.on("subscribe", function(body) {
+		binder._content = binder._text_area.value = body.document.content;
 		binder._ready = true;
 		binder._text_area.disabled = false;
-
-		binder._pos_interval = setInterval(function() {
-			binder._leap_client.update_cursor.apply(binder._leap_client, [ binder._text_area.selectionStart ]);
-		}, leap_client._POSITION_POLL_PERIOD);
 	});
 
-	this._leap_client.subscribe_event("transforms", function(transforms) {
+	this._leap_client.on("transforms", function(body) {
+		var transforms = body.transforms;
 		for ( var i = 0, l = transforms.length; i < l; i++ ) {
 			binder._apply_transform.apply(binder, [ transforms[i] ]);
 		}
 	});
 
-	this._leap_client.subscribe_event("disconnect", function() {
+	this._leap_client.subscribe_event("unsubscribe", function() {
 		binder._text_area.disabled = true;
-		if ( undefined !== binder._pos_interval ) {
-			clearTimeout(binder._pos_interval);
-		}
 	});
 
-	this._leap_client.subscribe_event("user", function(user) {
-		console.log("User update: " + JSON.stringify(user));
+	this._leap_client.subscribe_event("metadata", function(body) {
+		console.log("User update: " + JSON.stringify(body));
 	});
 };
 
@@ -136,13 +130,7 @@ leap_bind_textarea.prototype._trigger_diff = function() {
 	}
 
 	if ( tform.insert !== undefined || tform.num_delete !== undefined ) {
-		var err = this._leap_client.send_transform(tform);
-		if ( err !== undefined ) {
-			this._leap_client._dispatch_event.apply(this._leap_client,
-				[ this._leap_client.EVENT_TYPE.ERROR, [
-					"Local change resulted in invalid transform"
-				] ]);
-		}
+		this._leap_client.send_transform(tform);
 	}
 };
 

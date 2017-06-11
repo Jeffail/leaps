@@ -35,13 +35,14 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/net/websocket"
-
+	"github.com/gorilla/websocket"
 	"github.com/jeffail/leaps/lib/acl"
+	"github.com/jeffail/leaps/lib/api"
+	"github.com/jeffail/leaps/lib/api/io"
 	"github.com/jeffail/leaps/lib/audit"
 	"github.com/jeffail/leaps/lib/curator"
-	leaphttp "github.com/jeffail/leaps/lib/http"
 	"github.com/jeffail/leaps/lib/store"
+	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 	"github.com/jeffail/util/metrics"
 )
@@ -248,27 +249,18 @@ If a path is not specified the current directory is shared instead.
 
 	handle("/files", "Returns a list of available files and a map of users per document.",
 		func(w http.ResponseWriter, r *http.Request) {
-			var reqErr error
-			var users map[string][]string
-			if users, reqErr = curator.GetUsers(time.Second); reqErr == nil {
-				var data []byte
-				data, reqErr = json.Marshal(struct {
-					Paths []string            `json:"paths"`
-					Users map[string][]string `json:"users"`
-				}{
-					Paths: authenticator.GetPaths(),
-					Users: users,
-				})
-				if reqErr == nil {
-					w.Write(data)
-				}
-			}
-			if reqErr != nil {
-				http.Error(w, reqErr.Error(), http.StatusInternalServerError)
-				logger.Errorf("Failed to serve users: %v\n", reqErr)
+			data, err := json.Marshal(struct {
+				Paths []string `json:"paths"`
+			}{
+				Paths: authenticator.GetPaths(),
+			})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				logger.Errorf("Failed to serve users: %v\n", err)
 				return
 			}
 			w.Header().Add("Content-Type", "application/json")
+			w.Write(data)
 		})
 
 	handle("/stats", "Lists all aggregated metrics as a json blob.", stats.JSONHandler())
@@ -285,8 +277,37 @@ If a path is not specified the current directory is shared instead.
 	} else {
 		http.Handle(wwwPath, http.StripPrefix(stripPath, http.FileServer(assetFS())))
 	}
-	http.Handle(gopath.Join("/", *subdirPath, "/leaps/ws"),
-		websocket.Handler(leaphttp.WebsocketHandler(curator, time.Second, logger, stats)))
+
+	// Leaps API
+	globalBroker := api.NewGlobalMetadataBroker(time.Second*300, logger, stats)
+
+	http.HandleFunc(gopath.Join("/", *subdirPath, "/leaps/ws"), func(w http.ResponseWriter, r *http.Request) {
+		username := r.URL.Query().Get("username")
+		uuid := util.GenerateUUID()
+
+		if len(username) == 0 {
+			http.Error(w, "Expected username header value in request", http.StatusBadRequest)
+			logger.Errorln("Failed to create websocket: no username provided")
+			return
+		}
+
+		conn, err := (&websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+		}).Upgrade(w, r, nil)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logger.Errorf("Failed to create websocket: %v\n", err)
+			return
+		}
+
+		jsonEmitter := io.NewJSONEmitter(&io.ConcurrentJSON{C: conn})
+		globalBroker.NewEmitter(username, uuid, jsonEmitter)
+		api.NewCuratorSession(username, uuid, jsonEmitter, curator, time.Second*300, logger, stats)
+
+		jsonEmitter.ListenAndEmit()
+	})
 
 	logger.Infoln("Launching a leaps instance, use CTRL+C to close.")
 

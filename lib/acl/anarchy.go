@@ -35,7 +35,7 @@ func NewAnarchy(allowCreate bool) Authenticator {
 }
 
 // Authenticate - Always returns at least edit access, because anarchy.
-func (a Anarchy) Authenticate(_, _, _ string) AccessLevel {
+func (a Anarchy) Authenticate(_ interface{}, _, _ string) AccessLevel {
 	if !a.AllowCreate {
 		return EditAccess
 	}

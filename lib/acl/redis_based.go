@@ -25,6 +25,7 @@ package acl
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -125,7 +126,7 @@ func NewRedis(config RedisConfig, logger log.Modular) Authenticator {
 //--------------------------------------------------------------------------------------------------
 
 // Authenticate - Reads a key (token) from redis and parses the value to check for an access level.
-func (s *Redis) Authenticate(userID, token, documentID string) AccessLevel {
+func (s *Redis) Authenticate(userMetadata interface{}, token, documentID string) AccessLevel {
 	value, err := s.ReadKey(token)
 	if err != nil {
 		s.logger.Errorf("Failed to access token: %v\n", err)
@@ -133,9 +134,9 @@ func (s *Redis) Authenticate(userID, token, documentID string) AccessLevel {
 	}
 
 	credentials := struct {
-		AccessLevel string `json:"access_level"`
-		UserID      string `json:"user_id"`
-		DocumentID  string `json:"document_id"`
+		AccessLevel  string      `json:"access_level"`
+		UserMetadata interface{} `json:"user_metadata"`
+		DocumentID   string      `json:"document_id"`
 	}{}
 
 	if err := json.Unmarshal([]byte(value), &credentials); err != nil {
@@ -158,16 +159,15 @@ func (s *Redis) Authenticate(userID, token, documentID string) AccessLevel {
 		return NoAccess
 	}
 
-	if len(credentials.UserID) <= 0 ||
-		len(credentials.DocumentID) <= 0 {
-		s.logger.Errorf("Token value `%v` did not provide valid user ID or document ID\n", value)
+	if len(credentials.DocumentID) <= 0 {
+		s.logger.Errorf("Token value `%v` did not provide a valid document ID\n", value)
 		return NoAccess
 	}
 
-	if credentials.UserID != userID {
+	if !reflect.DeepEqual(credentials.UserMetadata, userMetadata) {
 		s.logger.Warnf(
-			"Incorrect user ID provided to authenticator, token contents: `%v`,  provided userID: `%v`\n",
-			value, userID,
+			"Incorrect user ID provided to authenticator, token contents: `%v`,  provided userMetadata: `%v`\n",
+			value, userMetadata,
 		)
 		return NoAccess
 	}

@@ -28,11 +28,13 @@ Cookies.set("username", username, { path: '', expires: 7 });
 
 var users = {};
 var file_paths = {
+	next_path: '',
 	opened: '',
 	root: true,
 	name: "Files",
 	path: "Files",
-	children: []
+	children: [],
+	subscriptions: {}
 };
 var collapsed_dirs = {};
 
@@ -94,32 +96,163 @@ function configure_codemirror() {
 	}
 }
 
-function join_new_document(document_id) {
+function restart_leaps() {
+	if ( file_paths.opened.length > 0 ) {
+		var reopen_path = file_paths.opened;
+		leaps_client.on_next("disconnect", function() {
+			join_document(reopen_path);
+		});
+	} else {
+		leaps_client.on_next("disconnect", function() {
+			init_leaps(function() {});
+		});
+	}
+	leaps_client.close();
+}
+
+function init_leaps(after) {
+	if ( cm_editor === null ) {
+		var default_options = CodeMirror.defaults;
+		default_options.readOnly = true;
+		default_options.viewPortMargin = "Infinity";
+
+		cm_editor = CodeMirror(document.getElementById("editor"), default_options);
+
+		configure_codemirror();
+	}
+
 	if ( leaps_client !== null ) {
-		leaps_client.close();
-		leaps_client = null;
+		after();
+		return;
 	}
 
-	if ( cm_editor !== null ) {
-		cm_editor.getWrapperElement().parentNode.removeChild(cm_editor.getWrapperElement());
-		cm_editor = null;
-	}
+	leaps_client = new leap_client();
+	leaps_client.bind_codemirror(cm_editor);
 
-	// Clear existing users list
-	for (var key in users) {
-		if (users.hasOwnProperty(key)) {
-			// Must use Vue.delete otherwise update is not triggered
-			Vue.delete(users, key);
+	leaps_client.on("error", function(body) {
+		if ( body.error.type === "ERR_SYNC" ) {
+			show_err_message(body.error.message);
+			if ( cm_editor !== null ) {
+				cm_editor.options.readOnly = true;
+			}
+			if ( leaps_client !== null ) {
+				console.error(body.error);
+				leaps_client.close();
+				leaps_client = null;
+			}
 		}
+	});
+
+	leaps_client.on("unsubscribe", function(body) {
+		file_paths.opened = '';
+		show_sys_message("Closed " + body.document.id);
+		if ( cm_editor !== null ) {
+			cm_editor.options.readOnly = true;
+		}
+		if ( file_paths.next_path.length > 0 ) {
+			let err = leaps_client.subscribe(file_paths.next_path);
+			if ( err ) {
+				console.error(err);
+			}
+			file_paths.next_path = '';
+		}
+		calc_sub_counts();
+	});
+
+	leaps_client.on("connect", function() {
+		show_sys_message("Connected");
+		after();
+	});
+
+	leaps_client.on("disconnect", function() {
+		file_paths.opened = '';
+		show_sys_message("Lost connection");
+		if ( cm_editor !== null ) {
+			cm_editor.options.readOnly = true;
+			cm_editor.getWrapperElement().parentNode.removeChild(cm_editor.getWrapperElement());
+			cm_editor = null;
+		}
+		if ( leaps_client !== null ) {
+			leaps_client.close();
+			leaps_client = null;
+		}
+	});
+
+	leaps_client.on("subscribe", function(body) {
+		file_paths.opened = body.document.id;
+		cm_editor.options.readOnly = false;
+		show_sys_message("Opened " + body.document.id);
+
+		// Set the hash of our URL to the path
+		window.location.hash = "path:" + body.document.id;
+
+		calc_sub_counts();
+	});
+
+	leaps_client.on("global_metadata", function(body) {
+		if ( body.metadata.type === "user_info" ) {
+			// This also gives us our session_id in body.client.session_id
+			for ( var old_user in users ) {
+				if ( users.hasOwnProperty(old_user) ) {
+					Vue.delete(users, old_user);
+				}
+			}
+			for ( var new_user in body.metadata.body.users ) {
+				if ( body.metadata.body.users.hasOwnProperty(new_user) &&
+					new_user !== body.client.session_id ) {
+					Vue.set(users, new_user, body.metadata.body.users[new_user]);
+				}
+			}
+		}
+		if ( body.metadata.type === "cursor_update" ) {
+			users[body.client.session_id].position = body.metadata.body.position;
+		}
+		if ( body.metadata.type === "message" ) {
+			show_user_message(body.client.username, body.client.session_id, body.metadata.body.message.content);
+		}
+		if ( body.metadata.type === "user_subscribe" ) {
+			show_sys_message("User " + body.client.username + " opened " + body.metadata.body.document.id);
+			users[body.client.session_id].subscriptions = [
+				body.metadata.body.document.id
+			];
+			calc_sub_counts();
+		}
+		if ( body.metadata.type === "user_unsubscribe" ) {
+			if ( users.hasOwnProperty(body.client.session_id) ) {
+				show_sys_message("User " + body.client.username + " closed " + body.metadata.body.document.id);
+				users[body.client.session_id].subscriptions = [];
+				calc_sub_counts();
+			}
+		}
+		if ( body.metadata.type === "user_connect" ) {
+			Vue.set(users, body.client.session_id, {
+				username: body.client.username,
+				position: 0,
+				subscriptions: []
+			});
+			show_sys_message("User " + body.client.username + " has connected");
+		}
+		if ( body.metadata.type === "user_disconnect" ) {
+			Vue.delete(users, body.client.session_id);
+			show_sys_message("User " + body.client.username + " has disconnected");
+			calc_sub_counts();
+		}
+	});
+
+	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
+	leaps_client.connect(
+		protocol + "//" + window.location.host + window.location.pathname + "leaps/ws" +
+			"?username=" + encodeURIComponent(username)
+	);
+}
+
+function join_document(document_id) {
+	if ( leaps_client === null ) {
+		init_leaps(function() {
+			join_document(document_id);
+		});
+		return;
 	}
-
-	var default_options = CodeMirror.defaults;
-	default_options.readOnly = true;
-	default_options.viewPortMargin = "Infinity";
-
-	cm_editor = CodeMirror(document.getElementById("editor"), default_options);
-
-	configure_codemirror();
 
 	try {
 		var ext = document_id.substr(document_id.lastIndexOf(".") + 1);
@@ -130,71 +263,35 @@ function join_new_document(document_id) {
 		}
 	} catch (e) {}
 
-	leaps_client = new leap_client();
-	leaps_client.bind_codemirror(cm_editor);
-
-	leaps_client.on("error", function(err) {
-		show_err_message(err);
-		if ( cm_editor !== null ) {
-			cm_editor.options.readOnly = true;
-		}
-		if ( leaps_client !== null ) {
+	if ( file_paths.opened.length > 0 ) {
+		file_paths.next_path = document_id;
+		let err = leaps_client.unsubscribe(file_paths.opened);
+		if ( err ) {
 			console.error(err);
-			leaps_client.close();
-			leaps_client = null;
 		}
-	});
-
-	leaps_client.on("disconnect", function(err) {
-		show_sys_message("Closed " + document_id);
-		if ( cm_editor !== null ) {
-			cm_editor.options.readOnly = true;
+	} else {
+		let err = leaps_client.subscribe(document_id);
+		if ( err ) {
+			console.error(err);
 		}
-	});
-
-	leaps_client.on("connect", function() {
-		leaps_client.join_document(username, "", document_id);
-	});
-
-	leaps_client.on("document", function() {
-		file_paths.opened = document_id;
-		cm_editor.options.readOnly = false;
-		show_sys_message("Opened " + document_id);
-
-		// Set the hash of our URL to the path
-		window.location.hash = "path:" + document_id;
-	});
-
-	leaps_client.on("user", function(user_update) {
-		if ( 'string' === typeof user_update.message.content ) {
-			show_user_message(user_update.client.user_id, user_update.client.session_id, user_update.message.content);
-		}
-
-		if ( !users.hasOwnProperty(user_update.client.session_id) && user_update.message.active ) {
-			show_sys_message("User " + user_update.client.user_id + " joined");
-		}
-		Vue.set(users, user_update.client.session_id, {
-			name: user_update.client.user_id,
-			position: user_update.message.position
-		});
-		if ( typeof user_update.message.active === 'boolean' && !user_update.message.active ) {
-			if ( users.hasOwnProperty(user_update.client.session_id) ) {
-				show_sys_message("User " + user_update.client.user_id + " left");
-			}
-			// Must use Vue.delete otherwise update is not triggered
-			Vue.delete(users, user_update.client.session_id);
-		}
-	});
-
-	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
-	leaps_client.connect(protocol + "//" + window.location.host + window.location.pathname + "leaps/ws");
+	}
 }
 
-function cursor_to_position(position) {
+function navigate_to_user(user) {
 	if ( cm_editor !== null ) {
-		var pos = leap_client.pos_from_u_index(cm_editor.getDoc(), position);
-		cm_editor.setCursor(pos);
-		cm_editor.focus();
+		if ( (user.subscriptions || []).length > 0 &&
+			file_paths.opened !== user.subscriptions[0] ) {
+			leaps_client.on_next("subscribe", function() {
+				var pos = leap_client.pos_from_u_index(cm_editor.getDoc(), user.position);
+				cm_editor.setCursor(pos);
+				cm_editor.focus();
+			});
+			join_document(user.subscriptions[0]);
+		} else {
+			var pos = leap_client.pos_from_u_index(cm_editor.getDoc(), user.position);
+			cm_editor.setCursor(pos);
+			cm_editor.focus();
+		}
 	}
 }
 
@@ -255,7 +352,7 @@ function show_err_message(content) {
                        File Path Acquire and Listing
 ------------------------------------------------------------------------------*/
 
-function inject_paths(root, paths_list, users_obj) {
+function inject_paths(root, paths_list) {
 	var i = 0, l = 0, j = 0, k = 0, m = 0, n = 0;
 
 	var children = [];
@@ -284,25 +381,44 @@ function inject_paths(root, paths_list, users_obj) {
 			}
 		}
 
-		var users_count = 0;
-		if ( users_obj[paths_list[i]] !== undefined ) {
-			users_count = users_obj[paths_list[i]].length;
-		}
 		ptr.push({
 			name: split_path[k],
-			path: paths_list[i],
-			num_users: users_count
+			path: paths_list[i]
 		});
 	}
 
 	root.children = children;
 }
 
+function calc_sub_counts() {
+	var subs = {};
+	for ( var user in users ) {
+		if ( users.hasOwnProperty(user) &&
+		   ( users[user].subscriptions instanceof Array ) ) {
+			for ( var i = 0; i < users[user].subscriptions.length; i++ ) {
+				if ( !subs.hasOwnProperty(users[user].subscriptions[i]) ) {
+					subs[users[user].subscriptions[i]] = 1;
+				} else {
+					subs[users[user].subscriptions[i]]++;
+				}
+			}
+		}
+	}
+	if ( file_paths.opened.length > 0 ) {
+		if ( !subs.hasOwnProperty(file_paths.opened) ) {
+			subs[file_paths.opened] = 1;
+		} else {
+			subs[file_paths.opened]++;
+		}
+	}
+	Vue.set(file_paths, 'subscriptions', subs);
+}
+
 function get_paths() {
 	AJAX_REQUEST(window.location.pathname + "files", function(data) {
 		try {
 			var data_arrays = JSON.parse(data);
-			inject_paths(file_paths, data_arrays.paths, data_arrays.users);
+			inject_paths(file_paths, data_arrays.paths);
 		} catch (e) {
 			console.error("paths parse error", e);
 		}
@@ -339,7 +455,7 @@ function AJAX_REQUEST(path, onsuccess, onerror, data) {
 		xmlhttp.open("GET", path, true);
 		xmlhttp.send();
 	}
-};
+}
 
 /*------------------------------------------------------------------------------
                            Input field bindings
@@ -373,16 +489,21 @@ function init_input_fields() {
 		}
 		username = content;
 		Cookies.set("username", username, { path: '', expires: 7 });
-		if ( file_paths.opened.length > 0 ) {
-			join_new_document(file_paths.opened);
-		}
+		restart_leaps();
 	});
 
 	var chat_bar = document.getElementById("chat-bar");
 	text_input(chat_bar, function(ele, content) {
 		if ( content.length > 0 ) {
 			if ( leaps_client !== null ) {
-				leaps_client.send_message(content);
+				leaps_client.send_global_metadata({
+					type: "message",
+					body: {
+						message: {
+							content: content
+						}
+					}
+				});
 				show_user_message(username, null, content);
 				ele.value = "";
 			} else {
@@ -447,6 +568,12 @@ window.onload = function() {
 			is_folder: function () {
 				return this.model.children &&
 					this.model.children.length;
+			},
+			sub_count: function() {
+				if ( typeof file_paths.subscriptions[this.model.path] === 'number' ) {
+					return file_paths.subscriptions[this.model.path];
+				}
+				return 0;
 			}
 		},
 		methods: {
@@ -460,7 +587,7 @@ window.onload = function() {
 					}
 					Cookies.set("collapsed_dirs", collapsed_dirs, { path: '' });
 				} else {
-					join_new_document(this.model.path);
+					join_document(this.model.path);
 				}
 			}
 		}
@@ -476,11 +603,9 @@ window.onload = function() {
 				return {
 					color: "#fcfcfc",
 					backgroundColor: leap_client.session_id_to_colour(id)
-				}
+				};
 			},
-			go_to: function(position) {
-				cursor_to_position(position);
-			}
+			go_to: navigate_to_user
 		}
 	}));
 	(new Vue({
@@ -508,19 +633,21 @@ window.onload = function() {
 	get_paths();
 	setInterval(get_paths, 1000);
 
-	window.onhashchange = function() {
-		// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
-		if ( window.location.hash.length > 0 &&
-			window.location.hash.substr(1, 5) === "path:" ) {
-			var new_path = window.location.hash.substr(6);
-			if ( new_path !== file_paths.opened ) {
-				join_new_document(window.location.hash.substr(6));
+	init_leaps(function() {
+		window.onhashchange = function() {
+			// You can link directly to a filepath with <URL>#path:/this/is/the/path.go
+			if ( window.location.hash.length > 0 &&
+				window.location.hash.substr(1, 5) === "path:" ) {
+				var new_path = window.location.hash.substr(6);
+				if ( new_path !== file_paths.opened ) {
+					join_document(window.location.hash.substr(6));
+				}
 			}
-		}
-	};
+		};
 
-	// Event isn't triggered on page load but we might want to check.
-	window.onhashchange();
+		// Event isn't triggered on page load but we might want to check.
+		window.onhashchange();
+	});
 };
 
 })();

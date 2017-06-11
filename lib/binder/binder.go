@@ -30,7 +30,6 @@ import (
 	"github.com/jeffail/leaps/lib/audit"
 	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/lib/text"
-	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 	"github.com/jeffail/util/metrics"
 )
@@ -79,13 +78,11 @@ type impl struct {
 	clientMux sync.Mutex
 
 	// Control channels
-	transformChan    chan transformSubmission
-	messageChan      chan messageSubmission
-	usersRequestChan chan usersRequest
-	exitChan         chan *binderClient
-	kickChan         chan kickRequest
-	errorChan        chan<- Error
-	closedChan       chan struct{}
+	transformChan chan transformSubmission
+	metadataChan  chan metadataSubmission
+	exitChan      chan *binderClient
+	errorChan     chan<- Error
+	closedChan    chan struct{}
 }
 
 // New - Creates a binder targeting an existing document determined via an ID.
@@ -99,22 +96,20 @@ func New(
 	auditor audit.Auditor,
 ) (Type, error) {
 	binder := impl{
-		id:               id,
-		config:           config,
-		otBuffer:         text.NewOTBuffer(config.OTBufferConfig),
-		block:            block,
-		auditor:          auditor,
-		log:              log.NewModule(":binder"),
-		stats:            stats,
-		clients:          make([]*binderClient, 0),
-		subscribeChan:    make(chan subscribeRequest),
-		transformChan:    make(chan transformSubmission),
-		messageChan:      make(chan messageSubmission),
-		usersRequestChan: make(chan usersRequest),
-		exitChan:         make(chan *binderClient),
-		kickChan:         make(chan kickRequest),
-		errorChan:        errorChan,
-		closedChan:       make(chan struct{}),
+		id:            id,
+		config:        config,
+		otBuffer:      text.NewOTBuffer(config.OTBufferConfig),
+		block:         block,
+		auditor:       auditor,
+		log:           log.NewModule(":binder"),
+		stats:         stats,
+		clients:       make([]*binderClient, 0),
+		subscribeChan: make(chan subscribeRequest),
+		transformChan: make(chan transformSubmission),
+		metadataChan:  make(chan metadataSubmission),
+		exitChan:      make(chan *binderClient),
+		errorChan:     errorChan,
+		closedChan:    make(chan struct{}),
 	}
 	binder.log.Debugln("Bound to document, attempting flush")
 
@@ -135,61 +130,21 @@ func (b *impl) ID() string {
 	return b.id
 }
 
-type usersRequest struct {
-	responseChan chan<- []string
-}
-
-// GetUsers - Get a list of user id's connected to this binder.
-func (b *impl) GetUsers(timeout time.Duration) ([]string, error) {
-	resChan := make(chan []string)
-	b.usersRequestChan <- usersRequest{resChan}
-
-	select {
-	case result := <-resChan:
-		return result, nil
-	case <-time.After(timeout):
-	}
-	return []string{}, ErrTimeout
-}
-
-type kickRequest struct {
-	userID string
-	result chan error
-}
-
-// KickUser - Signals the binder to remove a particular user. Currently doesn't
-// confirm removal, this ought to be a blocking call until the removal is
-// validated.
-func (b *impl) KickUser(userID string, timeout time.Duration) error {
-	result := make(chan error)
-	timer := time.After(timeout)
-	select {
-	case b.kickChan <- kickRequest{userID: userID, result: result}:
-	case <-timer:
-		return ErrTimeout
-	}
-	select {
-	case err := <-result:
-		return err
-	case <-timer:
-		return ErrTimeout
-	}
-}
-
 type subscribeRequest struct {
-	userID     string
+	metadata   interface{}
 	portalChan chan<- *portalImpl
 	errChan    chan<- error
 }
 
 // Subscribe - Returns a Portal, which represents a contract between a client
-// and the binder.
-func (b *impl) Subscribe(userID string, timeout time.Duration) (Portal, error) {
+// and the binder. Metadata can be added to the portal in order to identify the
+// clients submissons.
+func (b *impl) Subscribe(metadata interface{}, timeout time.Duration) (Portal, error) {
 	portalChan, errChan := make(chan *portalImpl, 1), make(chan error, 1)
 	bundle := subscribeRequest{
+		metadata:   metadata,
 		portalChan: portalChan,
 		errChan:    errChan,
-		userID:     userID,
 	}
 
 	select {
@@ -209,13 +164,14 @@ func (b *impl) Subscribe(userID string, timeout time.Duration) (Portal, error) {
 }
 
 // SubscribeReadOnly - Returns a read-only Portal, which represents a contract
-// between a client and the binder.
-func (b *impl) SubscribeReadOnly(userID string, timeout time.Duration) (Portal, error) {
+// between a client and the binder. Metadata can be added to the portal in order
+// to identify the clients submissons.
+func (b *impl) SubscribeReadOnly(metadata interface{}, timeout time.Duration) (Portal, error) {
 	portalChan, errChan := make(chan *portalImpl, 1), make(chan error, 1)
 	bundle := subscribeRequest{
+		metadata:   metadata,
 		portalChan: portalChan,
 		errChan:    errChan,
-		userID:     userID,
 	}
 
 	select {
@@ -250,7 +206,7 @@ func (b *impl) Close() {
 // loop that we should shut down.
 func (b *impl) processSubscriber(request subscribeRequest) error {
 	transformSndChan := make(chan text.OTransform, 1)
-	updateSndChan := make(chan ClientUpdate, 1)
+	metadataSndChan := make(chan ClientMetadata, 1)
 
 	var err error
 	var doc store.Document
@@ -266,32 +222,31 @@ func (b *impl) processSubscriber(request subscribeRequest) error {
 	}
 
 	client := binderClient{
-		userID:        request.userID,
-		sessionID:     util.GenerateStampedUUID(),
+		metadata:      request.metadata,
 		transformChan: transformSndChan,
-		updateChan:    updateSndChan,
+		metadataChan:  metadataSndChan,
 	}
 	portal := portalImpl{
 		client:           &client,
 		version:          b.otBuffer.GetVersion(),
 		document:         doc,
 		transformRcvChan: transformSndChan,
-		updateRcvChan:    updateSndChan,
+		metadataRcvChan:  metadataSndChan,
 		transformSndChan: b.transformChan,
-		messageSndChan:   b.messageChan,
+		metadataSndChan:  b.metadataChan,
 		exitChan:         b.exitChan,
 	}
 	select {
 	case request.portalChan <- &portal:
 		b.stats.Incr("binder.subscribed_clients", 1)
-		b.log.Debugf("Subscribed new client %v\n", request.userID)
+		b.log.Debugf("Subscribed new client %v\n", request.metadata)
 		b.clients = append(b.clients, &client)
 	case <-time.After(time.Duration(b.config.ClientKickPeriodMS) * time.Millisecond):
 		/* We're not bothered if you suck, you just don't get enrolled, and this isn't
 		 * considered an error. Deal with it.
 		 */
 		b.stats.Incr("binder.rejected_client", 1)
-		b.log.Infof("Rejected client request %v\n", request.userID)
+		b.log.Infof("Rejected client request %v\n", request.metadata)
 	}
 	return nil
 }
@@ -310,7 +265,7 @@ func (b *impl) removeClient(client *binderClient) {
 			i--
 
 			close(c.transformChan)
-			close(c.updateChan)
+			close(c.metadataChan)
 		}
 	}
 }
@@ -324,23 +279,6 @@ func (b *impl) sendClientError(errChan chan<- error, err error) {
 	default:
 		b.log.Errorln("Send client error was blocked")
 		b.stats.Incr("binder.send_client_error.blocked", 1)
-	}
-}
-
-// processUsersRequest - Processes a request for the list of connected clients.
-func (b *impl) processUsersRequest(request usersRequest) {
-	var clients []string
-	for _, client := range b.clients {
-		clients = append(clients, client.userID)
-	}
-	select {
-	case request.responseChan <- clients:
-	case <-time.After(time.Duration(b.config.ClientKickPeriodMS) * time.Millisecond):
-		/* If the receive channel is blocked then we move on, we have more important things to
-		 * deal with.
-		 */
-		b.stats.Incr("binder.rejected_users_request", 1)
-		b.log.Warnln("Rejected users request")
 	}
 }
 
@@ -393,7 +331,7 @@ func (b *impl) processTransform(request transformSubmission) {
 				 * Either way, we have a strict policy here of no time wasters.
 				 */
 				b.stats.Incr("binder.clients_kicked", 1)
-				b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
+				b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.metadata)
 				b.removeClient(c)
 			}
 			wg.Done()
@@ -403,18 +341,15 @@ func (b *impl) processTransform(request transformSubmission) {
 	wg.Wait()
 }
 
-// processMessage - Sends a clients message out to other clients.
-func (b *impl) processMessage(request messageSubmission) {
+// processMetadata - Sends a clients metadata submission out to other clients.
+func (b *impl) processMetadata(request metadataSubmission) {
 	clientKickPeriod := (time.Duration(b.config.ClientKickPeriodMS) * time.Millisecond)
 
-	b.log.Tracef("Received message: %v %v\n", *request.client, request.message)
+	b.log.Tracef("Received metadata: %v %v\n", *request.client, request.metadata)
 
-	clientUpdate := ClientUpdate{
-		ClientInfo: ClientInfo{
-			UserID:    request.client.userID,
-			SessionID: request.client.sessionID,
-		},
-		Message: request.message,
+	metadata := ClientMetadata{
+		Client:   request.client.metadata,
+		Metadata: request.metadata,
 	}
 
 	wg := sync.WaitGroup{}
@@ -431,14 +366,14 @@ func (b *impl) processMessage(request messageSubmission) {
 		}
 		go func(c *binderClient) {
 			select {
-			case c.updateChan <- clientUpdate:
-				b.stats.Incr("binder.sent_message", 1)
+			case c.metadataChan <- metadata:
+				b.stats.Incr("binder.sent_metadata", 1)
 			case <-time.After(clientKickPeriod):
 				/* The client may have stopped listening, or is just being slow.
 				 * Either way, we have a strict policy here of no time wasters.
 				 */
 				b.stats.Incr("binder.clients_kicked", 1)
-				b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.userID)
+				b.log.Debugf("Kicking client for user: (%v) for blocked transform send\n", c.metadata)
 				b.removeClient(c)
 			}
 			wg.Done()
@@ -482,8 +417,8 @@ loop - The internal loop that performs the broker duties of the binder. Which
 includes the following:
 
 - Enrolling new clients by dispatching a fresh copy of the document
-- Receiving messages and transforms from clients
-- Dispatching received messages and transforms to all other enrolled clients
+- Receiving metadata and transforms from clients
+- Dispatching received metadata and transforms to all other enrolled clients
 - Intermittently flushing changes to the document storage solution
 - Intermittently checking for active clients, and shutting down when unused
 */
@@ -516,46 +451,16 @@ func (b *impl) loop() {
 				b.log.Infoln("Transforms channel closed, shutting down")
 				running = false
 			}
-		case message, open := <-b.messageChan:
+		case metadata, open := <-b.metadataChan:
 			if open {
-				b.processMessage(message)
+				b.processMetadata(metadata)
 			} else {
-				b.log.Infoln("Messages channel closed, shutting down")
-				running = false
-			}
-		case usersRequest, open := <-b.usersRequestChan:
-			if open {
-				b.processUsersRequest(usersRequest)
-			} else {
-				b.log.Infoln("Users request channel closed, shutting down")
-				running = false
-			}
-		case kickRequest, open := <-b.kickChan:
-			if open {
-				b.log.Debugf("Received kick request for: %v\n", kickRequest.userID)
-
-				// TODO: Refactor and improve kick API
-				clients := b.clients
-				kicked := 0
-				for i := 0; i < len(clients); i++ {
-					c := clients[i]
-					if c.userID == kickRequest.userID {
-						b.removeClient(clients[i])
-						kicked++
-					}
-				}
-				if kicked > 0 {
-					close(kickRequest.result)
-				} else {
-					kickRequest.result <- fmt.Errorf("No such userID: %s", kickRequest.userID)
-				}
-			} else {
-				b.log.Infoln("Kick channel closed, shutting down")
+				b.log.Infoln("Metadata channel closed, shutting down")
 				running = false
 			}
 		case client, open := <-b.exitChan:
 			if open {
-				b.log.Debugf("Received exit request for: %v\n", client.userID)
+				b.log.Debugf("Received exit request for: %v\n", client.metadata)
 				b.removeClient(client)
 			} else {
 				b.log.Infoln("Exit channel closed, shutting down")
@@ -589,7 +494,7 @@ func (b *impl) loop() {
 			b.clients = make([]*binderClient, 0)
 			for _, client := range oldClients {
 				close(client.transformChan)
-				close(client.updateChan)
+				close(client.metadataChan)
 			}
 			b.log.Infof("Attempting final flush of %v\n", b.id)
 			if b.otBuffer.IsDirty() {

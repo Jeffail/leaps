@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -118,7 +117,7 @@ type dummyAuth struct {
 	level acl.AccessLevel
 }
 
-func (d *dummyAuth) Authenticate(userID, token, documentID string) acl.AccessLevel {
+func (d *dummyAuth) Authenticate(userMetadata interface{}, token, documentID string) acl.AccessLevel {
 	return d.level
 }
 
@@ -162,57 +161,6 @@ func TestPermissions(t *testing.T) {
 	cur.Close()
 }
 
-func TestGetUsers(t *testing.T) {
-	log, stats := loggerAndStats()
-	auth, storage := authAndStore(log, stats)
-
-	testCases := map[string][]string{
-		"doc1": {
-			"user1", "user2", "user3",
-		},
-		"doc2": {
-			"user4", "user5", "user6",
-		},
-		"doc3": {
-			"user1", "user4", "user7",
-		},
-	}
-
-	for docID := range testCases {
-		doc := store.Document{}
-		doc.ID = docID
-		doc.Content = "hello world"
-		if err := storage.Create(doc); err != nil {
-			t.Error(err)
-		}
-	}
-
-	curator, err := New(NewConfig(), log, stats, auth, storage, nil)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer curator.Close()
-
-	for docID, users := range testCases {
-		for _, userID := range users {
-			if _, err := curator.EditDocument(userID, "", docID, time.Second); err != nil {
-				t.Error(err)
-			}
-		}
-	}
-
-	getUsers, err := curator.GetUsers(time.Second)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if !reflect.DeepEqual(getUsers, testCases) {
-		t.Errorf("GetUsers not matched, %v != %v", getUsers, testCases)
-	}
-}
-
 func goodClient(b binder.Portal, expecting int, t *testing.T, wg *sync.WaitGroup) {
 	changes := b.BaseVersion() + 1
 	seen := 0
@@ -240,74 +188,18 @@ func (d *dummyBinder) ID() string {
 	return d.id
 }
 
-func (d *dummyBinder) GetUsers(timeout time.Duration) ([]string, error) {
-	return []string{}, nil
-}
-
-func (d *dummyBinder) KickUser(userID string, timeout time.Duration) error {
-	d.kickChan <- userID
-	return nil
-}
-
-func (d *dummyBinder) Subscribe(userID string, timeout time.Duration) (binder.Portal, error) {
+func (d *dummyBinder) Subscribe(metadata interface{}, timeout time.Duration) (binder.Portal, error) {
 	return nil, nil
 }
 
 // SubscribeReadOnly - Register a new client as a read only viewer of this binder document.
-func (d *dummyBinder) SubscribeReadOnly(userID string, timeout time.Duration) (binder.Portal, error) {
+func (d *dummyBinder) SubscribeReadOnly(metadata interface{}, timeout time.Duration) (binder.Portal, error) {
 	return nil, nil
 }
 
 // Close - Close the binder and shut down all clients, also flushes and cleans up the document.
 func (d *dummyBinder) Close() {
 	close(d.closedChan)
-}
-
-func TestCuratorBinderKicking(t *testing.T) {
-	log, stats := loggerAndStats()
-	auth, storage := authAndStore(log, stats)
-
-	conf := NewConfig()
-	conf.BinderConfig.CloseInactivityPeriodMS = 1
-
-	curator, err := New(conf, log, stats, auth, storage, nil)
-	if err != nil {
-		t.Errorf("error: %v", err)
-		return
-	}
-
-	bOne := &dummyBinder{
-		id:         "first",
-		closedChan: make(chan struct{}),
-		kickChan:   make(chan string),
-	}
-
-	curator.binderMutex.Lock()
-	curator.openBinders = map[string]binder.Type{
-		bOne.id: bOne,
-	}
-	curator.binderMutex.Unlock()
-
-	go func() {
-		if err := curator.KickUser("first", "test1", time.Second); err != nil {
-			t.Error(err)
-		}
-	}()
-
-	select {
-	case kicked := <-bOne.kickChan:
-		if exp, actual := "test1", kicked; exp != actual {
-			t.Errorf("Wrong user kicked: %v != %v", exp, actual)
-		}
-	case <-time.After(time.Second):
-		t.Error("User was not kicked")
-	}
-
-	if err := curator.KickUser("does not exist", "test1", time.Second); err == nil {
-		t.Error("Expected error from invalid binder kicking")
-	}
-
-	curator.Close()
 }
 
 func TestCuratorBinderClosure(t *testing.T) {
@@ -379,11 +271,15 @@ func TestCuratorClients(t *testing.T) {
 		return
 	}
 
-	doc := store.NewDocument("hello world")
-	portal, err := curator.CreateDocument("", "", doc, time.Second)
-	doc = portal.Document()
+	baseDoc := store.NewDocument("hello world")
+	portal, err := curator.CreateDocument("", "", baseDoc, time.Second)
+
+	doc := portal.Document()
 	if err != nil {
 		t.Errorf("error: %v", err)
+	}
+	if doc.ID != baseDoc.ID {
+		t.Errorf("Unexpected created document ID: %v != %v", doc.ID, baseDoc.ID)
 	}
 
 	tform := func(i int) text.OTransform {

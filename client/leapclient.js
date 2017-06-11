@@ -137,57 +137,6 @@ leap_model.prototype._validate_transforms = function(transforms) {
 	}
 };
 
-/* _validate_updates iterates an array of user update objects and validates that each update
- * contains the correct fields. Returns an error message as a string if there was a problem.
- */
-leap_model.prototype._validate_updates = function(user_updates) {
-	for ( var i = 0, l = user_updates.length; i < l; i++ ) {
-		var update = user_updates[i];
-
-		if ( undefined === update.client ||
-			"object" !== typeof(update.client) ) {
-			return "update did not contain valid client object: " + JSON.stringify(update);
-		}
-
-		if ( undefined === update.message ||
-			"object" !== typeof(update.message) ) {
-			return "update did not contain valid message object: " + JSON.stringify(update);
-		}
-
-		var message = update.message;
-
-		if ( undefined !== message.position &&
-		    "number" !== typeof(message.position) ) {
-			message.position = parseInt(message.position);
-			if ( isNaN(message.position) ) {
-				return "update message contained NaN value for position: " + JSON.stringify(update);
-			}
-		}
-		if ( undefined !== message.content &&
-		    "string" !== typeof(message.content) ) {
-			return "update message contained invalid type for content: " + JSON.stringify(update);
-		}
-		if ( undefined !== message.active &&
-		    "boolean" !== typeof(message.active) ) {
-			if ("string" !== typeof(message.active)) {
-				return "update message contained invalid type for active: " + JSON.stringify(update);
-			}
-			message.active = ("true" === message.active);
-		}
-
-		var client = update.client;
-
-		if ( undefined === client.user_id ||
-		    "string" !== typeof(client.user_id) ) {
-			return "update client contained invalid type for user_id: " + JSON.stringify(update);
-		}
-		if ( undefined === client.session_id ||
-		    "string" !== typeof(client.session_id) ) {
-			return "update client contained invalid type for session_id: " + JSON.stringify(update);
-		}
-	}
-};
-
 /* merge_transforms takes two transforms (the next to be sent, and the one that follows) and
  * attempts to merge them into one transform. This will not be possible with some combinations, and
  * the function returns a boolean to indicate whether the merge was successful.
@@ -387,31 +336,28 @@ leap_model.prototype.receive = function(transforms) {
  */
 leap_client = function() {
 	this._socket = null;
-	this._document_id = null;
 
 	this._model = null;
-
-	this._cursor_position = 0;
 
 	this.EVENT_TYPE = {
 		CONNECT: "connect",
 		DISCONNECT: "disconnect",
-		DOCUMENT: "document",
+		SUBSCRIBE: "subscribe",
+		UNSUBSCRIBE: "unsubscribe",
 		TRANSFORMS: "transforms",
-		USER: "user",
+		METADATA: "metadata",
+		GLOBAL_METADATA: "global_metadata",
 		ERROR: "error"
 	};
 
-	// Milliseconds period between cursor position updates to server
-	this._POSITION_POLL_PERIOD = 500;
-
 	this._events = {};
+	this._single_events = {};
 };
 
-/* subscribe_event, attach a function to an event of the leap_client. Use this to subscribe to
- * transforms, document responses and errors etc. Returns a string if an error occurrs.
+/* on, attach a function to an event of the leap_client. Use this to subscribe to
+ * transforms, document responses and errors etc.
  */
-leap_client.prototype.subscribe_event = function(name, subscriber) {
+leap_client.prototype.on = function(name, subscriber) {
 	if ( typeof(subscriber) !== "function" ) {
 		return "subscriber was not a function";
 	}
@@ -423,14 +369,26 @@ leap_client.prototype.subscribe_event = function(name, subscriber) {
 	}
 };
 
-/* on - an alias for subscribe_event.
+/* on_next, attach a function to the next trigger only of an event of the
+ * leap_client.
  */
-leap_client.prototype.on = leap_client.prototype.subscribe_event;
+leap_client.prototype.on_next = function(name, subscriber) {
+	if ( typeof(subscriber) !== "function" ) {
+		return "subscriber was not a function";
+	}
+	var targets = this._single_events[name];
+	if ( targets !== undefined && targets instanceof Array ) {
+		targets.push(subscriber);
+	} else {
+		this._single_events[name] = [ subscriber ];
+	}
+};
 
-/* clear_subscribers, removes all functions subscribed to an event.
+/* clear_handlers, removes all functions subscribed to an event.
  */
-leap_client.prototype.clear_subscribers = function(name) {
+leap_client.prototype.clear_handlers = function(name) {
 	this._events[name] = [];
+	this._single_events[name] = [];
 };
 
 /* dispatch_event, sends args to all subscribers of an event.
@@ -444,6 +402,15 @@ leap_client.prototype._dispatch_event = function(name, args) {
 			}
 		}
 	}
+	var single_events = this._single_events[name];
+	if ( single_events !== undefined && single_events instanceof Array ) {
+		while (single_events.length > 0) {
+			var next = single_events.pop();
+			if ( typeof(next) === "function" ) {
+				next.apply(this, args);
+			}
+		}
+	}
 };
 
 /* _do_action is a call that acts accordingly provided an action_obj from our leap_model.
@@ -453,12 +420,16 @@ leap_client.prototype._do_action = function(action_obj) {
 		return action_obj.error;
 	}
 	if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
-		this._dispatch_event(this.EVENT_TYPE.TRANSFORMS, [ action_obj.apply ]);
+		this._dispatch_event(this.EVENT_TYPE.TRANSFORMS, [ {
+			transforms: action_obj.apply
+		} ]);
 	}
 	if ( action_obj.send !== undefined && action_obj.send instanceof Object ) {
 		this._socket.send(JSON.stringify({
-			command : "submit",
-			transform : action_obj.send
+			type: "transform",
+			body: {
+				transform: action_obj.send
+			}
 		}));
 	}
 };
@@ -470,70 +441,70 @@ leap_client.prototype._do_action = function(action_obj) {
 leap_client.prototype._process_message = function(message) {
 	var validate_error, action_obj, action_err;
 
-	if ( message.response_type === undefined || typeof(message.response_type) !== "string" ) {
+	if ( message.type === undefined || typeof(message.type) !== "string" ) {
+		console.log(JSON.stringify(message));
 		return "message received did not contain a valid type";
 	}
+	if ( message.body === undefined || typeof(message.body) !== "object" ) {
+		return "message received did not contain a valid body";
+	}
 
-	switch (message.response_type) {
-	case "document":
-		if ( null === message.leap_document ||
-		   "object" !== typeof(message.leap_document) ||
-		   "string" !== typeof(message.leap_document.id) ||
-		   "string" !== typeof(message.leap_document.content) ) {
+	var msg_body = message.body;
+
+	switch (message.type) {
+	case "subscribe":
+		if ( "object" !== typeof(msg_body.document) ||
+		     "string" !== typeof(msg_body.document.id) ||
+		     "string" !== typeof(msg_body.document.content) ||
+		     msg_body.document.version <= 0 ) {
 			return "message document type contained invalid document object";
 		}
-		if ( message.version <= 0 ) {
-			return "message document received but without valid version";
+		this._model = new leap_model(msg_body.document.version);
+		this._dispatch_event(this.EVENT_TYPE.SUBSCRIBE, [ msg_body ]);
+		break;
+	case "unsubscribe":
+		if ( "object" !== typeof(msg_body.document) ||
+		     "string" !== typeof(msg_body.document.id) ) {
+			return "message document type contained invalid document object";
 		}
-		if ( this._document_id !== null && this._document_id !== message.leap_document.id ) {
-			return "received unexpected document, id was mismatched: " +
-				this._document_id + " != " + message.leap_document.id;
-		}
-		this.document_id = message.leap_document.id;
-		this._model = new leap_model(message.version);
-		this._dispatch_event(this.EVENT_TYPE.DOCUMENT, [ message.leap_document ]);
+		this._model = null;
+		this._dispatch_event(this.EVENT_TYPE.UNSUBSCRIBE, [ msg_body ]);
 		break;
 	case "transforms":
 		if ( this._model === null ) {
 			return "transforms were received before initialization";
 		}
-		if ( !(message.transforms instanceof Array) ) {
-			return "received non array transforms";
-		}
-		validate_error = this._model._validate_transforms(message.transforms);
+		var transforms = msg_body.transforms;
+		validate_error = this._model._validate_transforms(transforms);
 		if ( validate_error !== undefined ) {
 			return "received transforms with error: " + validate_error;
 		}
-		action_obj = this._model.receive(message.transforms);
+		action_obj = this._model.receive(transforms);
 		action_err = this._do_action(action_obj);
 		if ( action_err !== undefined ) {
 			return "failed to receive transforms: " + action_err;
 		}
 		break;
-	case "update":
-		if ( null === message.user_updates ||
-		   !(message.user_updates instanceof Array) ) {
-			return "message update type contained invalid user_updates";
-		}
-		validate_error = this._model._validate_updates(message.user_updates);
-		if ( validate_error !== undefined ) {
-			return "received updates with error: " + validate_error;
-		}
-		for ( var i = 0, l = message.user_updates.length; i < l; i++ ) {
-			this._dispatch_event(this.EVENT_TYPE.USER, [ message.user_updates[i] ]);
-		}
+	case "metadata":
+		this._dispatch_event(this.EVENT_TYPE.METADATA, [ msg_body ]);
+		break;
+	case "global_metadata":
+		this._dispatch_event(this.EVENT_TYPE.GLOBAL_METADATA, [ msg_body ]);
 		break;
 	case "correction":
 		if ( this._model === null ) {
 			return "correction was received before initialization";
 		}
-		if ( typeof(message.version) !== "number" ) {
-			message.version = parseInt(message.version);
-			if ( isNaN(message.version) ) {
+		if ( typeof(msg_body.correction) !== "object" ) {
+			return "correction received without body";
+		}
+		if ( typeof(msg_body.correction.version) !== "number" ) {
+			msg_body.correction.version = parseInt(msg_body.correction.version);
+			if ( isNaN(msg_body.correction.version) ) {
 				return "correction received was NaN";
 			}
 		}
-		action_obj = this._model.correct(message.version);
+		action_obj = this._model.correct(msg_body.correction.version);
 		action_err = this._do_action(action_obj);
 		if ( action_err !== undefined ) {
 			return "model failed to correct: " + action_err;
@@ -543,8 +514,8 @@ leap_client.prototype._process_message = function(message) {
 		if ( this._socket !== null ) {
 			this._socket.close();
 		}
-		if ( typeof(message.error) === "string" ) {
-			return message.error;
+		if ( typeof(msg_body.error.message) === "string" ) {
+			return msg_body.error.message;
 		}
 		return "server sent undeterminable error";
 	default:
@@ -575,100 +546,72 @@ leap_client.prototype.send_transform = function(transform) {
 	}
 };
 
-/* send_message - send a text message out to all other users connected to your shared document.
+/* send_metadata - send metadata out to all other users connected to your shared document.
  */
-leap_client.prototype.send_message = function(message) {
-	if ( "string" !== typeof(message) ) {
-		return "must supply message as a valid string value";
-	}
-
+leap_client.prototype.send_metadata = function(metadata) {
 	this._socket.send(JSON.stringify({
-		command:  "update",
-		message: message,
-		position: this._cursor_position
+		type: "metadata",
+		body: {
+			metadata: metadata,
+		}
 	}));
 };
 
-/* update_cursor is the function to call to send the server (and all other clients) an update to your
- * current cursor position in the document, this shows others where your point of interest is in the
- * shared document.
+/* send_global_metadata - send global metadata out to all other users connected
+ * to the leaps service.
  */
-leap_client.prototype.update_cursor = function(position) {
-	if ( "number" !== typeof(position) ) {
-		return "must supply position as a valid integer value";
-	}
-
-	this._cursor_position = position;
+leap_client.prototype.send_global_metadata = function(metadata) {
 	this._socket.send(JSON.stringify({
-		command:  "update",
-		position: this._cursor_position
+		type: "global_metadata",
+		body: {
+			metadata: metadata,
+		}
 	}));
 };
 
-/* join_document prompts the client to request to join a document from the server. It will return an
- * error message if there is a problem with the request.
+/* subscribe to a document session, providing the initial content as well as
+ * subsequent changes to the document.
  */
-leap_client.prototype.join_document = function(user_id, token, document_id) {
+leap_client.prototype.subscribe = function(document_id) {
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
 		return "leap_client is not currently connected";
-	}
-
-	if ( typeof(user_id) !== "string" ) {
-		return "user id was not a string type";
-	}
-
-	if ( typeof(token) !== "string" ) {
-		return "token was not a string type";
 	}
 
 	if ( typeof(document_id) !== "string" ) {
 		return "document id was not a string type";
 	}
 
-	if ( this._document_id !== null ) {
-		return "a leap_client can only join a single document";
-	}
-
-	this._document_id = document_id;
-
 	this._socket.send(JSON.stringify({
-		command : "edit",
-		user_id : user_id,
-		token : token,
-		document_id : this._document_id
+		type: "subscribe",
+		body: {
+			document: {
+				id: document_id
+			}
+		}
 	}));
 };
 
-/* create_document submits content to be created into a fresh document and then binds to that
- * document.
+/* unsubscribe from a document session.
  */
-leap_client.prototype.create_document = function(user_id, token, content) {
+leap_client.prototype.unsubscribe = function(document_id) {
 	if ( this._socket === null || this._socket.readyState !== 1 ) {
 		return "leap_client is not currently connected";
 	}
 
-	if ( typeof(user_id) !== "string" ) {
-		return "user id was not a string type";
+	if ( typeof(document_id) !== "string" ) {
+		return "document id was not a string type";
 	}
 
-	if ( typeof(token) !== "string" ) {
-		return "token was not a string type";
-	}
-
-	if ( typeof(content) !== "string" ) {
-		return "new document requires valid content (can be empty)";
-	}
-
-	if ( this._document_id !== null ) {
-		return "a leap_client can only join a single document";
+	if ( this._document_id === null ) {
+		return "attempted to unsubscribe without an active subscription";
 	}
 
 	this._socket.send(JSON.stringify({
-		command : "create",
-		user_id : user_id,
-		token : token,
-		leap_document : {
-			content : content
+		type: "unsubscribe",
+		body: {
+			document: {
+				id: document_id
+			}
 		}
 	}));
 };
@@ -701,52 +644,52 @@ leap_client.prototype.connect = function(address, _websocket) {
 		} catch (e) {
 			leap_obj._dispatch_event.apply(leap_obj,
 				[ leap_obj.EVENT_TYPE.ERROR,
-					[ JSON.stringify(e.message) + " (" + e.lineNumber + "): " + message_text ] ]);
+					[ {
+						error: {
+							type: "ERR_PARSE_MSG",
+							message: JSON.stringify(e.message) + " (" + e.lineNumber + "): " + message_text
+						}
+					} ] ]);
 			return;
 		}
 
 		var err = leap_obj._process_message.apply(leap_obj, [ message_obj ]);
 		if ( typeof(err) === "string" ) {
-			leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, [ err ] ]);
+			leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, [ {
+				error: {
+					type: "ERR_INTERNAL_MODEL",
+					message: err
+				}
+			} ] ]);
 		}
 	};
 
 	this._socket.onclose = function() {
-		if ( undefined !== leap_obj._heartbeat ) {
-			clearTimeout(leap_obj._heartbeat);
-		}
 		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.DISCONNECT, [] ]);
 	};
 
 	this._socket.onopen = function() {
-		leap_obj._heartbeat = setInterval(function() {
-			leap_obj._socket.send(JSON.stringify({
-				command : "ping"
-			}));
-		}, 5000); // MAGIC NUMBER OH GOD, we should have a config object.
 		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.CONNECT, arguments ]);
 	};
 
 	this._socket.onerror = function() {
-		if ( undefined !== leap_obj._heartbeat ) {
-			clearTimeout(leap_obj._heartbeat);
-		}
-		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, [ "socket connection error" ] ]);
+		leap_obj._dispatch_event.apply(leap_obj, [ leap_obj.EVENT_TYPE.ERROR, [ {
+			error: {
+				type: "ERR_SOCKET",
+				message: "socket connection error"
+			}
+		} ] ]);
 	};
 };
 
 /* Close the connection to the document and halt all operations.
  */
 leap_client.prototype.close = function() {
-	if ( undefined !== this._heartbeat ) {
-		clearTimeout(this._heartbeat);
-	}
 	if ( this._socket !== null && this._socket.readyState === 1 ) {
 		this._socket.close();
 		this._socket = null;
 	}
-	this.document_id = undefined;
-	this._model = undefined;
+	this._model = null;
 };
 
 /*--------------------------------------------------------------------------------------------------

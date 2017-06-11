@@ -30,41 +30,35 @@ import (
 	"github.com/jeffail/leaps/lib/text"
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // Errors for the binder portal type.
 var (
 	ErrReadOnlyPortal = errors.New("attempting to send transforms through a READ ONLY portal")
 )
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-/*
-portalImpl - A container that holds all data necessary to begin an open portal with the binder,
-allowing fresh transforms to be submitted and returned as they come. Also carries the BinderClient
-of the client.
-*/
+// portalImpl - Represents a connection between a client and an active binder.
+// This includes channels for sending transforms and metadata into the binder as
+// well as channels for reading broadcast transforms and metadata from other
+// clients.
 type portalImpl struct {
 	client   *binderClient
 	document store.Document
 	version  int
 
 	transformRcvChan <-chan text.OTransform
-	updateRcvChan    <-chan ClientUpdate
+	metadataRcvChan  <-chan ClientMetadata
 
 	transformSndChan chan<- transformSubmission
-	messageSndChan   chan<- messageSubmission
+	metadataSndChan  chan<- metadataSubmission
 	exitChan         chan<- *binderClient
 }
 
-// UserID - Returns the user ID of this portal.
-func (p *portalImpl) UserID() string {
-	return p.client.userID
-}
-
-// SessionID - Returns the session ID of this portal.
-func (p *portalImpl) SessionID() string {
-	return p.client.sessionID
+// ClientMetadata - Returns the client metadata associated with this portal.
+func (p *portalImpl) ClientMetadata() interface{} {
+	return p.client.metadata
 }
 
 // BaseVersion - Returns the version of the binder when this session opened.
@@ -72,30 +66,32 @@ func (p *portalImpl) BaseVersion() int {
 	return p.version
 }
 
-// Document - Returns the document contents as it was when the session was opened.
+// Document - Returns the document contents as it was when the session was
+// opened.
 func (p *portalImpl) Document() store.Document {
 	return p.document
 }
 
-// ReleaseDocument - Releases the cached document.
+// ReleaseDocument - Releases the content cached for the underlying document.
 func (p *portalImpl) ReleaseDocument() {
-	p.document = store.Document{}
+	p.document.Content = ""
 }
 
-// TransformReadChan - Returns a channel for receiving live transforms from the binder.
+// TransformReadChan - Returns a channel for receiving live transforms from the
+// binder.
 func (p *portalImpl) TransformReadChan() <-chan text.OTransform {
 	return p.transformRcvChan
 }
 
-// UpdateReadChan - Returns a channel for receiving meta updates from the binder.
-func (p *portalImpl) UpdateReadChan() <-chan ClientUpdate {
-	return p.updateRcvChan
+// MetadataReadChan - Returns a channel for receiving metadata from clients
+// connected to this binder.
+func (p *portalImpl) MetadataReadChan() <-chan ClientMetadata {
+	return p.metadataRcvChan
 }
 
-/*
-SendTransform - Submits a transform to the binder. The binder responds with either an error or a
-corrected version number for the transform. This is safe to call from any goroutine.
-*/
+// SendTransform - Submits a transform to the binder. The binder responds with
+// either an error or a corrected version number for the transform. This is safe
+// to call from any goroutine.
 func (p *portalImpl) SendTransform(ot text.OTransform, timeout time.Duration) (int, error) {
 	// Check if we are READ ONLY
 	if nil == p.transformSndChan {
@@ -120,14 +116,12 @@ func (p *portalImpl) SendTransform(ot text.OTransform, timeout time.Duration) (i
 	return 0, ErrTimeout
 }
 
-/*
-SendMessage - Sends a message to the binder, which is subsequently sent out to all other clients.
-This is safe to call from any goroutine.
-*/
-func (p *portalImpl) SendMessage(message Message) {
-	p.messageSndChan <- messageSubmission{
-		client:  p.client,
-		message: message,
+// SendMetadata - Sends metadata to the binder, which is subsequently sent out
+// to all other clients. This is safe to call from any goroutine.
+func (p *portalImpl) SendMetadata(metadata interface{}) {
+	p.metadataSndChan <- metadataSubmission{
+		client:   p.client,
+		metadata: metadata,
 	}
 }
 
@@ -139,4 +133,4 @@ func (p *portalImpl) Exit(timeout time.Duration) {
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------

@@ -44,27 +44,28 @@ var run_story = function(story, test) {
 	// First send response should be the same doc, emulating creation
 	socket.send = function(data) {
 		var obj = JSON.parse(data);
-		obj.leap_document.id = "testdocument";
-		obj.version = 1;
-		obj.response_type = "document";
+		obj.body.document.content = story.content;
+		obj.body.document.version = 1;
+		obj.type = "subscribe";
 		socket.onmessage({ data : JSON.stringify(obj) });
 	};
 
 	var client = new lc();
 	client.connect("", socket);
 
-	client.subscribe_event("error", function(err) {
+	client.on("error", function(err) {
 		test.ok(false, "client error: " + JSON.stringify(err));
 	});
 
-	client.create_document("test", "test", story.content);
+	client.subscribe("testdocument");
 
 	for ( var i = 0, l = story.epochs.length; i < l; i++ ) {
 		var epoch_sends = story.epochs[i].send;
 		var epoch_receives = story.epochs[i].receive;
 
-		client.clear_subscribers("transforms");
-		client.on("transforms", function(tforms) {
+		client.clear_handlers("transforms");
+		client.on("transforms", function(body) {
+			var tforms = body.transforms;
 			for ( var tn = 0, ln = tforms.length; tn < ln; tn++ ) {
 				content = la(tforms[tn], content);
 			}
@@ -74,7 +75,7 @@ var run_story = function(story, test) {
 				var err = client.send_transform(tform);
 				test.ok(err === undefined, "story '" + story.name + "' epoch " + i + ": " + err);
 			} else if ( epoch_receives.length > 0 ) {
-				socket.onmessage({ data : JSON.stringify(epoch_receives.shift())});
+				socket.onmessage({ data : JSON.stringify(epoch_receives.shift()) });
 			}
 		});
 
@@ -90,11 +91,11 @@ var run_story = function(story, test) {
 			var err = client.send_transform(tmp);
 			test.ok(err === undefined, "story '" + story.name + "' epoch " + i + ": " + err);
 		} else if ( epoch_receives.length > 0 ) {
-			socket.onmessage({ data : JSON.stringify(epoch_receives.shift())});
+			socket.onmessage({ data : JSON.stringify(epoch_receives.shift()) });
 		}
 
 		while ( epoch_receives.length > 0 ) {
-			socket.onmessage({ data : JSON.stringify(epoch_receives.shift())});
+			socket.onmessage({ data : JSON.stringify(epoch_receives.shift()) });
 		}
 
 		test.ok(epoch_sends.length === 0,

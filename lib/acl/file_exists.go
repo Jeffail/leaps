@@ -221,7 +221,7 @@ func (f *FileExists) loop() {
 //--------------------------------------------------------------------------------------------------
 
 // Authenticate - Checks whether the documentID (file path) exists, returns EditAccess if it does.
-func (f *FileExists) Authenticate(_, _, documentID string) AccessLevel {
+func (f *FileExists) Authenticate(_ interface{}, _, documentID string) AccessLevel {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 

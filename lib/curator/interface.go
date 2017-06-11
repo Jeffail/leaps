@@ -44,23 +44,24 @@ type AuditorContainer interface {
 // Type - Provides thread safe implementations of basic document and session
 // creation.
 type Type interface {
-	// EditDocument - Find and return a binder portal to an existing document
-	EditDocument(userID, token, documentID string, timeout time.Duration) (binder.Portal, error)
-
-	// ReadDocument - Find and return a binder portal to an existing document with read only
-	// privileges
-	ReadDocument(userID, token, documentID string, timeout time.Duration) (binder.Portal, error)
-
-	// CreateDocument - Create and return a binder portal to a new document
-	CreateDocument(
-		userID, token string, document store.Document, timeout time.Duration,
+	// EditDocument - Find and return a binder portal to an existing document,
+	// providing metadata for identifying content produced by the client.
+	EditDocument(
+		userMetadata interface{}, token, documentID string, timeout time.Duration,
 	) (binder.Portal, error)
 
-	// Kick a user from a document, needs the documentID and userID.
-	KickUser(documentID, userID string, timeout time.Duration) error
+	// ReadDocument - Find and return a binder portal to an existing document
+	// with read only privileges, providing metadata for identifying content
+	// produced by the client.
+	ReadDocument(
+		userMetadata interface{}, token, documentID string, timeout time.Duration,
+	) (binder.Portal, error)
 
-	// Get the list of all users connected to all open binders.
-	GetUsers(timeout time.Duration) (map[string][]string, error)
+	// CreateDocument - Create and return a binder portal to a new document,
+	// providing metadata for identifying content produced by the client.
+	CreateDocument(
+		userMetadata interface{}, token string, document store.Document, timeout time.Duration,
+	) (binder.Portal, error)
 
 	// Close - Close the Curator
 	Close()

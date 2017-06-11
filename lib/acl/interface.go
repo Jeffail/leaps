@@ -57,5 +57,5 @@ field is left blank then the authenticator is expected to check for CreateAccess
 */
 type Authenticator interface {
 	// Authenticate - Check a users access level. Leave documentID blank to check for CreateAccess.
-	Authenticate(userID, token, documentID string) AccessLevel
+	Authenticate(userMetadata interface{}, token, documentID string) AccessLevel
 }

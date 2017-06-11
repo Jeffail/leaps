@@ -32,7 +32,6 @@ import (
 	"github.com/jeffail/leaps/lib/audit"
 	"github.com/jeffail/leaps/lib/binder"
 	"github.com/jeffail/leaps/lib/store"
-	"github.com/jeffail/leaps/lib/util"
 	"github.com/jeffail/util/log"
 	"github.com/jeffail/util/metrics"
 )
@@ -178,81 +177,15 @@ func (c *Impl) newBinder(id string) (binder.Type, error) {
 
 //------------------------------------------------------------------------------
 
-// KickUser - Remove a user from a document, requires the respective user and
-// document IDs.
-func (c *Impl) KickUser(documentID, userID string, timeout time.Duration) error {
-	c.log.Debugf("attempting to kick user %v from document %v\n", documentID, userID)
-
-	c.binderMutex.Lock()
-
-	// Check for existing binder
-	binder, ok := c.openBinders[documentID]
-
-	c.binderMutex.Unlock()
-
-	if !ok {
-		c.stats.Incr("curator.kick_user.error", 1)
-		c.log.Errorf("Failed to kick user %v from %v: Document was not open\n", userID, documentID)
-		return ErrBinderNotFound
-	}
-
-	if err := binder.KickUser(userID, timeout); err != nil {
-		c.stats.Incr("curator.kick_user.error", 1)
-		return err
-	}
-
-	c.stats.Incr("curator.kick_user.success", 1)
-	return nil
-}
-
-// GetUsers - Return a full list of all connected users of all open documents.
-func (c *Impl) GetUsers(timeout time.Duration) (map[string][]string, error) {
-	openBinders := []binder.Type{}
-
-	c.binderMutex.Lock()
-	for _, binder := range c.openBinders {
-		openBinders = append(openBinders, binder)
-	}
-	c.binderMutex.Unlock()
-
-	started := time.Now()
-
-	list, listMutex := map[string][]string{}, sync.Mutex{}
-
-	wg := sync.WaitGroup{}
-	wg.Add(len(openBinders))
-
-	for _, b := range openBinders {
-		go func(tmpBinder binder.Type) {
-			defer wg.Done()
-
-			users, err := tmpBinder.GetUsers(timeout - time.Since(started))
-			if err != nil {
-				c.stats.Incr("curator.get_users.error", 1)
-				c.log.Errorf("Failed to get users list from %v\n", tmpBinder.ID())
-			} else if len(users) > 0 {
-				listMutex.Lock()
-				list[tmpBinder.ID()] = users
-				listMutex.Unlock()
-			}
-		}(b)
-	}
-
-	wg.Wait()
-
-	c.stats.Incr("curator.get_users.success", 1)
-	return list, nil
-}
-
 // EditDocument - Locates or creates a Binder for an existing document and
 // returns that Binder for subscribing to. Returns an error if there was a
 // problem locating the document.
 func (c *Impl) EditDocument(
-	userID, token, documentID string, timeout time.Duration,
+	userMetadata interface{}, token, documentID string, timeout time.Duration,
 ) (binder.Portal, error) {
-	c.log.Debugf("finding document %v, with userID %v token %v\n", documentID, userID, token)
+	c.log.Debugf("finding document %v, with userMetadata %v token %v\n", documentID, userMetadata, token)
 
-	if c.auth.Authenticate(userID, token, documentID) < acl.EditAccess {
+	if c.auth.Authenticate(userMetadata, token, documentID) < acl.EditAccess {
 		c.stats.Incr("curator.edit.rejected_client", 1)
 		return nil, fmt.Errorf(
 			"failed to authorise join of document id: %v with token: %v", documentID, token,
@@ -265,7 +198,7 @@ func (c *Impl) EditDocument(
 	// Check for existing binder
 	if openBinder, ok := c.openBinders[documentID]; ok {
 		c.binderMutex.Unlock()
-		return openBinder.Subscribe(userID, timeout)
+		return openBinder.Subscribe(userMetadata, timeout)
 	}
 	openBinder, err := c.newBinder(documentID)
 	if err != nil {
@@ -279,18 +212,18 @@ func (c *Impl) EditDocument(
 	c.binderMutex.Unlock()
 
 	c.stats.Incr("curator.open_binders", 1)
-	return openBinder.Subscribe(userID, timeout)
+	return openBinder.Subscribe(userMetadata, timeout)
 }
 
 // ReadDocument - Locates or creates a Binder for an existing document and
 // returns that Binder for subscribing to with read only privileges. Returns an
 // error if there was a problem locating the document.
 func (c *Impl) ReadDocument(
-	userID, token, documentID string, timeout time.Duration,
+	userMetadata interface{}, token, documentID string, timeout time.Duration,
 ) (binder.Portal, error) {
-	c.log.Debugf("finding document %v, with userID %v token %v\n", documentID, userID, token)
+	c.log.Debugf("finding document %v, with userMetadata %v token %v\n", documentID, userMetadata, token)
 
-	if c.auth.Authenticate(userID, token, documentID) < acl.ReadAccess {
+	if c.auth.Authenticate(userMetadata, token, documentID) < acl.ReadAccess {
 		c.stats.Incr("curator.read.rejected_client", 1)
 		return nil, fmt.Errorf(
 			"failed to authorise read only join of document id: %v with token: %v",
@@ -304,7 +237,7 @@ func (c *Impl) ReadDocument(
 	// Check for existing binder
 	if openBinder, ok := c.openBinders[documentID]; ok {
 		c.binderMutex.Unlock()
-		return openBinder.SubscribeReadOnly(userID, timeout)
+		return openBinder.SubscribeReadOnly(userMetadata, timeout)
 	}
 	openBinder, err := c.newBinder(documentID)
 	if err != nil {
@@ -318,26 +251,23 @@ func (c *Impl) ReadDocument(
 	c.binderMutex.Unlock()
 
 	c.stats.Incr("curator.open_binders", 1)
-	return openBinder.SubscribeReadOnly(userID, timeout)
+	return openBinder.SubscribeReadOnly(userMetadata, timeout)
 }
 
 // CreateDocument - Creates a fresh Binder for a new document, which is
 // subsequently stored, returns an error if either the document ID is already
 // currently in use, or if there is a problem storing the new document. May
-// require authentication, if so a userID is supplied.
+// require authentication, if so a userMetadata is supplied.
 func (c *Impl) CreateDocument(
-	userID, token string, doc store.Document, timeout time.Duration,
+	userMetadata interface{}, token string, doc store.Document, timeout time.Duration,
 ) (binder.Portal, error) {
-	c.log.Debugf("Creating new document with userID %v token %v\n", userID, token)
+	c.log.Debugf("Creating new document with userMetadata %v token %v\n", userMetadata, token)
 
-	if c.auth.Authenticate(userID, token, "") < acl.CreateAccess {
+	if c.auth.Authenticate(userMetadata, token, "") < acl.CreateAccess {
 		c.stats.Incr("curator.create.rejected_client", 1)
 		return nil, fmt.Errorf("failed to gain permission to create with token: %v", token)
 	}
 	c.stats.Incr("curator.create.accepted_client", 1)
-
-	// Always generate a fresh ID
-	doc.ID = util.GenerateStampedUUID()
 
 	if err := c.store.Create(doc); err != nil {
 		c.stats.Incr("curator.create_new.failed", 1)
@@ -355,7 +285,7 @@ func (c *Impl) CreateDocument(
 	c.binderMutex.Unlock()
 	c.stats.Incr("curator.open_binders", 1)
 
-	return openBinder.Subscribe(userID, timeout)
+	return openBinder.Subscribe(userMetadata, timeout)
 }
 
 //------------------------------------------------------------------------------

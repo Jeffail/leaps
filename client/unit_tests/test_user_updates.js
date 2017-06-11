@@ -38,55 +38,40 @@ module.exports = function(test) {
 	// First send response should be the same doc, emulating creation
 	socket.send = function(data) {
 		var obj = JSON.parse(data);
-		obj.leap_document.id = "testdocument";
-		obj.version = 1;
-		obj.response_type = "document";
+		obj.body.document.content = "random content";
+		obj.body.document.version = 1;
+		obj.type = "subscribe";
 		socket.onmessage({ data : JSON.stringify(obj) });
 	};
 
 	var client = new lc();
 	client.connect("", socket);
 
-	client.subscribe_event("error", function(err) {
+	client.on("error", function(err) {
 		test.ok(false, "client error: " + JSON.stringify(err));
 	});
 
-	client.create_document("test_id", "test_token", "random content");
+	client.subscribe("testdocument");
 	// Should now be primed and ready.
 
-	client.on("user", function(user) {
-		updates.push(user);
+	client.on("metadata", function(body) {
+		updates.push(body);
 		if ( updates.length < n_loops ) {
-			client.update_cursor(updates.length);
+			client.send_metadata(updates.length);
 		}
 	});
 
 	socket.send = function(data) {
-		var update = JSON.parse(data);
-
-		socket.onmessage({ data : JSON.stringify({
-			response_type: "update",
-			user_updates: [ {
-				client: {
-					user_id    : "test",
-					session_id : "test"
-				},
-				message: {
-					active   : true,
-					position : update.position,
-					content  : update.message
-				},
-			} ]
-		}) });
+		socket.onmessage({ data: data });
 	};
 
-	client.update_cursor(updates.length);
+	client.send_metadata(updates.length);
 
 	client.close();
 
 	test.ok(updates.length === n_loops, "wrong updates count: " + updates.length + " !== " + n_loops);
 	for ( var i = 0, l = updates.length; i < l; i++ ) {
-		test.ok(updates[i].message.position === i, "wrong position for update: " + updates[i].message.position + " != " + i);
+		test.ok(updates[i].metadata === i, "wrong position for update: " + updates[i].metadata + " != " + i);
 	}
 
 	test.done();

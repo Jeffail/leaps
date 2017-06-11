@@ -55,12 +55,9 @@ type TransformSink interface {
 
 // Portal - An interface used by clients to contact a connected binder type.
 type Portal interface {
-	// UserID - Returns the user identifier associated with this binder session.
-	UserID() string
-
-	// SessionID - Returns the unique session identifier associated with this
-	// binder session.
-	SessionID() string
+	// ClientMetadata - Returns the user identifying metadata associated with
+	// this binder session.
+	ClientMetadata() interface{}
 
 	// BaseVersion - Returns the version of the binder as it was when this
 	// session opened.
@@ -77,9 +74,9 @@ type Portal interface {
 	// binder clients.
 	TransformReadChan() <-chan text.OTransform
 
-	// UpdateReadChan - Get the channel for reading meta updates from other
+	// MetadataReadChan - Get the channel for reading meta updates from other
 	// binder clients.
-	UpdateReadChan() <-chan ClientUpdate
+	MetadataReadChan() <-chan ClientMetadata
 
 	// SendTransform - Submits an operational transform to the document, this
 	// call adds the transform to the stack of pending changes and broadcasts it
@@ -88,8 +85,8 @@ type Portal interface {
 	// it was made), and the actual version is returned.
 	SendTransform(ot text.OTransform, timeout time.Duration) (int, error)
 
-	// SendMessage - Broadcasts a message out to all other connected clients.
-	SendMessage(message Message)
+	// SendMetadata - Broadcasts metadata out to all other connected clients.
+	SendMetadata(metadata interface{})
 
 	// Exit - Inform the binder that this client is shutting down, this call
 	// will block until acknowledged by the binder. Therefore, you may specify a
@@ -102,18 +99,14 @@ type Type interface {
 	// ID - Returns the ID of this binder.
 	ID() string
 
-	// GetUsers - Returns a list of connected users.
-	GetUsers(timeout time.Duration) ([]string, error)
-
-	// KickUser - Kick a connected user from this binder.
-	KickUser(userID string, timeout time.Duration) error
-
 	// Subscribe - Register a new client as an editor of this binder document.
-	Subscribe(userID string, timeout time.Duration) (Portal, error)
+	// Metadata can be provided in order to identify submissions from the
+	// client.
+	Subscribe(metadata interface{}, timeout time.Duration) (Portal, error)
 
 	// SubscribeReadOnly - Register a new client as a read only viewer of this
 	// binder document.
-	SubscribeReadOnly(userID string, timeout time.Duration) (Portal, error)
+	SubscribeReadOnly(metadata interface{}, timeout time.Duration) (Portal, error)
 
 	// Close - Close the binder and shut down all clients, also flushes and
 	// cleans up the document.
