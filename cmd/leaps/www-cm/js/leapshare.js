@@ -24,6 +24,7 @@ var cm_themes = {
 var cm_editor = null;
 var leaps_client = null;
 var username = Cookies.get("username") || "anon";
+Cookies.set("username", username, { path: '', expires: 7 });
 
 var users = {};
 var file_paths = {
@@ -62,7 +63,7 @@ var config = {
 })();
 
 function save_config() {
-	Cookies.set("config", JSON.stringify(config), { path: '' });
+	Cookies.set("config", JSON.stringify(config), { path: '', expires: 7 });
 }
 
 /*------------------------------------------------------------------------------
@@ -371,7 +372,7 @@ function init_input_fields() {
 			username_bar.value = content;
 		}
 		username = content;
-		Cookies.set("username", username, { path: '' });
+		Cookies.set("username", username, { path: '', expires: 7 });
 		if ( file_paths.opened.length > 0 ) {
 			join_new_document(file_paths.opened);
 		}
