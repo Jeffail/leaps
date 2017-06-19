@@ -71,7 +71,7 @@ func TestBasicGlobalMetadataBroker(t *testing.T) {
 			Type: events.UserInfo,
 			Body: events.UserInfoMetadataMessage{
 				Users: map[string]events.UserSubscriptions{
-					"bar1": events.UserSubscriptions{Username: "foo1", Subscriptions: nil},
+					"bar1": {Username: "foo1", Subscriptions: nil},
 				},
 			},
 		},
@@ -226,19 +226,19 @@ func TestStressedGlobalMetadataBroker(t *testing.T) {
 
 func TestSubTrackingGlobalMetadataBroker(t *testing.T) {
 	targetSubscriptions := map[string]events.UserSubscriptions{
-		"bar1": events.UserSubscriptions{
+		"bar1": {
 			Username:      "foo1",
 			Subscriptions: []string{"first"},
 		},
-		"bar2": events.UserSubscriptions{
+		"bar2": {
 			Username:      "foo2",
 			Subscriptions: []string{"second", "third"},
 		},
-		"bar3": events.UserSubscriptions{
+		"bar3": {
 			Username:      "foo3",
 			Subscriptions: []string{"second", "third", "fourth"},
 		},
-		"bar4": events.UserSubscriptions{
+		"bar4": {
 			Username:      "foo4",
 			Subscriptions: []string{"first", "fourth", "fifth"},
 		},
@@ -386,7 +386,7 @@ func TestSubTrackingGlobalMetadataBroker(t *testing.T) {
 
 func TestSingleTrackingGlobalMetadataBroker(t *testing.T) {
 	expectedSubscriptions := map[string]events.UserSubscriptions{
-		"bar1": events.UserSubscriptions{
+		"bar1": {
 			Username:      "foo1",
 			Subscriptions: nil,
 		},

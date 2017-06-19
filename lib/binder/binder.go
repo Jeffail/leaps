@@ -138,7 +138,7 @@ type subscribeRequest struct {
 
 // Subscribe - Returns a Portal, which represents a contract between a client
 // and the binder. Metadata can be added to the portal in order to identify the
-// clients submissons.
+// clients submissions.
 func (b *impl) Subscribe(metadata interface{}, timeout time.Duration) (Portal, error) {
 	portalChan, errChan := make(chan *portalImpl, 1), make(chan error, 1)
 	bundle := subscribeRequest{
@@ -165,7 +165,7 @@ func (b *impl) Subscribe(metadata interface{}, timeout time.Duration) (Portal, e
 
 // SubscribeReadOnly - Returns a read-only Portal, which represents a contract
 // between a client and the binder. Metadata can be added to the portal in order
-// to identify the clients submissons.
+// to identify the clients submissions.
 func (b *impl) SubscribeReadOnly(metadata interface{}, timeout time.Duration) (Portal, error) {
 	portalChan, errChan := make(chan *portalImpl, 1), make(chan error, 1)
 	bundle := subscribeRequest{
