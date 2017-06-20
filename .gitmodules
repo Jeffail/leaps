@@ -40,3 +40,6 @@
 [submodule "vendor/github.com/vuejs/vue"]
 	path = vendor/github.com/vuejs/vue
 	url = https://github.com/vuejs/vue
+[submodule "vendor/github.com/gorilla/websocket"]
+	path = vendor/github.com/gorilla/websocket
+	url = https://github.com/gorilla/websocket
