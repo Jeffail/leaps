@@ -171,4 +171,151 @@ so it looks like this:
 
 ### Server Response Types
 
-TODO
+Servers will send responses of the following types: `subscribe`, `unsubscribe`,
+`correction`, `transforms`, `metadata`, `global_metadata`, `pong`.
+
+Which perform the following actions:
+
+#### Subscribe
+
+When a client makes a `subscribe` request, and the request is successful, the
+server will also respond with a `subscribe` typed response.
+
+The response looks as follows:
+
+```json
+{
+	"type": "subscribe",
+	"body": {
+		"document": {
+			"id": "<string, id of document>",
+			"content": "<string, the current content of the document>",
+			"version": "<int, the current version of the document>"
+		}
+	}
+}
+```
+
+#### Unsubscribe
+
+When a client makes an `unsubscribe` request, and the request is successful, the
+server will also respond with an `unsubscribe` typed response.
+
+The response looks as follows:
+
+```json
+{
+	"type": "unsubscribe",
+	"body": {
+		"document": {
+			"id": "<string, id of document>"
+		}
+	}
+}
+```
+
+#### Correction
+
+When a client submits a transform it is speculative in that the version of the
+transform is only what the client _expects_ it to be. The server then processes
+the transform, corrects it, and then responds with a `correction` typed response
+of the following format:
+
+```json
+{
+	"type": "correction",
+	"body": {
+		"correction": {
+			"version": "<int, the actual version of the last submitted transform>"
+		}
+	}
+}
+```
+
+#### Transforms
+
+A document transform submitted by a client will be broadcast to all other
+subscribed clients. Those clients receive a `transforms` typed message, as this
+message may potentially contain multiple transforms.
+
+The response looks as follows:
+
+```json
+{
+	"type": "transforms",
+	"body": {
+		"transforms": [
+			{
+				"insert": "<string, text to insert>",
+				"position": "<int, position of change>",
+				"num_delete": "<int, number of characters to delete>"
+			}
+		]
+	}
+}
+```
+
+The service will respond with either a `correction` or an `error` event.
+
+#### Metadata
+
+Metadata submitted from subscribed clients are broadcast to all other subscribed
+clients in the same format with additional client identifying information:
+
+```json
+{
+	"type": "metadata",
+	"body": {
+		"client": {
+			"username": "<string, username of the source client>",
+			"session_id": "<string, unique uuid of the source client>"
+		},
+		"document": {
+			"id": "<string, id of document>"
+		},
+		"metadata": {
+			"type": "<string, type of metadata>",
+			"body": "<object, the metadata itself>"
+		}
+	}
+}
+```
+
+#### Global Metadata
+
+Global metadata submitted from clients are broadcast to all other connected
+clients in the same format with additional client identifying information:
+
+```json
+{
+	"type": "global_metadata",
+	"body": {
+		"client": {
+			"username": "<string, username of the source client>",
+			"session_id": "<string, unique uuid of the source client>"
+		},
+		"metadata": {
+			"type": "<string, type of metadata>",
+			"body": "<object, the metadata itself>"
+		}
+	}
+}
+```
+
+There are a number of `global_metadata` events that the server sends
+automatically during a connection, such as `user_info`. To read about these
+events, as well as any established client events, you can read the metadata spec
+[here][0].
+
+#### Pong
+
+Sent back after receiving a `ping` request.
+
+```json
+{
+	"type": "pong",
+	"body": {}
+}
+```
+
+[0]: lib/api/metadata.md

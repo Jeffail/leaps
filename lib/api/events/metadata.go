@@ -49,11 +49,6 @@ package events
 
 // All explicitly defined outbound/inbound metadata subtypes.
 const (
-	// UpdateCursor metadata subtype
-	// Client: Send information regarding users cursor position on document
-	// Server: Send received information to all other clients
-	UpdateCursor = "update_cursor"
-
 	// UserInfo metadata subtype
 	// Server: Send a newly connected client a list of existing clients and
 	// their subscriptions, as well the users own username and session id.
