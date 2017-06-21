@@ -1,6 +1,3 @@
-[submodule "vendor/github.com/ajaxorg/ace-builds"]
-	path = vendor/github.com/ajaxorg/ace-builds
-	url = https://github.com/ajaxorg/ace-builds
 [submodule "vendor/github.com/amir/raidman"]
 	path = vendor/github.com/amir/raidman
 	url = https://github.com/amir/raidman
