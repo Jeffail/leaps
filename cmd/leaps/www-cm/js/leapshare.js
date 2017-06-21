@@ -48,7 +48,11 @@ var config = {
 	binding: "None",
 	use_tabs: true,
 	indent_unit: 4,
+	line_guide: 0,
 	wrap_lines: false,
+	show_space: true,
+	auto_bracket: true,
+	show_bracket: true,
 	hide_numbers: false
 };
 
@@ -57,7 +61,12 @@ var config = {
 	var conf_str = Cookies.get("config");
 	if ( conf_str !== undefined && conf_str.length > 0 ) {
 		try {
-			config = JSON.parse(conf_str);
+			var loaded_config = JSON.parse(conf_str);
+			for ( var field in loaded_config ) {
+				if ( loaded_config.hasOwnProperty(field) ) {
+					config[field] = loaded_config[field];
+				}
+			}
 		} catch(e) {
 			console.error(err);
 		}
@@ -93,6 +102,16 @@ function configure_codemirror() {
 		cm_editor.setOption("indentUnit", config.indent_unit);
 		cm_editor.setOption("lineWrapping", config.wrap_lines);
 		cm_editor.setOption("lineNumbers", !config.hide_numbers);
+		cm_editor.setOption("showTrailingSpace", config.show_space);
+		cm_editor.setOption("autoCloseBrackets", config.auto_bracket);
+		cm_editor.setOption("matchBrackets", config.show_bracket);
+		if ( config.line_guide > 0 ) {
+			cm_editor.setOption("rulers", [
+				{color: "#777", column: config.line_guide, lineStyle: "dashed"}
+			]);
+		} else {
+			cm_editor.setOption("rulers", []);
+		}
 	}
 }
 
@@ -261,7 +280,9 @@ function join_document(document_id) {
 			cm_editor.setOption("mode", info.mime);
 			CodeMirror.autoLoadMode(cm_editor, info.mode);
 		}
-	} catch (e) {}
+	} catch (e) {
+		console.error(e);
+	}
 
 	if ( file_paths.opened.length > 0 ) {
 		file_paths.next_path = document_id;

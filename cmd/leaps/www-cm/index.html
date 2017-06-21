@@ -6,7 +6,11 @@
 		<script type="text/javascript" src="keymap/vim.js"></script>
 		<script type="text/javascript" src="keymap/sublime.js"></script>
 		<script type="text/javascript" src="addon/mode/loadmode.js"></script>
+		<script type="text/javascript" src="addon/edit/trailingspace.js"></script>
+		<script type="text/javascript" src="addon/edit/closebrackets.js"></script>
+		<script type="text/javascript" src="addon/edit/matchbrackets.js"></script>
 		<script type="text/javascript" src="addon/search/searchcursor.js"></script>
+		<script type="text/javascript" src="addon/display/rulers.js"></script>
 		<script type="text/javascript" src="addon/dialog/dialog.js"></script>
 		<script type="text/javascript" src="mode/meta.js"></script>
 		<script type="text/javascript" src="js/cookie.js"></script>
@@ -50,6 +54,22 @@
 							<input type="checkbox" id="input-use-tabs" v-model="config.use_tabs" v-on:change="on_config_change">
 						</div>
 						<div class="setting-container">
+							<label class="border-right" for="input-indent-unit">Indent unit</label>
+							<input type="number" id="input-indent-unit" v-model="config.indent_unit" v-on:change="on_config_change">
+						</div>
+						<div class="setting-container">
+							<label class="border-right" for="input-show-space">Highlight trailing whitespace</label>
+							<input type="checkbox" id="input-show-space" v-model="config.show_space" v-on:change="on_config_change">
+						</div>
+						<div class="setting-container">
+							<label class="border-right" for="input-auto-bracket">Auto close brackets</label>
+							<input type="checkbox" id="input-auto-bracket" v-model="config.auto_bracket" v-on:change="on_config_change">
+						</div>
+						<div class="setting-container">
+							<label class="border-right" for="input-show-bracket">Highlight brackets</label>
+							<input type="checkbox" id="input-show-bracket" v-model="config.show_bracket" v-on:change="on_config_change">
+						</div>
+						<div class="setting-container">
 							<label class="border-right" for="input-wrap-lines">Wrap lines</label>
 							<input type="checkbox" id="input-wrap-lines" v-model="config.wrap_lines" v-on:change="on_config_change">
 						</div>
@@ -58,8 +78,8 @@
 							<input type="checkbox" id="input-hide-numbers" v-model="config.hide_numbers" v-on:change="on_config_change">
 						</div>
 						<div class="setting-container">
-							<label class="border-right" for="input-indent-unit">Indent unit</label>
-							<input type="number" id="input-indent-unit" v-model="config.indent_unit" v-on:change="on_config_change">
+							<label class="border-right" for="input-line-guide">Line guide</label>
+							<input type="number" id="input-line-guide" v-model="config.line_guide" v-on:change="on_config_change">
 						</div>
 						<div class="setting-container">
 							<label class="border-right" for="theme-select">Theme</label>

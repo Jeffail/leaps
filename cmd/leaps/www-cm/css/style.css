@@ -141,9 +141,6 @@ body, html {
 	padding: 0;
 }
 
-body {
-}
-
 #settings {
 	position: absolute;
 	width: 100%;
@@ -238,6 +235,10 @@ header > .buttons-container, header > .icon-container {
 .CodeMirror {
 	font-size: 1.2em;
 	height: auto;
+}
+
+.cm-trailingspace {
+	background-color: rgba(191, 86, 97, 0.7);
 }
 
 #app {
