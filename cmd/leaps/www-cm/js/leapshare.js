@@ -276,9 +276,11 @@ function join_document(document_id) {
 	try {
 		var ext = document_id.substr(document_id.lastIndexOf(".") + 1);
 		var info = CodeMirror.findModeByExtension(ext);
-		if (info.mode) {
+		if ( ext.length !== document_id.length && info.mode ) {
 			cm_editor.setOption("mode", info.mime);
 			CodeMirror.autoLoadMode(cm_editor, info.mode);
+		} else {
+			cm_editor.setOption("mode", null);
 		}
 	} catch (e) {
 		console.error(e);
