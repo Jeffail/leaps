@@ -43,10 +43,8 @@ var messages_obj = {
 };
 
 var cmds_obj = {
-	collapsed: (Cookies.get("collapse_cmds") === "true"),
 	selected: 0,
-	options: [],
-	outputs: []
+	options: []
 };
 
 // Configuration options
@@ -372,7 +370,6 @@ function show_sys_message(content) {
 	messages_obj.messages.push({
 		timestamp: now.toLocaleTimeString(),
 		is_sys: true,
-		name: "INFO",
 		content: content
 	});
 	clip_messages();
@@ -383,27 +380,9 @@ function show_err_message(content) {
 	messages_obj.messages.push({
 		timestamp: now.toLocaleTimeString(),
 		is_err: true,
-		name: "ERROR",
 		content: content
 	});
 	clip_messages();
-}
-
-/*------------------------------------------------------------------------------
-                             CMD Outputs
-------------------------------------------------------------------------------*/
-
-function clip_cmd_outputs() {
-	if ( cmds_obj.outputs.length > 10 ) {
-		cmds_obj.outputs = cmds_obj.outputs.slice(-10);
-	}
-	setTimeout(function() {
-		// Yield for the Vue renderer before scrolling.
-		var cmd_window = document.getElementById("cmd-window");
-		if ( cmd_window ) {
-			cmd_window.scrollTop = cmd_window.scrollHeight;
-		}
-	}, 1);
 }
 
 function show_cmd_output(output) {
@@ -412,8 +391,17 @@ function show_cmd_output(output) {
 	     output.error.length === 0 ) {
 		output.stdout = "Empty response";
 	}
-	cmds_obj.outputs.push(output);
-	clip_cmd_outputs();
+	var cmd_str = "";
+	if ( output.id >= 0 && cmd_str < cmds_obj.options.length ) {
+		cmd_str = cmds_obj.options[output.id].text;
+	}
+	messages_obj.messages.push({
+		stdout: output.stdout,
+		stderr: output.stderr,
+		error: output.error,
+		cmd: cmd_str
+	});
+	clip_messages();
 }
 
 /*------------------------------------------------------------------------------
@@ -664,7 +652,7 @@ window.onload = function() {
 	(new Vue({ el: '#file-list', data: { file_data: file_paths } }));
 	(new Vue({ el: '#message-list', data: messages_obj }));
 	(new Vue({
-		el: '#center-window',
+		el: '#cmd-menu',
 		data: cmds_obj,
 		methods: {
 			run_cmd: function() {
@@ -683,11 +671,6 @@ window.onload = function() {
 						});
 					}
 				}
-			},
-			toggle_cmd: function() {
-				cmds_obj.collapsed = !cmds_obj.collapsed;
-				clip_cmd_outputs();
-				Cookies.set("collapse_cmds", cmds_obj.collapsed + "", { path: '',  expires: 7 });
 			}
 		}
 	}));
