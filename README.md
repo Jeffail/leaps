@@ -4,6 +4,8 @@ Leaps is a service for collaboratively editing your local files over a web UI,
 using operational transforms to ensure zero-collision synchronization across any
 number of editing clients.
 
+![Screenshot](leaps_ss.png "Leaps screenshot")
+
 ## Run
 
 Simply navigate to a directory you want to share, run `leaps`, open the hosted
@@ -17,7 +19,19 @@ with the `--safe` flag. In safe mode any changes you make will be placed in a
 `.leaps_cot.json` file, which you can then apply to your files once you are
 happy by running with the `--commit` flag.
 
-![Screenshot](leaps_ss.png "Leaps screenshot")
+### Build/test commands from the UI
+
+When writing code it sucks to have to leave the editor for running tests,
+linters or builds. However, allowing the internet to run arbitrary commands on
+your machine is a recipe for disaster. Leaps attempts to solve both problems by
+allowing you to specify pre-written commands using the `-cmd` flag, which are
+then available for clients to trigger while they edit.
+
+For example, `leaps -cmd "go test ./..." -cmd "go build ./cmd/leaps"` gives
+users both a test and a build command that they can trigger on your machine.
+Results are broadcast out to all connected users.
+
+## API
 
 Leaps can also be used as a library, with implementations of accessors for
 various document hosting solutions and plugable authentication layers, allowing
@@ -82,12 +96,12 @@ function go-add-vendor {
 OS               | Status
 ---------------- | ------
 OSX x86_64       | Supported, tested
-Linux x86        | Supported, tested
+Linux x86        | Supported
 Linux x86_64     | Supported, tested
-Linux ARMv5      | Supported, tested
+Linux ARMv5      | Builds
 Linux ARMv7      | Supported, tested
-Windows x86      | Supported
-Windows x86_64   | Supported
+Windows x86      | Builds
+Windows x86_64   | Builds
 
 ## Contributing and customizing
 

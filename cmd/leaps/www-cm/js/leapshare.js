@@ -42,6 +42,13 @@ var messages_obj = {
 	messages: []
 };
 
+var cmds_obj = {
+	collapsed: (Cookies.get("collapse_cmds") === "true"),
+	selected: 0,
+	options: [],
+	outputs: []
+};
+
 // Configuration options
 var config = {
 	theme: "Dark",
@@ -256,6 +263,17 @@ function init_leaps(after) {
 			show_sys_message("User " + body.client.username + " has disconnected");
 			calc_sub_counts();
 		}
+		if ( body.metadata.type === "cmd_list" ) {
+			for ( var i = 0; i < body.metadata.body.cmds.length; i++ ) {
+				cmds_obj.options.push({
+					index: i,
+					text: body.metadata.body.cmds[i]
+				});
+			}
+		}
+		if ( body.metadata.type === "cmd_output" ) {
+			show_cmd_output(body.metadata.body.cmd);
+		}
 	});
 
 	var protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
@@ -369,6 +387,33 @@ function show_err_message(content) {
 		content: content
 	});
 	clip_messages();
+}
+
+/*------------------------------------------------------------------------------
+                             CMD Outputs
+------------------------------------------------------------------------------*/
+
+function clip_cmd_outputs() {
+	if ( cmds_obj.outputs.length > 10 ) {
+		cmds_obj.outputs = cmds_obj.outputs.slice(-10);
+	}
+	setTimeout(function() {
+		// Yield for the Vue renderer before scrolling.
+		var cmd_window = document.getElementById("cmd-window");
+		if ( cmd_window ) {
+			cmd_window.scrollTop = cmd_window.scrollHeight;
+		}
+	}, 1);
+}
+
+function show_cmd_output(output) {
+	if ( output.stdout.length === 0 &&
+	     output.stderr.length === 0 &&
+	     output.error.length === 0 ) {
+		output.stdout = "Empty response";
+	}
+	cmds_obj.outputs.push(output);
+	clip_cmd_outputs();
 }
 
 /*------------------------------------------------------------------------------
@@ -618,6 +663,34 @@ window.onload = function() {
 
 	(new Vue({ el: '#file-list', data: { file_data: file_paths } }));
 	(new Vue({ el: '#message-list', data: messages_obj }));
+	(new Vue({
+		el: '#center-window',
+		data: cmds_obj,
+		methods: {
+			run_cmd: function() {
+				if ( cmds_obj.selected >= 0 && cmds_obj.selected < cmds_obj.options.length ) {
+					if ( leaps_client !== null ) {
+						show_cmd_output({
+							stdout: "Running `" + cmds_obj.options[cmds_obj.selected].text + "`..."
+						});
+						leaps_client.send_global_metadata({
+							type: "cmd",
+							body: {
+								cmd: {
+									id: cmds_obj.selected
+								}
+							}
+						});
+					}
+				}
+			},
+			toggle_cmd: function() {
+				cmds_obj.collapsed = !cmds_obj.collapsed;
+				clip_cmd_outputs();
+				Cookies.set("collapse_cmds", cmds_obj.collapsed + "", { path: '',  expires: 7 });
+			}
+		}
+	}));
 	(new Vue({
 		el: '#users-list',
 		data: { users: users },

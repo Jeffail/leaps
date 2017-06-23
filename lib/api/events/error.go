@@ -32,6 +32,7 @@ var (
 	ErrBadJSON     = "ERR_BAD_JSON"
 	ErrTransform   = "ERR_TRANSFORM"
 	ErrMetadata    = "ERR_METADATA"
+	ErrBadReq      = "ERR_BAD_REQ"
 )
 
 //------------------------------------------------------------------------------

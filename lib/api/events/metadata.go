@@ -51,7 +51,7 @@ package events
 const (
 	// UserInfo metadata subtype
 	// Server: Send a newly connected client a list of existing clients and
-	// their subscriptions, as well the users own username and session id.
+	// their subscriptions, as well the users own username and session id
 	UserInfo = "user_info"
 
 	// UserConnected metadata type
@@ -69,6 +69,20 @@ const (
 	// UserUnsubscribe metadata type
 	// Server: Send on client unsubscribe to document to all other clients
 	UserUnsubscribe = "user_unsubscribe"
+
+	// CMDList metadata type
+	// Server: Send a newly connected client a list of available static commands
+	// that can be run through leaps
+	CMDList = "cmd_list"
+
+	// CMD metadata type
+	// Client: Submit a command to be run by the leaps service
+	CMD = "cmd"
+
+	// CMDOutput metadata type
+	// Server: Send the result of a command to all clients connected to the
+	// leaps service
+	CMDOutput = "cmd_output"
 )
 
 //------------------------------------------------------------------------------
@@ -80,6 +94,14 @@ type UserSubscriptions struct {
 	Subscriptions []string `json:"subscriptions"`
 }
 
+// CMDData contains the id and the results from a command (if applicable).
+type CMDData struct {
+	ID     int    `json:"id"`
+	Error  string `json:"error"`
+	Stdout string `json:"stdout"`
+	Stderr string `json:"stderr"`
+}
+
 //------------------------------------------------------------------------------
 
 // UserInfoMetadataMessage is a metadata body encompassing a map of connected
@@ -87,6 +109,18 @@ type UserSubscriptions struct {
 type UserInfoMetadataMessage struct {
 	// Users is a map of session_id to user map objects
 	Users map[string]UserSubscriptions `json:"users"`
+}
+
+// CMDListMetadataMessage is a metadata body which carries a list of statically
+// defined commands available to clients.
+type CMDListMetadataMessage struct {
+	CMDS []string `json:"cmds"`
+}
+
+// CMDMetadataMessage is a metadata body which carries the id and output from
+// a command to all clients connected to the leaps service.
+type CMDMetadataMessage struct {
+	CMDData CMDData `json:"cmd"`
 }
 
 // MetadataBody is a message body for typed metadata.

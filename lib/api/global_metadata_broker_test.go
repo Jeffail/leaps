@@ -23,8 +23,6 @@ THE SOFTWARE.
 package api
 
 import (
-	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 	"testing"
@@ -34,25 +32,6 @@ import (
 )
 
 //------------------------------------------------------------------------------
-
-func compareGlobalMetadata(em *dudEmitter, compareTo interface{}) error {
-	select {
-	case event := <-em.sendChan:
-		if exp, act := events.GlobalMetadata, event.Type; exp != act {
-			return fmt.Errorf("Wrong event broadcast: %v != %v", exp, act)
-		}
-		if metaBody, ok := event.Body.(events.GlobalMetadataMessage); ok {
-			if !reflect.DeepEqual(compareTo, metaBody) {
-				return fmt.Errorf("Wrong GlobalMetadata body: %v != %v", compareTo, metaBody)
-			}
-		} else {
-			return fmt.Errorf("Wrong type: %T", metaBody)
-		}
-	case <-time.After(time.Second):
-		return errors.New("Timed out waiting for global metadata message")
-	}
-	return nil
-}
 
 func TestBasicGlobalMetadataBroker(t *testing.T) {
 	eBroker := NewGlobalMetadataBroker(time.Second, logger, stats)

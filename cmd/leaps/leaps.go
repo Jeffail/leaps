@@ -26,19 +26,22 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	gopath "path"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jeffail/leaps/lib/acl"
 	"github.com/jeffail/leaps/lib/api"
-	"github.com/jeffail/leaps/lib/api/io"
+	apiio "github.com/jeffail/leaps/lib/api/io"
 	"github.com/jeffail/leaps/lib/audit"
 	"github.com/jeffail/leaps/lib/curator"
 	"github.com/jeffail/leaps/lib/store"
@@ -50,15 +53,28 @@ import (
 //------------------------------------------------------------------------------
 
 // Flags
+
+type cmdList []string
+
+func (c *cmdList) String() string {
+	return strings.Join(*c, ", ")
+}
+
+func (c *cmdList) Set(value string) error {
+	*c = append(*c, value)
+	return nil
+}
+
 var (
-	httpAddress *string
-	safeMode    *bool
-	applyLcot   *bool
-	showHidden  *bool
-	debugWWWDir *string
-	logLevel    *string
-	subdirPath  *string
-	showVersion *bool
+	httpAddress string
+	safeMode    bool
+	applyLcot   bool
+	showHidden  bool
+	debugWWWDir string
+	logLevel    string
+	subdirPath  string
+	showVersion bool
+	cmds        cmdList
 )
 
 // Build Information
@@ -68,15 +84,16 @@ var (
 )
 
 func init() {
-	showVersion = flag.Bool("version", false, "Show version information")
-	safeMode = flag.Bool("safe", false, `Do not write changes directly to local files. Instead, store them in a temporary file that can be
+	flag.BoolVar(&showVersion, "version", false, "Show version information")
+	flag.BoolVar(&safeMode, "safe", false, `Do not write changes directly to local files. Instead, store them in a temporary file that can be
 	committed afterwards with the --commit flag`)
-	applyLcot = flag.Bool("commit", false, "Commit changes made from leaps in safe mode to your local files and then exit (look at --safe)")
-	httpAddress = flag.String("address", ":8080", "The HTTP address to bind to")
-	showHidden = flag.Bool("all", false, "Display all files, including hidden")
-	debugWWWDir = flag.String("use_www", "", "Serve alternative web files from this dir")
-	logLevel = flag.String("log_level", "INFO", "Log level (NONE, ERROR, WARM, INFO, DEBUG, TRACE)")
-	subdirPath = flag.String("path", "/", "Subdirectory (when running leaps in a webserver subdirectory as example.com/myleaps)")
+	flag.BoolVar(&applyLcot, "commit", false, "Commit changes made from leaps in safe mode to your local files and then exit (look at --safe)")
+	flag.StringVar(&httpAddress, "address", ":8080", "The HTTP address to bind to")
+	flag.BoolVar(&showHidden, "all", false, "Display all files, including hidden")
+	flag.StringVar(&debugWWWDir, "use_www", "", "Serve alternative web files from this dir")
+	flag.StringVar(&logLevel, "log_level", "INFO", "Log level (NONE, ERROR, WARM, INFO, DEBUG, TRACE)")
+	flag.StringVar(&subdirPath, "path", "/", "Subdirectory (when running leaps in a webserver subdirectory as example.com/myleaps)")
+	flag.Var(&cmds, "cmd", "Set commands that can be executed from the web UI, e.g. (-cmd 'make build' -cmd 'make test')")
 }
 
 //------------------------------------------------------------------------------
@@ -84,7 +101,7 @@ func init() {
 var endpoints = []interface{}{}
 
 func handle(path, description string, handler http.HandlerFunc) {
-	path = gopath.Join("/", *subdirPath, path)
+	path = gopath.Join("/", subdirPath, path)
 	http.HandleFunc(path, handler)
 	endpoints = append(endpoints, struct {
 		Path string `json:"path"`
@@ -116,6 +133,36 @@ func readAudit(path string, auditor *audit.ToJSON, docStore store.Type) error {
 
 //------------------------------------------------------------------------------
 
+type shellRunner struct{}
+
+func (s shellRunner) CMDRun(cmdStr string) (stdout, stderr []byte, err error) {
+	var errRead, outRead io.ReadCloser
+
+	cmd := exec.Command("sh", "-c", cmdStr)
+
+	if outRead, err = cmd.StdoutPipe(); err != nil {
+		return
+	}
+	if errRead, err = cmd.StderrPipe(); err != nil {
+		return
+	}
+	if err = cmd.Start(); err != nil {
+		return
+	}
+	if stdout, err = ioutil.ReadAll(outRead); err != nil {
+		return
+	}
+	if stderr, err = ioutil.ReadAll(errRead); err != nil {
+		return
+	}
+	if err = cmd.Wait(); err != nil {
+		return
+	}
+	return
+}
+
+//------------------------------------------------------------------------------
+
 func main() {
 	var (
 		err       error
@@ -132,7 +179,7 @@ If a path is not specified the current directory is shared instead.
 
 	flag.Parse()
 
-	if *showVersion {
+	if showVersion {
 		fmt.Printf("Version: %v\nDate: %v\n", version, dateBuilt)
 		os.Exit(0)
 	}
@@ -147,7 +194,7 @@ If a path is not specified the current directory is shared instead.
 	// Logging and metrics aggregation
 	logConf := log.NewLoggerConfig()
 	logConf.Prefix = "leaps"
-	logConf.LogLevel = *logLevel
+	logConf.LogLevel = logLevel
 
 	logger := log.NewLogger(os.Stdout, logConf)
 
@@ -162,7 +209,7 @@ If a path is not specified the current directory is shared instead.
 	defer stats.Close()
 
 	// Document storage engine
-	docStore, err := store.NewFile(targetPath, !*safeMode || *applyLcot)
+	docStore, err := store.NewFile(targetPath, !safeMode || applyLcot)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Document store error: %v\n", err))
 		os.Exit(1)
@@ -171,7 +218,7 @@ If a path is not specified the current directory is shared instead.
 	// Authenticator
 	storeConf := acl.NewFileExistsConfig()
 	storeConf.Path = targetPath
-	storeConf.ShowHidden = *showHidden
+	storeConf.ShowHidden = showHidden
 	storeConf.ReservedIgnores = append(storeConf.ReservedIgnores, leapsCOTPath)
 
 	authenticator := acl.NewFileExists(storeConf, logger)
@@ -181,7 +228,7 @@ If a path is not specified the current directory is shared instead.
 
 	// This flag means the user wants uncommitted changes to be written to disk
 	// and then we exit.
-	if *applyLcot {
+	if applyLcot {
 		if err := readAudit(leapsCOTPath, auditors, docStore); err != nil && !os.IsNotExist(err) {
 			logger.Errorf("Failed to read previously uncommitted changes: %v\n", err)
 			os.Exit(1)
@@ -197,7 +244,7 @@ If a path is not specified the current directory is shared instead.
 
 	// This flag means we are not allowed to write changes directly, so instead
 	// we write to a Compressed-OT file.
-	if *safeMode {
+	if safeMode {
 		if err := readAudit(leapsCOTPath, auditors, docStore); err != nil && !os.IsNotExist(err) {
 			logger.Errorf("Failed to read previously uncommitted changes: %v\n", err)
 			os.Exit(1)
@@ -265,23 +312,24 @@ If a path is not specified the current directory is shared instead.
 
 	handle("/stats", "Lists all aggregated metrics as a json blob.", stats.JSONHandler())
 
-	wwwPath := gopath.Join("/", *subdirPath)
+	wwwPath := gopath.Join("/", subdirPath)
 	stripPath := ""
 	if wwwPath != "/" {
 		wwwPath = wwwPath + "/"
 		stripPath = wwwPath
 	}
-	if len(*debugWWWDir) > 0 {
-		logger.Warnf("Serving web files from alternative www dir: %v\n", *debugWWWDir)
-		http.Handle(wwwPath, http.StripPrefix(stripPath, http.FileServer(http.Dir(*debugWWWDir))))
+	if len(debugWWWDir) > 0 {
+		logger.Warnf("Serving web files from alternative www dir: %v\n", debugWWWDir)
+		http.Handle(wwwPath, http.StripPrefix(stripPath, http.FileServer(http.Dir(debugWWWDir))))
 	} else {
 		http.Handle(wwwPath, http.StripPrefix(stripPath, http.FileServer(assetFS())))
 	}
 
 	// Leaps API
 	globalBroker := api.NewGlobalMetadataBroker(time.Second*300, logger, stats)
+	cmdBroker := api.NewCMDBroker(cmds, shellRunner{}, time.Second*300, logger, stats)
 
-	http.HandleFunc(gopath.Join("/", *subdirPath, "/leaps/ws"), func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(gopath.Join("/", subdirPath, "/leaps/ws"), func(w http.ResponseWriter, r *http.Request) {
 		username := r.URL.Query().Get("username")
 		uuid := util.GenerateUUID()
 
@@ -302,8 +350,9 @@ If a path is not specified the current directory is shared instead.
 			return
 		}
 
-		jsonEmitter := io.NewJSONEmitter(&io.ConcurrentJSON{C: conn})
+		jsonEmitter := apiio.NewJSONEmitter(&apiio.ConcurrentJSON{C: conn})
 		globalBroker.NewEmitter(username, uuid, jsonEmitter)
+		cmdBroker.NewEmitter(username, uuid, jsonEmitter)
 		api.NewCuratorSession(username, uuid, jsonEmitter, curator, time.Second*300, logger, stats)
 
 		jsonEmitter.ListenAndEmit()
@@ -312,8 +361,8 @@ If a path is not specified the current directory is shared instead.
 	logger.Infoln("Launching a leaps instance, use CTRL+C to close.")
 
 	go func() {
-		logger.Infof("Serving HTTP requests at: %v%v\n", *httpAddress, *subdirPath)
-		if httperr := http.ListenAndServe(*httpAddress, nil); httperr != nil {
+		logger.Infof("Serving HTTP requests at: %v%v\n", httpAddress, subdirPath)
+		if httperr := http.ListenAndServe(httpAddress, nil); httperr != nil {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("HTTP listen error: %v\n", httperr))
 		}
 		closeChan <- true

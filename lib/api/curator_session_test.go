@@ -23,117 +23,14 @@ THE SOFTWARE.
 package api
 
 import (
-	"errors"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/jeffail/leaps/lib/api/events"
 	"github.com/jeffail/leaps/lib/binder"
-	"github.com/jeffail/leaps/lib/store"
 	"github.com/jeffail/leaps/lib/text"
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
 )
-
-//------------------------------------------------------------------------------
-
-var logger, stats = func() (log.Modular, metrics.Aggregator) {
-	logConf := log.NewLoggerConfig()
-	logConf.LogLevel = "OFF"
-	return log.NewLogger(os.Stdout, logConf), metrics.DudType{}
-}()
-
-//------------------------------------------------------------------------------
-
-type dudPortal struct {
-	clientMetadata interface{}
-	id             string
-
-	closedChan chan struct{}
-
-	tChan chan text.OTransform
-	mChan chan binder.ClientMetadata
-
-	sentTChan chan text.OTransform
-	sentMChan chan binder.ClientMetadata
-}
-
-func (d *dudPortal) ClientMetadata() interface{} { return d.clientMetadata }
-func (d *dudPortal) BaseVersion() int            { return 0 }
-func (d *dudPortal) ReleaseDocument()            {}
-func (d *dudPortal) Document() store.Document {
-	return store.Document{
-		ID:      d.id,
-		Content: "",
-	}
-}
-func (d *dudPortal) TransformReadChan() <-chan text.OTransform      { return d.tChan }
-func (d *dudPortal) MetadataReadChan() <-chan binder.ClientMetadata { return d.mChan }
-func (d *dudPortal) SendMetadata(metadata interface{}) {
-	d.sentMChan <- struct {
-		Client   interface{} `json:"client"`
-		Metadata interface{} `json:"metadata"`
-	}{
-		d.ClientMetadata(),
-		metadata,
-	}
-}
-func (d *dudPortal) SendTransform(ot text.OTransform, timeout time.Duration) (int, error) {
-	select {
-	case d.sentTChan <- ot:
-	case <-time.After(timeout):
-		return 0, errors.New("Timed out")
-	}
-	return 10, nil
-}
-func (d *dudPortal) Exit(timeout time.Duration) {
-	close(d.closedChan)
-	close(d.tChan)
-	close(d.mChan)
-}
-
-//------------------------------------------------------------------------------
-
-type dudCurator struct {
-	dudPortals map[string]*dudPortal
-	dudDocs    map[string]struct{}
-	closeChan  chan struct{}
-}
-
-func (d *dudCurator) EditDocument(
-	userMetadata interface{}, token, documentID string, timeout time.Duration,
-) (binder.Portal, error) {
-	if _, ok := d.dudDocs[documentID]; ok {
-		p := &dudPortal{
-			clientMetadata: userMetadata,
-			id:             documentID,
-			closedChan:     make(chan struct{}),
-			tChan:          make(chan text.OTransform),
-			mChan:          make(chan binder.ClientMetadata),
-			sentTChan:      make(chan text.OTransform),
-			sentMChan:      make(chan binder.ClientMetadata),
-		}
-		d.dudPortals[documentID] = p
-		return p, nil
-	}
-	return nil, errors.New("Not found")
-}
-
-func (d *dudCurator) ReadDocument(
-	userMetadata interface{}, token, documentID string, timeout time.Duration,
-) (binder.Portal, error) {
-	return nil, errors.New("Not found")
-}
-
-func (d *dudCurator) CreateDocument(
-	userMetadata interface{}, token string, document store.Document, timeout time.Duration,
-) (binder.Portal, error) {
-	return nil, errors.New("Not allowed")
-}
-
-func (d *dudCurator) Close() {}
 
 //------------------------------------------------------------------------------
 
