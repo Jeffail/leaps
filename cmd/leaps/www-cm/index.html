@@ -137,7 +137,7 @@
 			<div id="center-window" class="foreground">
 				<div id="editor" class="border-bottom">
 				</div>
-				<div id="cmd-window" v-if="(outputs.length > 1) && !collapsed" class="fw-font">
+				<div id="cmd-window" v-if="(outputs.length > 0) && !collapsed" class="fw-font">
 					<div v-for="output in outputs" class="border-top">
 						<pre v-if="output.id >= 0">Output from `{{options[output.id].text}}`:</pre>
 						<div v-if="output.error" class="bold red">{{output.error}}</div>

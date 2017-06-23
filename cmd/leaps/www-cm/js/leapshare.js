@@ -670,9 +670,6 @@ window.onload = function() {
 			run_cmd: function() {
 				if ( cmds_obj.selected >= 0 && cmds_obj.selected < cmds_obj.options.length ) {
 					if ( leaps_client !== null ) {
-						show_cmd_output({
-							stdout: "Running `" + cmds_obj.options[cmds_obj.selected].text + "`..."
-						});
 						leaps_client.send_global_metadata({
 							type: "cmd",
 							body: {
@@ -680,6 +677,9 @@ window.onload = function() {
 									id: cmds_obj.selected
 								}
 							}
+						});
+						show_cmd_output({
+							stdout: "Running `" + cmds_obj.options[cmds_obj.selected].text + "`"
 						});
 					}
 				}
