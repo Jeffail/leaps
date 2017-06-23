@@ -56,8 +56,8 @@ func (m mockRunner) CMDRun(cmd string) ([]byte, []byte, error) {
 func TestBasicCMDBroker(t *testing.T) {
 	eBroker := NewCMDBroker([]string{"foo", "bar"}, mockRunner{
 		cmds: map[string]tOutput{
-			"foo": tOutput{stdout: []byte("foo out")},
-			"bar": tOutput{stderr: []byte("bar err"), err: errors.New("bar failed")},
+			"foo": {stdout: []byte("foo out")},
+			"bar": {stderr: []byte("bar err"), err: errors.New("bar failed")},
 		},
 	}, time.Second, logger, stats)
 
