@@ -291,6 +291,7 @@ header > .buttons-container, header > .icon-container {
 #message-list pre {
 	margin: 0;
 	font-size: 1.2em;
+	white-space: pre-wrap;
 }
 
 #message-list > div {
