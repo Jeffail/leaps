@@ -23,13 +23,15 @@ happy by running with the `--commit` flag.
 
 When writing code it sucks to have to leave the editor for running tests,
 linters or builds. However, allowing the internet to run arbitrary commands on
-your machine is a recipe for disaster. Leaps attempts to solve both problems by
-allowing you to specify pre-written commands using the `-cmd` flag, which are
-then available for clients to trigger while they edit.
+the host machine is a recipe for disaster.
 
-For example, `leaps -cmd "go test ./..." -cmd "go build ./cmd/leaps"` gives
-users both a test and a build command that they can trigger on your machine.
-Results are broadcast out to all connected users.
+Instead, leaps allows you to specify pre-written commands using the `-cmd` flag,
+which are then available for clients to trigger asynchronously while they edit.
+Results are broadcast to all connected users, so you can all see the outcome as
+a team.
+
+For example, `leaps -cmd "golint ./..." -cmd "go build ./cmd/leaps"` gives
+users both a linter and a build command that they can trigger on your machine.
 
 ## API
 

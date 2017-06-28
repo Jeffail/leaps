@@ -262,6 +262,7 @@ function init_leaps(after) {
 			calc_sub_counts();
 		}
 		if ( body.metadata.type === "cmd_list" ) {
+			cmds_obj.options = []; // Clear old cmds
 			for ( var i = 0; i < body.metadata.body.cmds.length; i++ ) {
 				cmds_obj.options.push({
 					index: i,

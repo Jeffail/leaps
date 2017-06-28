@@ -132,8 +132,8 @@
 						<span v-if="message.content"> {{message.content}}</span>
 						<pre v-if="message.cmd">Output from `{{message.cmd}}`:</pre>
 						<pre class="red" v-if="message.error">Error: {{message.error}}</pre>
-						<pre v-if="message.stdout">{{message.stdout}}</pre>
 						<pre class="red" v-if="message.stderr">{{message.stderr}}</pre>
+						<pre v-if="message.stdout">{{message.stdout}}</pre>
 					</div>
 				</div>
 				<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
