@@ -34,7 +34,7 @@ import (
 func TestTextOTBufferSimpleTransforms(t *testing.T) {
 	doc := store.NewDocument("hello world")
 
-	model := NewOTBuffer(NewOTBufferConfig())
+	model := NewOTBuffer(doc.Content, NewOTBufferConfig())
 	for j := 0; j < 3; j++ {
 		for i := 0; i < 3; i++ {
 			if _, _, err := model.PushTransform(OTransform{
@@ -74,7 +74,7 @@ func TestPushPullTransforms(t *testing.T) {
 	numTransforms := 100
 	arrTransforms := make([]OTransform, numTransforms)
 	doc := store.NewDocument("hello world")
-	model := NewOTBuffer(NewOTBufferConfig())
+	model := NewOTBuffer(doc.Content, NewOTBufferConfig())
 
 	for j := 0; j < 2; j++ {
 		for i := 0; i < numTransforms; i++ {
@@ -128,14 +128,14 @@ func TestTransformStories(t *testing.T) {
 		stages := []byte("Stages of story:\n")
 
 		doc := store.NewDocument(story.Content)
-		model := NewOTBuffer(NewOTBufferConfig())
+		model := NewOTBuffer(doc.Content, NewOTBufferConfig())
 
 		stages = append(stages,
 			[]byte(fmt.Sprintf("\tInitial : %v\n", doc.Content))...)
 
 		for j, change := range story.Transforms {
 			if ts, _, err := model.PushTransform(change); err != nil {
-				t.Errorf("Failed to insert: %v", err)
+				t.Errorf("Failed to insert %v: %v, culprit: %v", j, err, change)
 			} else {
 				if len(story.TCorrected) > j {
 					if story.TCorrected[j].Position != ts.Position ||
@@ -170,7 +170,7 @@ func TestTransformStories(t *testing.T) {
 
 func TestTextOTBufferUnicodeTransforms(t *testing.T) {
 	doc := store.NewDocument("hello world 我今天要学习")
-	model := NewOTBuffer(NewOTBufferConfig())
+	model := NewOTBuffer(doc.Content, NewOTBufferConfig())
 	if _, _, err := model.PushTransform(OTransform{
 		Version:  model.GetVersion() + 1,
 		Position: 12,
@@ -216,35 +216,73 @@ func TestTextOTBufferUnicodeTransforms(t *testing.T) {
 }
 
 func TestLimits(t *testing.T) {
-	doc := store.NewDocument("1")
+	doc := store.NewDocument("hello world")
 
 	config := NewOTBufferConfig()
-	config.MaxDocumentSize = 100
-	config.MaxTransformLength = 10
+	config.MaxDocumentSize = 20
+	config.MaxTransformLength = 15
 
-	model := NewOTBuffer(config)
+	model := NewOTBuffer(doc.Content, config)
 
 	if _, _, err := model.PushTransform(OTransform{
-		Version:  model.GetVersion() + 1,
-		Position: 0,
-		Insert:   "hello world, this is greater than 10 bytes.",
-		Delete:   0,
-	}); err == nil {
-		t.Errorf("Expected failed transform")
+		Version: 2,
+		Insert:  "hello world this is too long to be a single transform",
+	}); err != ErrTransformTooLong {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformTooLong)
 	}
 
-	for i := 0; i < 10; i++ {
-		if _, _, err := model.PushTransform(OTransform{
-			Version:  model.GetVersion() + 1,
-			Position: 0,
-			Insert:   "1234567890",
-			Delete:   0,
-		}); err != nil {
-			t.Errorf("Legit tform error: %v", err)
-		}
+	if _, _, err := model.PushTransform(OTransform{
+		Version: 2,
+		Insert:  "hello world",
+	}); err != ErrTransformTooLong {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformTooLong)
 	}
 
-	if _, err := model.FlushTransforms(&doc.Content, 60); err == nil {
-		t.Errorf("Expected failed flush")
+	if _, _, err := model.PushTransform(OTransform{
+		Version:  2,
+		Position: 11,
+		Delete:   1,
+	}); err != ErrTransformOOB {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformOOB)
+	}
+
+	if _, _, err := model.PushTransform(OTransform{
+		Version:  2,
+		Position: 12,
+	}); err != ErrTransformOOB {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformOOB)
+	}
+
+	if _, _, err := model.PushTransform(OTransform{
+		Version:  2,
+		Position: -1,
+	}); err != ErrTransformOOB {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformOOB)
+	}
+
+	if _, _, err := model.PushTransform(OTransform{
+		Version: 2,
+		Delete:  12,
+	}); err != ErrTransformTooLong {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformTooLong)
+	}
+
+	if _, _, err := model.PushTransform(OTransform{
+		Version: 2,
+		Delete:  -1,
+	}); err != ErrTransformNegDelete {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformNegDelete)
+	}
+
+	if _, _, err := model.PushTransform(OTransform{
+		Version: 1,
+	}); err != ErrTransformTooOld {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformTooOld)
+	}
+
+	if _, _, err := model.PushTransform(OTransform{
+		Version: 4,
+	}); err != ErrTransformSkipped {
+		t.Errorf("Wrong error: %v != %v", err, ErrTransformSkipped)
 	}
 }

@@ -33,8 +33,10 @@ import (
 // Errors for the internal Operational Transform model.
 var (
 	ErrTransformNegDelete = errors.New("transform contained negative delete")
+	ErrTransformOOB       = errors.New("transform position was out of document bounds")
 	ErrTransformTooLong   = errors.New("transform insert length exceeded the limit")
 	ErrTransformTooOld    = errors.New("transform diff greater than transform archive")
+	ErrTransformSkipped   = errors.New("transform version beyond latest")
 )
 
 // OTBufferConfig - Holds configuration options for a transform model.
@@ -58,19 +60,23 @@ func NewOTBufferConfig() OTBufferConfig {
 // document any expired transforms are deleted, transforms that are not yet
 // expired will be kept as they are used for adjustments.
 type OTBuffer struct {
-	config    OTBufferConfig
-	Version   int
-	Applied   []OTransform
-	Unapplied []OTransform
+	virtualLen int
+	config     OTBufferConfig
+	Version    int
+	Applied    []OTransform
+	Unapplied  []OTransform
 }
 
-// NewOTBuffer - Returns a new buffer, with the version set to 1.
-func NewOTBuffer(config OTBufferConfig) *OTBuffer {
+// NewOTBuffer - Create a buffer of operational transforms for a document set to
+// version 1. Takes the initial content of the document in order to perform
+// size and bounds checks on incoming transforms.
+func NewOTBuffer(content string, config OTBufferConfig) *OTBuffer {
 	return &OTBuffer{
-		config:    config,
-		Version:   1,
-		Applied:   []OTransform{},
-		Unapplied: []OTransform{},
+		virtualLen: len(content),
+		config:     config,
+		Version:    1,
+		Applied:    []OTransform{},
+		Unapplied:  []OTransform{},
 	}
 }
 
@@ -81,6 +87,13 @@ func NewOTBuffer(config OTBufferConfig) *OTBuffer {
 // relation to earlier transforms it was unaware of, this fixed version gets
 // sent back for distributing across other clients.
 func (m *OTBuffer) PushTransform(ot OTransform) (OTransform, int, error) {
+	// Perform basic checks on size and bounds.
+	// NOTE: It is not appropriate to compare this transform to the document
+	// length at this stage since the transform might need version adjustment
+	// to correct its bounds WRT previous transforms.
+	if ot.Position < 0 {
+		return OTransform{}, 0, ErrTransformOOB
+	}
 	if ot.Delete < 0 {
 		return OTransform{}, 0, ErrTransformNegDelete
 	}
@@ -96,9 +109,7 @@ func (m *OTBuffer) PushTransform(ot OTransform) (OTransform, int, error) {
 		return OTransform{}, 0, ErrTransformTooOld
 	}
 	if diff < 0 {
-		return OTransform{}, 0, fmt.Errorf(
-			"transform version %v greater than expected doc version (%v), offender: %v",
-			ot.Version, (m.Version + 1), ot)
+		return OTransform{}, 0, ErrTransformSkipped
 	}
 
 	for j := lenApplied - (diff - lenUnapplied); j < lenApplied; j++ {
@@ -109,12 +120,22 @@ func (m *OTBuffer) PushTransform(ot OTransform) (OTransform, int, error) {
 		FixOutOfDateTransform(&ot, &m.Unapplied[j])
 	}
 
+	// After adjustment check for document size bounds.
+	if uint64(len(ot.Insert)-ot.Delete+m.virtualLen) > m.config.MaxDocumentSize {
+		return OTransform{}, 0, ErrTransformTooLong
+	}
+	if (ot.Position + ot.Delete) > m.virtualLen {
+		return OTransform{}, 0, ErrTransformOOB
+	}
+
 	m.Version++
 
 	ot.Version = m.Version
 	ot.TReceived = time.Now().Unix()
 
 	m.Unapplied = append(m.Unapplied, ot)
+
+	m.virtualLen += (len(ot.Insert) - ot.Delete)
 
 	return ot, m.Version, nil
 }

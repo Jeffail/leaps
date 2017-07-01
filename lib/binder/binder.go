@@ -98,7 +98,6 @@ func New(
 	binder := impl{
 		id:            id,
 		config:        config,
-		otBuffer:      text.NewOTBuffer(config.OTBufferConfig),
 		block:         block,
 		auditor:       auditor,
 		log:           log.NewModule(":binder"),
@@ -111,12 +110,15 @@ func New(
 		errorChan:     errorChan,
 		closedChan:    make(chan struct{}),
 	}
-	binder.log.Debugln("Bound to document, attempting flush")
+	binder.log.Debugln("Attempting to read and bind to new document")
 
-	if _, err := binder.flush(); err != nil {
-		stats.Incr("binder.new.error", 1)
+	doc, err := block.Read(id)
+	if err != nil {
+		binder.stats.Incr("binder.block_fetch.error", 1)
 		return nil, err
 	}
+
+	binder.otBuffer = text.NewOTBuffer(doc.Content, config.OTBufferConfig)
 	go binder.loop()
 
 	stats.Incr("binder.new.success", 1)
