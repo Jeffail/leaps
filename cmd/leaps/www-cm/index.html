@@ -43,7 +43,7 @@
 		</script>
 		<!-- !TEMPLATES -->
 	</head>
-	<body id="app" class="dark app-shadow">
+	<body id="app" class="dark grid-container app-shadow">
 		<div id="settings" style="display:none">
 			<div id="settings-window" class="settings-shadow lighter">
 				<i id="settings-close-btn" class="fa fa-2x fa-arrow-left clickable" aria-hidden="true"></i>
@@ -107,47 +107,45 @@
 				</a>
 			</div>
 		</header>
-		<div id="main">
-			<div id="side-bar" class="foreground border-right">
-				<nav>
-					<ul id="file-list" class="root-compressed-list fw-font">
-						<file-item :model="file_data">
-						</file-item>
-					</ul>
-				</nav>
-				<div id="users-list" class="flexbox-container-wrapped border-top border-bottom fw-font">
-					<div v-if="Object.keys(users).length === 0"><span>You are alone &#128542;</span></div>
-					<div v-for="(value, key) in users"
-						v-bind:style="style(key)"
-						v-on:click="go_to(value)"
-						class="clickable bold">
-						<span>{{value.username}}</span>
-					</div>
+		<div id="side-bar" class="foreground border-right">
+			<nav>
+				<ul id="file-list" class="root-compressed-list fw-font">
+					<file-item :model="file_data">
+					</file-item>
+				</ul>
+			</nav>
+			<div id="users-list" class="flexbox-container-wrapped border-top border-bottom fw-font">
+				<div v-if="Object.keys(users).length === 0"><span>You are alone &#128542;</span></div>
+				<div v-for="(value, key) in users"
+					v-bind:style="style(key)"
+					v-on:click="go_to(value)"
+					class="clickable bold">
+					<span>{{value.username}}</span>
 				</div>
-				<div id="message-list" class="fw-font">
-					<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
-						<span v-if="message.timestamp">[{{message.timestamp}}]</span>
-						<span v-if="message.name"> </span>
-						<span v-bind:style="message.name_style" class="bold" v-if="message.name">&lt;{{message.name}}&gt;</span>
-						<span v-if="message.content"> {{message.content}}</span>
-						<pre v-if="message.cmd">Output from `{{message.cmd}}`:</pre>
-						<pre class="red" v-if="message.error">Error: {{message.error}}</pre>
-						<pre class="red" v-if="message.stderr">{{message.stderr}}</pre>
-						<pre v-if="message.stdout">{{message.stdout}}</pre>
-					</div>
+			</div>
+			<div id="message-list" class="fw-font">
+				<div v-for="message in messages" :class="{bold: message.is_sys||message.is_err, red: message.is_err}">
+					<span v-if="message.timestamp">[{{message.timestamp}}]</span>
+					<span v-if="message.name"> </span>
+					<span v-bind:style="message.name_style" class="bold" v-if="message.name">&lt;{{message.name}}&gt;</span>
+					<span v-if="message.content"> {{message.content}}</span>
+					<pre v-if="message.cmd">Output from `{{message.cmd}}`:</pre>
+					<pre class="red" v-if="message.error">Error: {{message.error}}</pre>
+					<pre class="red" v-if="message.stderr">{{message.stderr}}</pre>
+					<pre v-if="message.stdout">{{message.stdout}}</pre>
 				</div>
-				<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
 			</div>
-			<div id="editor" class="border-bottom">
-			</div>
-			<div id="cmd-menu" class="fw-font foreground border-top">
-				<button v-on:click="run_cmd" class="border-right">
-					<i class="fa fa-play" aria-hidden="true"></i>
-				</button>
-				<select id="cmd-select" v-model="selected">
-					<option v-bind:value="option.index" v-for="option in options">{{option.text}}</option>
-				</select>
-			</div>
+			<input id="chat-bar" type="text" placeholder="chat" class="fw-font">
+		</div>
+		<div id="editor">
+		</div>
+		<div v-if="options.length > 0" id="cmd-menu" class="fw-font foreground border-top">
+			<button v-on:click="run_cmd" class="border-right">
+				<i class="fa fa-play" aria-hidden="true"></i>
+			</button>
+			<select id="cmd-select" v-model="selected">
+				<option v-bind:value="option.index" v-for="option in options">{{option.text}}</option>
+			</select>
 		</div>
 	</body>
 </html>
