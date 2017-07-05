@@ -70,6 +70,52 @@ function u_index_from_pos(doc, coords) {
 	return index;
 }
 
+// fix_undo_stack returns an array of undo (or redo) transforms after adjusting
+// them to retain intention after the provided transform is applied.
+function fix_undo_stack(undo_stack, new_tform) {
+	var new_stack = [];
+
+	for ( let i = 0; i < undo_stack.length; i++ ) {
+		let undo_tform = undo_stack[i];
+
+		var undo_tform_len = undo_tform.insert.u_str().length;
+		var new_tform_len = new_tform.insert.u_str().length;
+
+		if ( undo_tform.position < new_tform.position ) {
+			if ( ( undo_tform.num_delete + undo_tform.position ) > new_tform.position ) {
+				let pos_gap = new_tform.position - undo_tform.position;
+				let excess = Math.max(0, (undo_tform.num_delete - pos_gap - new_tform.num_delete));
+
+				undo_tform.num_delete = pos_gap;
+				if ( excess > 0 ) {
+					new_stack.push({
+						position: new_tform.position + new_tform_len,
+						num_delete: excess,
+						insert: new leap_str("")
+					});
+				}
+			}
+		} else {
+			if ( new_tform.num_delete === 0 ) {
+				undo_tform.position += new_tform_len;
+			} else if ( ( new_tform.num_delete + new_tform.position ) <= undo_tform.position ) {
+				undo_tform.position += ( new_tform_len - new_tform.num_delete );
+			} else {
+				let pos_gap = undo_tform.position - new_tform.position;
+				let excess = Math.max(0, (new_tform.num_delete - pos_gap));
+
+				// later changes
+				undo_tform.num_delete = Math.max(0, undo_tform.num_delete - excess);
+				undo_tform.position = new_tform.position + new_tform_len;
+			}
+		}
+
+		new_stack.push(undo_tform);
+	}
+
+	return new_stack;
+}
+
 //------------------------------------------------------------------------------
 
 // leap_bind_codemirror takes an existing leap_client and uses it to convert a
@@ -82,10 +128,69 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 	this._ready = false;
 	this._blind_eye_turned = false;
 	this._document_id = "";
+	this._undo_stack = [];
+	this._redo_stack = [];
 
 	this._cursors = {};
 
 	var binder = this;
+
+	this._codemirror.undo = function() {
+		if ( binder._undo_stack.length > 0 ) {
+			let undo = binder._undo_stack.pop();
+			while ( undo.insert.str().length === 0 &&
+			        undo.num_delete === 0 &&
+			        binder._undo_stack.length > 0 ) {
+				undo = binder._undo_stack.pop();
+			}
+			let redo_tform = {
+				position: undo.position,
+				insert: new leap_str(""),
+				num_delete: 0
+			};
+
+			if ( undo.insert instanceof leap_str ) {
+				redo_tform.num_delete = undo.insert.u_str().length;
+			}
+			if ( undo.num_delete > 0 ) {
+				redo_tform.insert = new leap_str(
+						[...binder._content].slice(undo.position, undo.position+undo.num_delete).join('')
+					);
+			}
+
+			binder._leap_client.send_transform(undo);
+			binder._apply_transform.apply(binder, [ undo, false ]);
+
+			binder._redo_stack.push(redo_tform);
+		}
+	};
+
+	this._codemirror.redo = function() {
+		if ( binder._redo_stack.length > 0 ) {
+			let redo = binder._redo_stack.pop();
+			while ( redo.insert.str().length === 0 &&
+			        redo.num_delete === 0 &&
+			        binder._redo_stack.length > 0 ) {
+				redo = binder._redo_stack.pop();
+			}
+			let undo_tform = {
+				position: redo.position,
+				insert: new leap_str(""),
+				num_delete: 0
+			};
+			if ( redo.insert instanceof leap_str ) {
+				undo_tform.num_delete = redo.insert.u_str().length;
+			}
+			if ( redo.num_delete > 0 ) {
+				undo_tform.insert = new leap_str([...binder._content].slice(redo.position, redo.position+redo.num_delete).join(''));
+			}
+
+			binder._leap_client.send_transform(redo);
+			binder._apply_transform.apply(binder, [ redo, false ]);
+
+			binder._undo_stack.push(undo_tform);
+		}
+	};
 
 	this._codemirror.on('beforeChange', function(instance, e) {
 		binder._convert_to_transform.apply(binder, [ e ]);
@@ -129,6 +234,9 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 		binder._content = body.document.content;
 		binder._document_id = body.document.id;
 
+		binder._undo_stack = [];
+		binder._redo_stack = [];
+
 		binder._blind_eye_turned = true;
 		binder._codemirror.getDoc().setValue(body.document.content);
 		binder._codemirror.getDoc().clearHistory();
@@ -141,7 +249,7 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 
 	this._leap_client.on("transforms", function(body) {
 		for ( var i = 0, l = body.transforms.length; i < l; i++ ) {
-			binder._apply_transform.apply(binder, [ body.transforms[i] ]);
+			binder._apply_transform.apply(binder, [ body.transforms[i], true ]);
 		}
 	});
 
@@ -165,7 +273,7 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 };
 
 // apply_transform, applies a single transform to the codemirror document.
-leap_bind_codemirror.prototype._apply_transform = function(transform) {
+leap_bind_codemirror.prototype._apply_transform = function(transform, update_undo_stack) {
 	this._blind_eye_turned = true;
 
 	var live_document = this._codemirror.getDoc();
@@ -181,13 +289,15 @@ leap_bind_codemirror.prototype._apply_transform = function(transform) {
 	}
 
 	live_document.replaceRange(insert, start_position, end_position);
-	var history = live_document.getHistory();
-	history.done = history.done.slice(0, -2);
-	live_document.setHistory(history);
 
 	this._blind_eye_turned = false;
 
 	this._content = this._leap_client.apply(transform, this._content);
+
+	if ( update_undo_stack ) {
+		this._undo_stack = fix_undo_stack(this._undo_stack, transform);
+		this._redo_stack = fix_undo_stack(this._redo_stack, transform);
+	}
 
 	setTimeout((function() {
 		if ( this._content !== this._codemirror.getDoc().getValue() ) {
@@ -215,12 +325,24 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
 	var start_index = u_index_from_pos(live_document, e.from), end_index = u_index_from_pos(live_document, e.to);
 
 	tform.position = start_index;
-	tform.insert = e.text.join('\n') || "";
+	tform.insert = new leap_str(e.text.join('\n') || "");
 
 	tform.num_delete = end_index - start_index;
 
 	if ( tform.insert.length <= 0 && tform.num_delete <= 0 ) {
 		return;
+	}
+
+	var undo_tform = {
+		position: start_index,
+		insert: new leap_str(""),
+		num_delete: 0
+	};
+	if ( tform.insert instanceof leap_str ) {
+		undo_tform.num_delete = tform.insert.u_str().length;
+	}
+	if ( tform.num_delete > 0 ) {
+		undo_tform.insert = new leap_str([...this._content].slice(tform.position, tform.position+tform.num_delete).join(''));
 	}
 
 	this._content = this._leap_client.apply(tform, this._content);
@@ -234,6 +356,10 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
 				}
 			} ] ]);
 	}
+
+	this._redo_stack = [];
+	this._undo_stack.push(undo_tform);
+	this._undo_stack = this._undo_stack.slice(-500); // Magic number
 
 	setTimeout((function() {
 		if ( this._content !== this._codemirror.getDoc().getValue() ) {

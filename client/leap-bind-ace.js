@@ -286,7 +286,7 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 
 	switch (e.action) {
 	case "insert":
-		var nlines = e.lines.length;
+		let nlines = e.lines.length;
 		tform.position = position_to_u_index(live_document, e.start, 0);
 		if ( nlines > 1 ) {
 			console.log(e);
@@ -297,7 +297,7 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 		}
 		break;
 	case "remove":
-		var nlines = e.lines.length;
+		let nlines = e.lines.length;
 		tform.position = position_to_u_index(live_document, e.start, 0);
 		if ( nlines > 1 ) {
 			console.log(e);

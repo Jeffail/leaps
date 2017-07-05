@@ -205,7 +205,7 @@ leap_model.prototype._collide_transforms = function(unapplied, unsent) {
 			earlier.num_delete = pos_gap;
 		}
 		// later changes
-		later.num_delete = Math.min(0, later.num_delete - excess);
+		later.num_delete = Math.max(0, later.num_delete - excess);
 		later.position = earlier.position + earlier_len;
 	}
 };

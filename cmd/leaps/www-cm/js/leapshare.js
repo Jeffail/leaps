@@ -263,11 +263,13 @@ function init_leaps(after) {
 		}
 		if ( body.metadata.type === "cmd_list" ) {
 			cmds_obj.options = []; // Clear old cmds
-			for ( var i = 0; i < body.metadata.body.cmds.length; i++ ) {
-				cmds_obj.options.push({
-					index: i,
-					text: body.metadata.body.cmds[i]
-				});
+			if ( body.metadata.body.cmds instanceof Array ) {
+				for ( var i = 0; i < body.metadata.body.cmds.length; i++ ) {
+					cmds_obj.options.push({
+						index: i,
+						text: body.metadata.body.cmds[i]
+					});
+				}
 			}
 		}
 		if ( body.metadata.type === "cmd_output" ) {
