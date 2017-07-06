@@ -29,7 +29,7 @@ var fs   = require('fs'),
     la   = require('../leapclient').apply;
 
 var client_stories_text = fs.readFileSync(
-		path.resolve(__dirname, "./../../test/stories/", "./client_stories.js"), "utf8");
+		path.resolve(__dirname, "./../../../test/stories/", "./client_stories.js"), "utf8");
 
 var stories = JSON.parse(client_stories_text).client_stories;
 
@@ -44,6 +44,7 @@ var run_story = function(story, test) {
 	// First send response should be the same doc, emulating creation
 	socket.send = function(data) {
 		var obj = JSON.parse(data);
+		obj.body.document.id = "testdocument";
 		obj.body.document.content = story.content;
 		obj.body.document.version = 1;
 		obj.type = "subscribe";
@@ -72,30 +73,46 @@ var run_story = function(story, test) {
 			if ( epoch_sends.length > 0 ) {
 				var tform = epoch_sends.shift();
 				content = la(tform, content);
-				var err = client.send_transform(tform);
+				var err = client.send_transform("testdocument", tform);
 				test.ok(err === undefined, "story '" + story.name + "' epoch " + i + ": " + err);
 			} else if ( epoch_receives.length > 0 ) {
-				socket.onmessage({ data : JSON.stringify(epoch_receives.shift()) });
+				let next = epoch_receives.shift();
+				next.body.document = {
+					id: "testdocument"
+				};
+				socket.onmessage({ data : JSON.stringify(next) });
 			}
 		});
 
 		socket.send = function() {
 			if ( epoch_receives.length > 0 ) {
-				socket.onmessage({ data : JSON.stringify(epoch_receives.shift()) });
+				let next = epoch_receives.shift();
+				next.body.document = {
+					id: "testdocument"
+				};
+				socket.onmessage({ data : JSON.stringify(next) });
 			}
 		};
 
 		if ( epoch_sends.length > 0 ) {
 			var tmp = epoch_sends.shift();
 			content = la(tmp, content);
-			var err = client.send_transform(tmp);
+			var err = client.send_transform("testdocument", tmp);
 			test.ok(err === undefined, "story '" + story.name + "' epoch " + i + ": " + err);
 		} else if ( epoch_receives.length > 0 ) {
-			socket.onmessage({ data : JSON.stringify(epoch_receives.shift()) });
+			let next = epoch_receives.shift();
+			next.body.document = {
+				id: "testdocument"
+			};
+			socket.onmessage({ data : JSON.stringify(next) });
 		}
 
 		while ( epoch_receives.length > 0 ) {
-			socket.onmessage({ data : JSON.stringify(epoch_receives.shift()) });
+			let next = epoch_receives.shift();
+			next.body.document = {
+				id: "testdocument"
+			};
+			socket.onmessage({ data : JSON.stringify(next) });
 		}
 
 		test.ok(epoch_sends.length === 0,

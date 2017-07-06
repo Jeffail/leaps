@@ -38,6 +38,7 @@ module.exports = function(test) {
 	// First send response should be the same doc, emulating creation
 	socket.send = function(data) {
 		var obj = JSON.parse(data);
+		obj.body.document.id = "testdocument";
 		obj.body.document.content = "random content";
 		obj.body.document.version = 1;
 		obj.type = "subscribe";
@@ -57,7 +58,10 @@ module.exports = function(test) {
 	client.on("metadata", function(body) {
 		updates.push(body);
 		if ( updates.length < n_loops ) {
-			client.send_metadata(updates.length);
+			let err = client.send_metadata("testdocument", updates.length);
+			if ( typeof err === 'string' ) {
+				test.ok(false, err);
+			}
 		}
 	});
 
@@ -65,7 +69,10 @@ module.exports = function(test) {
 		socket.onmessage({ data: data });
 	};
 
-	client.send_metadata(updates.length);
+	let err = client.send_metadata("testdocument", updates.length);
+	if ( typeof err === 'string' ) {
+		test.ok(false, err);
+	}
 
 	client.close();
 

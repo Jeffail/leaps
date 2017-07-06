@@ -1,1 +1,1 @@
-../../../client/leapclient.js
+../../../client/javascript/leapclient.js

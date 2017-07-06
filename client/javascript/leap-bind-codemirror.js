@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*jshint newcap: false*/
+/*jshint newcap: false, esversion: 6*/
 
 (function() {
 "use strict";
@@ -123,11 +123,11 @@ function fix_undo_stack(undo_stack, new_tform) {
 var leap_bind_codemirror = function(leap_client, codemirror_object) {
 	this._codemirror = codemirror_object;
 	this._leap_client = leap_client;
+	this._document_id = "";
 
 	this._content = "";
 	this._ready = false;
 	this._blind_eye_turned = false;
-	this._document_id = "";
 	this._undo_stack = [];
 	this._redo_stack = [];
 
@@ -158,7 +158,7 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 					);
 			}
 
-			binder._leap_client.send_transform(undo);
+			binder._leap_client.send_transform(binder._document_id, undo);
 			binder._apply_transform.apply(binder, [ undo, false ]);
 
 			binder._redo_stack.push(redo_tform);
@@ -182,10 +182,12 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 				undo_tform.num_delete = redo.insert.u_str().length;
 			}
 			if ( redo.num_delete > 0 ) {
-				undo_tform.insert = new leap_str([...binder._content].slice(redo.position, redo.position+redo.num_delete).join(''));
+				undo_tform.insert = new leap_str(
+						[...binder._content].slice(redo.position, redo.position+redo.num_delete).join('')
+					);
 			}
 
-			binder._leap_client.send_transform(redo);
+			binder._leap_client.send_transform(binder._document_id, redo);
 			binder._apply_transform.apply(binder, [ redo, false ]);
 
 			binder._undo_stack.push(undo_tform);
@@ -197,8 +199,10 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 	});
 
 	this._leap_client.on("metadata", function(body) {
-		if ( binder._ready ) {
-			binder.update_user_info(body);
+		if ( body.document.id === binder._document_id ) {
+			if ( binder._ready ) {
+				binder.update_user_info(body);
+			}
 		}
 	});
 
@@ -248,8 +252,10 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 	});
 
 	this._leap_client.on("transforms", function(body) {
-		for ( var i = 0, l = body.transforms.length; i < l; i++ ) {
-			binder._apply_transform.apply(binder, [ body.transforms[i], true ]);
+		if ( body.document.id === binder._document_id ) {
+			for ( var i = 0, l = body.transforms.length; i < l; i++ ) {
+				binder._apply_transform.apply(binder, [ body.transforms[i], true ]);
+			}
 		}
 	});
 
@@ -260,13 +266,16 @@ var leap_bind_codemirror = function(leap_client, codemirror_object) {
 		binder._content = "";
 	});
 
-	this._leap_client.on("unsubscribe", function() {
-		binder._ready = false;
-		for ( var cursor in binder._cursors ) {
-			if ( binder._cursors.hasOwnProperty(cursor) ) {
-				let dom = binder._cursors[cursor].dom;
-				dom.parentNode.removeChild(dom);
-				delete binder._cursors[cursor];
+	this._leap_client.on("unsubscribe", function(body) {
+		if ( body.document.id === binder._document_id ) {
+			binder._document_id = "";
+			binder._ready = false;
+			for ( var cursor in binder._cursors ) {
+				if ( binder._cursors.hasOwnProperty(cursor) ) {
+					let dom = binder._cursors[cursor].dom;
+					dom.parentNode.removeChild(dom);
+					delete binder._cursors[cursor];
+				}
 			}
 		}
 	});
@@ -346,7 +355,7 @@ leap_bind_codemirror.prototype._convert_to_transform = function(e) {
 	}
 
 	this._content = this._leap_client.apply(tform, this._content);
-	var err = this._leap_client.send_transform(tform);
+	var err = this._leap_client.send_transform(this._document_id, tform);
 	if ( err !== undefined ) {
 		this._leap_client._dispatch_event.apply(this._leap_client,
 			[ this._leap_client.EVENT_TYPE.ERROR, [ {

@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*jshint newcap: false*/
+/*jshint newcap: false, esversion: 6*/
 
 (function() {
 "use strict";
@@ -183,7 +183,7 @@ var leap_bind_ace_editor = function(leap_client, ace_editor) {
 		binder._ace.setValue(doc.content);
 		binder._ace.setReadOnly(false);
 		binder._ace.clearSelection();
-		binder._ace.selection.moveCursorToPosition({row: 0, column: 0})
+		binder._ace.selection.moveCursorToPosition({row: 0, column: 0});
 
 		var old_undo = binder._ace.getSession().getUndoManager();
 		old_undo.reset();
@@ -284,9 +284,11 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 	var live_document = this._ace.getSession().getDocument();
 	var nl = live_document.getNewLineCharacter();
 
+	let nlines = 0;
+
 	switch (e.action) {
 	case "insert":
-		let nlines = e.lines.length;
+		nlines = e.lines.length;
 		tform.position = position_to_u_index(live_document, e.start, 0);
 		if ( nlines > 1 ) {
 			console.log(e);
@@ -297,7 +299,7 @@ leap_bind_ace_editor.prototype._convert_to_transform = function(e) {
 		}
 		break;
 	case "remove":
-		let nlines = e.lines.length;
+		nlines = e.lines.length;
 		tform.position = position_to_u_index(live_document, e.start, 0);
 		if ( nlines > 1 ) {
 			console.log(e);

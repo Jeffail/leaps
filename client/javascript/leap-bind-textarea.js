@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*jshint newcap: false*/
+/*jshint newcap: false, esversion: 6*/
 
 (function() {
 "use strict";
@@ -32,9 +32,10 @@ THE SOFTWARE.
  * interactive editor for the leaps document the client connects to. Returns the bound object, and
  * places any errors in the obj.error field to be checked after construction.
  */
-var leap_bind_textarea = function(leap_client, text_area) {
+var leap_bind_textarea = function(leap_client, document_id, text_area) {
 	this._text_area = text_area;
 	this._leap_client = leap_client;
+	this._document_id = document_id;
 
 	this._content = "";
 	this._ready = false;
@@ -55,24 +56,26 @@ var leap_bind_textarea = function(leap_client, text_area) {
 	}
 
 	this._leap_client.on("subscribe", function(body) {
-		binder._content = binder._text_area.value = body.document.content;
-		binder._ready = true;
-		binder._text_area.disabled = false;
-	});
-
-	this._leap_client.on("transforms", function(body) {
-		var transforms = body.transforms;
-		for ( var i = 0, l = transforms.length; i < l; i++ ) {
-			binder._apply_transform.apply(binder, [ transforms[i] ]);
+		if ( body.document.id === binder._document_id ) {
+			binder._content = binder._text_area.value = body.document.content;
+			binder._ready = true;
+			binder._text_area.disabled = false;
 		}
 	});
 
-	this._leap_client.subscribe_event("unsubscribe", function() {
-		binder._text_area.disabled = true;
+	this._leap_client.on("transforms", function(body) {
+		if ( body.document.id === binder._document_id ) {
+			var transforms = body.transforms;
+			for ( var i = 0, l = transforms.length; i < l; i++ ) {
+				binder._apply_transform.apply(binder, [ transforms[i] ]);
+			}
+		}
 	});
 
-	this._leap_client.subscribe_event("metadata", function(body) {
-		console.log("User update: " + JSON.stringify(body));
+	this._leap_client.subscribe_event("unsubscribe", function(body) {
+		if ( body.document.id === binder._document_id ) {
+			binder._text_area.disabled = true;
+		}
 	});
 };
 
@@ -130,7 +133,7 @@ leap_bind_textarea.prototype._trigger_diff = function() {
 	}
 
 	if ( tform.insert !== undefined || tform.num_delete !== undefined ) {
-		this._leap_client.send_transform(tform);
+		this._leap_client.send_transform(this._document_id, tform);
 	}
 };
 

@@ -266,7 +266,7 @@ func TestCuratorSessionUnsub(t *testing.T) {
 
 	// Send unsubscribe request
 	if err := dEmitter.reqHandlers[events.Unsubscribe](
-		[]byte(`{"document":{"id":"testdoc2"}}`),
+		[]byte(`{"document":{"id":"testdoc1"}}`),
 	); err != nil {
 		t.Error(err)
 	}
@@ -419,7 +419,7 @@ func TestCuratorSessionSending(t *testing.T) {
 	go func() {
 		// Send transform
 		if err := dEmitter.reqHandlers[events.Transform](
-			[]byte(`{"transform":{"insert":"hello world"}}`),
+			[]byte(`{"document":{"id":"testdoc1"},"transform":{"insert":"hello world"}}`),
 		); err != nil {
 			t.Errorf("Unexpected error from transform: %v", err)
 		}
@@ -453,7 +453,7 @@ func TestCuratorSessionSending(t *testing.T) {
 	go func() {
 		// Send metadata
 		if err := dEmitter.reqHandlers[events.Metadata](
-			[]byte(`{"metadata":"hello world"}`),
+			[]byte(`{"document":{"id":"testdoc1"},"metadata":"hello world"}`),
 		); err != nil {
 			t.Errorf("Unexpected error from metadata: %v", err)
 		}

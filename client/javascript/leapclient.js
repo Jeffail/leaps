@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*jshint newcap: false*/
+/*jshint newcap: false, esversion: 6*/
 
 var leap_client = {};
 var leap_str = {};
@@ -81,7 +81,9 @@ leap_str.prototype.u_str = function() {
  * 3. BUFFERING - A corrected version has been received for our latest send but we're still waiting
  *                for the transforms that came before that send to be received before moving on.
  */
-var leap_model = function(base_version) {
+var leap_model = function(id, base_version) {
+	this.id = id;
+
 	this.READY = 1;
 	this.SENDING = 2;
 	this.BUFFERING = 3;
@@ -337,7 +339,7 @@ leap_model.prototype.receive = function(transforms) {
 leap_client = function() {
 	this._socket = null;
 
-	this._model = null;
+	this._models = [];
 
 	this.EVENT_TYPE = {
 		CONNECT: "connect",
@@ -415,12 +417,15 @@ leap_client.prototype._dispatch_event = function(name, args) {
 
 /* _do_action is a call that acts accordingly provided an action_obj from our leap_model.
  */
-leap_client.prototype._do_action = function(action_obj) {
+leap_client.prototype._do_action = function(model_id, action_obj) {
 	if ( action_obj.error !== undefined ) {
 		return action_obj.error;
 	}
 	if ( action_obj.apply !== undefined && action_obj.apply instanceof Array ) {
 		this._dispatch_event(this.EVENT_TYPE.TRANSFORMS, [ {
+			document: {
+				id: model_id
+			},
 			transforms: action_obj.apply
 		} ]);
 	}
@@ -428,6 +433,9 @@ leap_client.prototype._do_action = function(action_obj) {
 		this._socket.send(JSON.stringify({
 			type: "transform",
 			body: {
+				document: {
+					id: model_id
+				},
 				transform: action_obj.send
 			}
 		}));
@@ -450,6 +458,7 @@ leap_client.prototype._process_message = function(message) {
 	}
 
 	var msg_body = message.body;
+	var document_id = "";
 
 	switch (message.type) {
 	case "subscribe":
@@ -459,7 +468,9 @@ leap_client.prototype._process_message = function(message) {
 		     msg_body.document.version <= 0 ) {
 			return "message document type contained invalid document object";
 		}
-		this._model = new leap_model(msg_body.document.version);
+		this._models[msg_body.document.id] = new leap_model(
+				msg_body.document.id, msg_body.document.version
+			);
 		this._dispatch_event(this.EVENT_TYPE.SUBSCRIBE, [ msg_body ]);
 		break;
 	case "unsubscribe":
@@ -467,20 +478,23 @@ leap_client.prototype._process_message = function(message) {
 		     "string" !== typeof(msg_body.document.id) ) {
 			return "message document type contained invalid document object";
 		}
-		this._model = null;
+		delete this._models[msg_body.document.id];
 		this._dispatch_event(this.EVENT_TYPE.UNSUBSCRIBE, [ msg_body ]);
 		break;
 	case "transforms":
-		if ( this._model === null ) {
-			return "transforms were received before initialization";
-		}
+		document_id = msg_body.document.id;
 		var transforms = msg_body.transforms;
-		validate_error = this._model._validate_transforms(transforms);
+		if ( !this._models.hasOwnProperty(document_id) ) {
+			return "transforms were received for unsubscribed document";
+		}
+		var model = this._models[document_id];
+
+		validate_error = model._validate_transforms(transforms);
 		if ( validate_error !== undefined ) {
 			return "received transforms with error: " + validate_error;
 		}
-		action_obj = this._model.receive(transforms);
-		action_err = this._do_action(action_obj);
+		action_obj = model.receive(transforms);
+		action_err = this._do_action(document_id, action_obj);
 		if ( action_err !== undefined ) {
 			return "failed to receive transforms: " + action_err;
 		}
@@ -492,8 +506,9 @@ leap_client.prototype._process_message = function(message) {
 		this._dispatch_event(this.EVENT_TYPE.GLOBAL_METADATA, [ msg_body ]);
 		break;
 	case "correction":
-		if ( this._model === null ) {
-			return "correction was received before initialization";
+		document_id = msg_body.document.id;
+		if ( !this._models.hasOwnProperty(document_id) ) {
+			return "correction was received for unsubscribed document";
 		}
 		if ( typeof(msg_body.correction) !== "object" ) {
 			return "correction received without body";
@@ -504,8 +519,10 @@ leap_client.prototype._process_message = function(message) {
 				return "correction received was NaN";
 			}
 		}
-		action_obj = this._model.correct(msg_body.correction.version);
-		action_err = this._do_action(action_obj);
+		var model = this._models[document_id];
+
+		action_obj = model.correct(msg_body.correction.version);
+		action_err = this._do_action(document_id, action_obj);
 		if ( action_err !== undefined ) {
 			return "model failed to correct: " + action_err;
 		}
@@ -529,18 +546,20 @@ leap_client.prototype._process_message = function(message) {
  * internally how incoming messages should be altered to account for the fact that the local
  * change was made out of order.
  */
-leap_client.prototype.send_transform = function(transform) {
-	if ( this._model === null ) {
-		return "leap_client must be initialized and joined to a document before submitting transforms";
+leap_client.prototype.send_transform = function(document_id, transform) {
+	if ( !this._models.hasOwnProperty(document_id) ) {
+		return "leap_client must be subscribed to document before submitting transforms";
 	}
 
-	var validate_error = this._model._validate_transforms([ transform ]);
+	var model = this._models[document_id];
+
+	var validate_error = model._validate_transforms([ transform ]);
 	if ( validate_error !== undefined ) {
 		return validate_error;
 	}
 
-	var action_obj = this._model.submit(transform);
-	var action_err = this._do_action(action_obj);
+	var action_obj = model.submit(transform);
+	var action_err = this._do_action(document_id, action_obj);
 	if ( action_err !== undefined ) {
 		return "model failed to submit: " + action_err;
 	}
@@ -548,10 +567,17 @@ leap_client.prototype.send_transform = function(transform) {
 
 /* send_metadata - send metadata out to all other users connected to your shared document.
  */
-leap_client.prototype.send_metadata = function(metadata) {
+leap_client.prototype.send_metadata = function(document_id, metadata) {
+	if ( !this._models.hasOwnProperty(document_id) ) {
+		return "leap_client must be subscribed to document before submitting metadata";
+	}
+
 	this._socket.send(JSON.stringify({
 		type: "metadata",
 		body: {
+			document: {
+				id: document_id
+			},
 			metadata: metadata,
 		}
 	}));
@@ -600,10 +626,6 @@ leap_client.prototype.unsubscribe = function(document_id) {
 
 	if ( typeof(document_id) !== "string" ) {
 		return "document id was not a string type";
-	}
-
-	if ( this._document_id === null ) {
-		return "attempted to unsubscribe without an active subscription";
 	}
 
 	this._socket.send(JSON.stringify({

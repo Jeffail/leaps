@@ -1,1 +1,1 @@
-../../../../client/leap-bind-codemirror.js
+../../../../client/javascript/leap-bind-codemirror.js

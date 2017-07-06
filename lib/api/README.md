@@ -101,6 +101,9 @@ request, which looks as follows:
 {
 	"type": "transform",
 	"body": {
+		"document": {
+			"id": "<string, id of target document>"
+		},
 		"transform": {
 			"insert": "<string, text to insert>",
 			"position": "<int, position of change>",
@@ -123,7 +126,7 @@ same document, which looks as follows:
 	"type": "metadata",
 	"body": {
 		"document": {
-			"id": "<string, id of document>"
+			"id": "<string, id of target document>"
 		},
 		"metadata": {
 			"type": "<string, type of metadata>",
@@ -225,6 +228,9 @@ of the following format:
 {
 	"type": "correction",
 	"body": {
+		"document": {
+			"id": "<string, id of document>"
+		},
 		"correction": {
 			"version": "<int, the actual version of the last submitted transform>"
 		}
@@ -244,6 +250,9 @@ The response looks as follows:
 {
 	"type": "transforms",
 	"body": {
+		"document": {
+			"id": "<string, id of document>"
+		},
 		"transforms": [
 			{
 				"insert": "<string, text to insert>",

@@ -24,6 +24,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -50,7 +51,7 @@ type CuratorSession struct {
 
 	username  string
 	uuid      string
-	portal    binder.Portal
+	portals   map[string]binder.Portal
 	portalMut sync.Mutex
 }
 
@@ -69,6 +70,7 @@ func NewCuratorSession(
 		username: username,
 		uuid:     uuid,
 		emitter:  emitter,
+		portals:  map[string]binder.Portal{},
 		cur:      cur,
 		timeout:  timeout,
 		logger:   logger.NewModule(":api:session"),
@@ -83,8 +85,8 @@ func NewCuratorSession(
 	emitter.OnClose(func() {
 		s.portalMut.Lock()
 		// Clean up any existing subscriptions when the socket is closed.
-		if s.portal != nil {
-			s.portal.Exit(s.timeout)
+		for _, p := range s.portals {
+			p.Exit(s.timeout)
 		}
 		s.portalMut.Unlock()
 	})
@@ -97,24 +99,25 @@ func NewCuratorSession(
 
 // Subscribe to a document by providing an ID.
 func (s *CuratorSession) subscribe(body []byte) events.TypedError {
-	s.portalMut.Lock()
-	defer s.portalMut.Unlock()
-
-	// The API is currently limited to one subscription per connection.
-	if s.portal != nil {
-		s.stats.Incr("api.session.subscribe.error.already_subscribed", 1)
-		return events.NewAPIError(
-			events.ErrExistingSub,
-			"This session is already subscribed to a document",
-		)
-	}
-
 	var req events.SubscriptionMessage
 	if err := json.Unmarshal(body, &req); err != nil {
 		s.stats.Incr("api.session.subscribe.error.json", 1)
 		s.logger.Warnf("Subscribe parse error: %v\n", err)
 		return events.NewAPIError(events.ErrBadJSON, err.Error())
 	}
+
+	s.portalMut.Lock()
+	defer s.portalMut.Unlock()
+
+	// The API is currently limited to one subscription per connection.
+	if _, exists := s.portals[req.Document.ID]; exists {
+		s.stats.Incr("api.session.subscribe.error.already_subscribed", 1)
+		return events.NewAPIError(
+			events.ErrExistingSub,
+			fmt.Sprintf("This session is already subscribed to document %v", req.Document.ID),
+		)
+	}
+
 	portal, err := s.cur.EditDocument(
 		events.Client{Username: s.username, SessionID: s.uuid}, "", req.Document.ID, s.timeout,
 	)
@@ -132,8 +135,8 @@ func (s *CuratorSession) subscribe(body []byte) events.TypedError {
 	})
 	s.stats.Incr("api.session.subscribe.success", 1)
 	s.stats.Incr("api.session.subscribed", 1)
-	s.portal = portal
-	s.portal.ReleaseDocument()
+	s.portals[req.Document.ID] = portal
+	portal.ReleaseDocument()
 
 	go func() {
 		open := true
@@ -163,7 +166,7 @@ func (s *CuratorSession) subscribe(body []byte) events.TypedError {
 			}
 		}
 		s.portalMut.Lock()
-		s.portal = nil
+		delete(s.portals, req.Document.ID)
 		s.portalMut.Unlock()
 
 		s.stats.Decr("api.session.subscribed", 1)
@@ -178,44 +181,51 @@ func (s *CuratorSession) subscribe(body []byte) events.TypedError {
 
 // Unsubscribe from currently subscribed document
 func (s *CuratorSession) unsubscribe(body []byte) events.TypedError {
-	s.portalMut.Lock()
-	defer s.portalMut.Unlock()
-	if s.portal == nil {
-		s.stats.Incr("api.session.unsubscribe.error.not_subscribed", 1)
-		return events.NewAPIError(
-			events.ErrNoSub,
-			"This session is not yet subscribed to a document",
-		)
-	}
 	var req events.UnsubscriptionMessage
 	if err := json.Unmarshal(body, &req); err != nil {
 		s.stats.Incr("api.session.unsubscribe.error.json", 1)
 		s.logger.Warnf("Unsubscribe parse error: %v\n", err)
 		return events.NewAPIError(events.ErrBadJSON, err.Error())
 	}
-	s.portal.Exit(s.timeout)
+
+	s.portalMut.Lock()
+	defer s.portalMut.Unlock()
+
+	portal, exists := s.portals[req.Document.ID]
+	if !exists {
+		s.stats.Incr("api.session.unsubscribe.error.not_subscribed", 1)
+		return events.NewAPIError(
+			events.ErrNoSub,
+			fmt.Sprintf("This session is not yet subscribed to document %v", req.Document.ID),
+		)
+	}
+	portal.Exit(s.timeout)
 	s.stats.Incr("api.session.unsubscribe.success", 1)
 	return nil
 }
 
 // Submit a transform to the currently subscribed document
 func (s *CuratorSession) transform(body []byte) events.TypedError {
-	s.portalMut.Lock()
-	defer s.portalMut.Unlock()
-	if s.portal == nil {
-		s.stats.Incr("api.session.transform.error.not_subscribed", 1)
-		return events.NewAPIError(
-			events.ErrNoSub,
-			"This session is not yet subscribed to a document",
-		)
-	}
 	var req events.TransformMessage
 	if err := json.Unmarshal(body, &req); err != nil {
 		s.stats.Incr("api.session.transform.error.json", 1)
 		s.logger.Warnf("Transform parse error: %v\n", err)
 		return events.NewAPIError(events.ErrBadJSON, err.Error())
 	}
-	v, err := s.portal.SendTransform(req.Transform, s.timeout)
+
+	s.portalMut.Lock()
+	defer s.portalMut.Unlock()
+
+	portal, exists := s.portals[req.Document.ID]
+	if !exists {
+		s.stats.Incr("api.session.transform.error.not_subscribed", 1)
+		return events.NewAPIError(
+			events.ErrNoSub,
+			fmt.Sprintf("This session is not yet subscribed to document %v", req.Document.ID),
+		)
+	}
+
+	v, err := portal.SendTransform(req.Transform, s.timeout)
 	if err != nil {
 		s.stats.Incr("api.session.transform.error.send", 1)
 		s.logger.Warnf("Transform send error: %v\n", err)
@@ -224,7 +234,7 @@ func (s *CuratorSession) transform(body []byte) events.TypedError {
 	s.stats.Incr("api.session.transform.success", 1)
 	s.emitter.Send(events.Correction, events.CorrectionMessage{
 		Document: events.DocumentStripped{
-			ID: s.portal.Document().ID,
+			ID: portal.Document().ID,
 		},
 		Correction: events.TformCorrection{
 			Version: v,
@@ -235,23 +245,26 @@ func (s *CuratorSession) transform(body []byte) events.TypedError {
 
 // Broadcast metadata to all other clients of the currently subscribed document
 func (s *CuratorSession) metadata(body []byte) events.TypedError {
-	s.portalMut.Lock()
-	defer s.portalMut.Unlock()
-	if s.portal == nil {
-		s.stats.Incr("api.session.transform.error.not_subscribed", 1)
-		return events.NewAPIError(
-			events.ErrNoSub,
-			"This session is not yet subscribed to a document",
-		)
-	}
 	var req events.MetadataMessage
 	if err := json.Unmarshal(body, &req); err != nil {
 		s.stats.Incr("api.session.metadata.error.json", 1)
 		s.logger.Warnf("Metadata parse error: %v\n", err)
 		return events.NewAPIError(events.ErrBadJSON, err.Error())
 	}
+
+	s.portalMut.Lock()
+	defer s.portalMut.Unlock()
+
+	portal, exists := s.portals[req.Document.ID]
+	if !exists {
+		s.stats.Incr("api.session.transform.error.not_subscribed", 1)
+		return events.NewAPIError(
+			events.ErrNoSub,
+			fmt.Sprintf("This session is not yet subscribed to document %v", req.Document.ID),
+		)
+	}
 	s.stats.Incr("api.session.metadata.success", 1)
-	s.portal.SendMetadata(req.Metadata)
+	portal.SendMetadata(req.Metadata)
 	return nil
 }
 

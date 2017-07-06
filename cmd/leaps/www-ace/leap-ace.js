@@ -1,1 +1,1 @@
-../../../client/leap-bind-ace.js
+../../../client/javascript/leap-bind-ace.js
