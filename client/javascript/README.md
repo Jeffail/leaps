@@ -105,4 +105,4 @@ leaps_client.on("disconnect", function() {
 The leaps client emits a variety of events that can also be used to further
 improve your interface, [the full API spec can be found here][0].
 
-[0]: ../lib/api/README.md
+[0]: ../../lib/api/README.md

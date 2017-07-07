@@ -117,5 +117,5 @@ Ashley Jeffs
 * Email: [ash@jeffs.eu](mailto:ash@jeffs.eu)
 
 [1]: https://godoc.org/github.com/Jeffail/leaps
-[2]: client/README.md
+[2]: client/javascript/README.md
 [3]: https://github.com/Jeffail/leaps/releases/latest
