@@ -1,5 +1,11 @@
 ![Leaps](leaps_logo.png "Leaps")
 
+[![godoc for jeffail/leaps](https://godoc.org/github.com/jeffail/leaps?status.svg)](http://godoc.org/github.com/jeffail/leaps)
+[![goreportcard for jeffail/leaps](https://goreportcard.com/badge/github.com/jeffail/leaps)](https://goreportcard.com/report/jeffail/leaps)
+[![cover.run for jeffail/leaps/lib/binder](https://cover.run/go/github.com/jeffail/leaps/lib/binder.svg)](https://cover.run/go/github.com/jeffail/leaps/lib/binder)
+[![cover.run for jeffail/leaps/lib/curator](https://cover.run/go/github.com/jeffail/leaps/lib/curator.svg)](https://cover.run/go/github.com/jeffail/leaps/lib/curator)
+[![cover.run for jeffail/leaps/lib/text](https://cover.run/go/github.com/jeffail/leaps/lib/text.svg)](https://cover.run/go/github.com/jeffail/leaps/lib/text)
+
 Leaps is a service for collaboratively editing your local files over a web UI,
 using operational transforms to ensure zero-collision synchronization across any
 number of editing clients.
