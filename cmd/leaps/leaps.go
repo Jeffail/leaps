@@ -69,6 +69,7 @@ var (
 	httpAddress string
 	safeMode    bool
 	applyLcot   bool
+	discardLcot bool
 	showHidden  bool
 	debugWWWDir string
 	logLevel    string
@@ -88,6 +89,7 @@ func init() {
 	flag.BoolVar(&safeMode, "safe", false, `Do not write changes directly to local files. Instead, store them in a temporary file that can be
 	committed afterwards with the --commit flag`)
 	flag.BoolVar(&applyLcot, "commit", false, "Commit changes made from leaps in safe mode to your local files and then exit (look at --safe)")
+	flag.BoolVar(&discardLcot, "discard", false, "Discard changes made from leaps in safe mode and then exit (look at --safe)")
 	flag.StringVar(&httpAddress, "address", ":8080", "The HTTP address to bind to")
 	flag.BoolVar(&showHidden, "all", false, "Display all files, including hidden")
 	flag.StringVar(&debugWWWDir, "use_www", "", "Serve alternative web files from this dir")
@@ -233,12 +235,23 @@ If a path is not specified the current directory is shared instead.
 			logger.Errorf("Failed to read previously uncommitted changes: %v\n", err)
 			os.Exit(1)
 		}
-		if err := os.Remove(leapsCOTPath); err != nil {
+		if err := os.Remove(leapsCOTPath); err != nil && !os.IsNotExist(err) {
 			logger.Errorf("Changes were successfully committed, but the old audit was not removed: %v\n", err)
-			logger.Errorln("You should remove %v manually before running leaps again")
+			logger.Errorf("You should remove %v manually before running leaps again\n", leapsCOTPath)
 			os.Exit(1)
 		}
 		logger.Infoln("Successfully committed changes to disk.")
+		os.Exit(0)
+	}
+
+	// This flag means the user wants uncommitted changes to be deleted, and
+	// then we exit.
+	if discardLcot {
+		if err := os.Remove(leapsCOTPath); err != nil && !os.IsNotExist(err) {
+			logger.Errorf("Failed to remove %v: %v\n", leapsCOTPath, err)
+			os.Exit(1)
+		}
+		logger.Infoln("Successfully discarded changes.")
 		os.Exit(0)
 	}
 
