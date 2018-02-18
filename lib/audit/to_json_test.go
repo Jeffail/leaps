@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeffail/leaps/lib/store"
-	"github.com/jeffail/leaps/lib/text"
+	"github.com/Jeffail/leaps/lib/store"
+	"github.com/Jeffail/leaps/lib/text"
 )
 
 //------------------------------------------------------------------------------

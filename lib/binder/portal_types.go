@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 package binder
 
-import "github.com/jeffail/leaps/lib/text"
+import "github.com/Jeffail/leaps/lib/text"
 
 //------------------------------------------------------------------------------
 

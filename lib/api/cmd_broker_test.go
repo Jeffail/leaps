@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeffail/leaps/lib/api/events"
+	"github.com/Jeffail/leaps/lib/api/events"
 )
 
 //------------------------------------------------------------------------------

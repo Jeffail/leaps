@@ -58,55 +58,38 @@ for your OS from [the latest releases page][3].
 
 ### From homebrew
 
-```bash
+``` sh
 brew install leaps
 leaps -h
 ```
 
 ### Build with Go
 
-```bash
-go get github.com/jeffail/leaps/cmd/...
+``` sh
+go get github.com/Jeffail/leaps/cmd/...
 leaps -h
 ```
 
 ## Vendoring
 
-Versions of go above 1.6 should automatically `go get` all vendored libraries.
-Otherwise, while cloning use `--recursive`:
+Leaps uses [dep][https://github.com/golang/dep] for managing its dependencies.
+To obtain the correct versions of all dependencies use:
 
-`git clone https://github.com/jeffail/leaps --recursive`
-
-Or, if the repo is already cloned, get the latest libraries with:
-
-`git submodule update --init`
-
-To add new libraries simply run:
-
-```
-PACKAGE=github.com/jeffail/util
-git submodule add https://$PACKAGE vendor/$PACKAGE"
-```
-
-It might be handy to set yourself a function for this in your `.bashrc`:
-
-```bash
-function go-add-vendor {
-    git submodule add https://$1 vendor/$1
-}
+``` sh
+dep ensure
 ```
 
 ## System compatibility
 
-OS               | Status
----------------- | ------
-OSX x86_64       | Supported, tested
-Linux x86        | Supported
-Linux x86_64     | Supported, tested
-Linux ARMv5      | Builds
-Linux ARMv7      | Supported, tested
-Windows x86      | Builds
-Windows x86_64   | Builds
+OS                 | Status
+------------------ | ------
+OSX `x86_64`       | Supported, tested
+Linux `x86`        | Supported
+Linux `x86_64`     | Supported, tested
+Linux `ARMv5`      | Builds
+Linux `ARMv7`      | Supported, tested
+Windows `x86`      | Builds
+Windows `x86_64`   | Builds
 
 ## Contributing and customizing
 
@@ -122,7 +105,7 @@ Ashley Jeffs
 [1]: https://godoc.org/github.com/Jeffail/leaps
 [2]: client/javascript/README.md
 [3]: https://github.com/Jeffail/leaps/releases/latest
-[4]: https://godoc.org/github.com/jeffail/leaps?status.svg
-[5]: http://godoc.org/github.com/jeffail/leaps
-[6]: https://goreportcard.com/badge/github.com/jeffail/leaps
+[4]: https://godoc.org/github.com/Jeffail/leaps?status.svg
+[5]: http://godoc.org/github.com/Jeffail/leaps
+[6]: https://goreportcard.com/badge/github.com/Jeffail/leaps
 [7]: https://goreportcard.com/report/jeffail/leaps

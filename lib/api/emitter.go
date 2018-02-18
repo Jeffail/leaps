@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 package api
 
-import "github.com/jeffail/leaps/lib/api/events"
+import "github.com/Jeffail/leaps/lib/api/events"
 
 //------------------------------------------------------------------------------
 

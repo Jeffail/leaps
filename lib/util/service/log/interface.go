@@ -20,26 +20,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package store
+package log
 
-import "github.com/Jeffail/leaps/lib/util"
+/*--------------------------------------------------------------------------------------------------
+ */
 
-//------------------------------------------------------------------------------
+// Modular - A log printer that allows you to branch new modules.
+type Modular interface {
+	NewModule(prefix string) Modular
 
-// Document - A representation of a leap document, must have a unique ID.
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
+	Fatalf(message string, other ...interface{})
+	Errorf(message string, other ...interface{})
+	Warnf(message string, other ...interface{})
+	Infof(message string, other ...interface{})
+	Debugf(message string, other ...interface{})
+	Tracef(message string, other ...interface{})
+
+	Fatalln(message string)
+	Errorln(message string)
+	Warnln(message string)
+	Infoln(message string)
+	Debugln(message string)
+	Traceln(message string)
+
+	Output(calldepth int, s string) error
 }
 
-//------------------------------------------------------------------------------
-
-// NewDocument - Create a document with content and a generated UUID.
-func NewDocument(content string) Document {
-	return Document{
-		ID:      util.GenerateStampedUUID(),
-		Content: content,
-	}
-}
-
-//------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+ */

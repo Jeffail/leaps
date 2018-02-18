@@ -25,9 +25,9 @@ package curator
 import (
 	"time"
 
-	"github.com/jeffail/leaps/lib/audit"
-	"github.com/jeffail/leaps/lib/binder"
-	"github.com/jeffail/leaps/lib/store"
+	"github.com/Jeffail/leaps/lib/audit"
+	"github.com/Jeffail/leaps/lib/binder"
+	"github.com/Jeffail/leaps/lib/store"
 )
 
 //------------------------------------------------------------------------------

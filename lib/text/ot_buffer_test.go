@@ -28,7 +28,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/jeffail/leaps/lib/store"
+	"github.com/Jeffail/leaps/lib/store"
 )
 
 func TestTextOTBufferSimpleTransforms(t *testing.T) {

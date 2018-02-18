@@ -27,9 +27,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeffail/leaps/lib/api/events"
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
+	"github.com/Jeffail/leaps/lib/api/events"
+	"github.com/Jeffail/leaps/lib/util/service/log"
+	"github.com/Jeffail/leaps/lib/util/service/metrics"
 )
 
 //------------------------------------------------------------------------------
@@ -57,7 +57,7 @@ type CMDBroker struct {
 
 	timeout time.Duration
 	logger  log.Modular
-	stats   metrics.Aggregator
+	stats   metrics.Type
 
 	emittersMut sync.Mutex
 	closeChan   chan struct{}
@@ -69,7 +69,7 @@ func NewCMDBroker(
 	cmdRunner CMDRunner,
 	timeout time.Duration,
 	logger log.Modular,
-	stats metrics.Aggregator,
+	stats metrics.Type,
 ) *CMDBroker {
 	b := &CMDBroker{
 		cmds:      cmds,

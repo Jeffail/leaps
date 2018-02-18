@@ -20,26 +20,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package store
+package metrics
 
-import "github.com/Jeffail/leaps/lib/util"
+// Type - An interface for metrics aggregation.
+type Type interface {
+	// Incr - Increment a metric by an amount.
+	Incr(path string, count int64) error
 
-//------------------------------------------------------------------------------
+	// Decr - Decrement a metric by an amount.
+	Decr(path string, count int64) error
 
-// Document - A representation of a leap document, must have a unique ID.
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
+	// Timing - Set a timing metric.
+	Timing(path string, delta int64) error
+
+	// Gauge - Set a gauge metric.
+	Gauge(path string, value int64) error
+
+	// Close - Stop aggregating stats and clean up resources.
+	Close() error
 }
-
-//------------------------------------------------------------------------------
-
-// NewDocument - Create a document with content and a generated UUID.
-func NewDocument(content string) Document {
-	return Document{
-		ID:      util.GenerateStampedUUID(),
-		Content: content,
-	}
-}
-
-//------------------------------------------------------------------------------

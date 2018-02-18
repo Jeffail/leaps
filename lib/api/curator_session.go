@@ -28,12 +28,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeffail/leaps/lib/api/events"
-	"github.com/jeffail/leaps/lib/binder"
-	"github.com/jeffail/leaps/lib/curator"
-	"github.com/jeffail/leaps/lib/text"
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
+	"github.com/Jeffail/leaps/lib/api/events"
+	"github.com/Jeffail/leaps/lib/binder"
+	"github.com/Jeffail/leaps/lib/curator"
+	"github.com/Jeffail/leaps/lib/text"
+	"github.com/Jeffail/leaps/lib/util/service/log"
+	"github.com/Jeffail/leaps/lib/util/service/metrics"
 )
 
 //------------------------------------------------------------------------------
@@ -47,7 +47,7 @@ type CuratorSession struct {
 
 	timeout time.Duration
 	logger  log.Modular
-	stats   metrics.Aggregator
+	stats   metrics.Type
 
 	username  string
 	uuid      string
@@ -64,7 +64,7 @@ func NewCuratorSession(
 	cur curator.Type,
 	timeout time.Duration,
 	logger log.Modular,
-	stats metrics.Aggregator,
+	stats metrics.Type,
 ) *CuratorSession {
 	s := &CuratorSession{
 		username: username,

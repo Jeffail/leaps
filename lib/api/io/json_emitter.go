@@ -25,8 +25,8 @@ package io
 import (
 	"encoding/json"
 
-	"github.com/jeffail/leaps/lib/api"
-	"github.com/jeffail/leaps/lib/api/events"
+	"github.com/Jeffail/leaps/lib/api"
+	"github.com/Jeffail/leaps/lib/api/events"
 )
 
 //------------------------------------------------------------------------------

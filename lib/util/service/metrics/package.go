@@ -20,26 +20,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package store
+/*
+Package metrics - Create a type for aggregating and propagating metrics to various services based on
+configuration. Use it like this:
 
-import "github.com/Jeffail/leaps/lib/util"
+``` go
+conf := metrics.NewConfig()
+conf.Type = "http_server"
 
-//------------------------------------------------------------------------------
-
-// Document - A representation of a leap document, must have a unique ID.
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
+met, err := metrics.New(conf)
+if err != nil {
+	panic(err)
 }
 
-//------------------------------------------------------------------------------
-
-// NewDocument - Create a document with content and a generated UUID.
-func NewDocument(content string) Document {
-	return Document{
-		ID:      util.GenerateStampedUUID(),
-		Content: content,
-	}
-}
-
-//------------------------------------------------------------------------------
+met.Incr("path.to.metric", 1)
+```
+*/
+package metrics

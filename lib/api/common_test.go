@@ -29,17 +29,17 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/jeffail/leaps/lib/api/events"
-	"github.com/jeffail/leaps/lib/binder"
-	"github.com/jeffail/leaps/lib/store"
-	"github.com/jeffail/leaps/lib/text"
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
+	"github.com/Jeffail/leaps/lib/api/events"
+	"github.com/Jeffail/leaps/lib/binder"
+	"github.com/Jeffail/leaps/lib/store"
+	"github.com/Jeffail/leaps/lib/text"
+	"github.com/Jeffail/leaps/lib/util/service/log"
+	"github.com/Jeffail/leaps/lib/util/service/metrics"
 )
 
 //------------------------------------------------------------------------------
 
-var logger, stats = func() (log.Modular, metrics.Aggregator) {
+var logger, stats = func() (log.Modular, metrics.Type) {
 	logConf := log.NewLoggerConfig()
 	logConf.LogLevel = "OFF"
 	return log.NewLogger(os.Stdout, logConf), metrics.DudType{}
