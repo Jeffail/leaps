@@ -20,26 +20,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package store
+package metrics
 
-import "github.com/Jeffail/leaps/lib/util"
+import "testing"
 
-//------------------------------------------------------------------------------
-
-// Document - A representation of a leap document, must have a unique ID.
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
-}
-
-//------------------------------------------------------------------------------
-
-// NewDocument - Create a document with content and a generated UUID.
-func NewDocument(content string) Document {
-	return Document{
-		ID:      util.GenerateStampedUUID(),
-		Content: content,
+func TestInterfaces(t *testing.T) {
+	foo, err := New(NewConfig())
+	if err != nil {
+		t.Error(err)
 	}
+	bar := Type(foo)
+	foo.Incr("nope", 1)
+	bar.Incr("nope", 1)
 }
-
-//------------------------------------------------------------------------------

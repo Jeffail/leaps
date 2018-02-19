@@ -30,15 +30,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeffail/leaps/lib/acl"
-	"github.com/jeffail/leaps/lib/binder"
-	"github.com/jeffail/leaps/lib/store"
-	"github.com/jeffail/leaps/lib/text"
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
+	"github.com/Jeffail/leaps/lib/acl"
+	"github.com/Jeffail/leaps/lib/binder"
+	"github.com/Jeffail/leaps/lib/store"
+	"github.com/Jeffail/leaps/lib/text"
+	"github.com/Jeffail/leaps/lib/util/service/log"
+	"github.com/Jeffail/leaps/lib/util/service/metrics"
 )
 
-func loggerAndStats() (log.Modular, metrics.Aggregator) {
+func loggerAndStats() (log.Modular, metrics.Type) {
 	logConf := log.NewLoggerConfig()
 	logConf.LogLevel = "OFF"
 
@@ -48,7 +48,7 @@ func loggerAndStats() (log.Modular, metrics.Aggregator) {
 	return logger, stats
 }
 
-func authAndStore(logger log.Modular, stats metrics.Aggregator) (acl.Authenticator, store.Type) {
+func authAndStore(logger log.Modular, stats metrics.Type) (acl.Authenticator, store.Type) {
 	return &acl.Anarchy{AllowCreate: true}, store.NewMemory()
 }
 

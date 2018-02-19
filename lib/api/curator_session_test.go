@@ -27,9 +27,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeffail/leaps/lib/api/events"
-	"github.com/jeffail/leaps/lib/binder"
-	"github.com/jeffail/leaps/lib/text"
+	"github.com/Jeffail/leaps/lib/api/events"
+	"github.com/Jeffail/leaps/lib/binder"
+	"github.com/Jeffail/leaps/lib/text"
 )
 
 //------------------------------------------------------------------------------

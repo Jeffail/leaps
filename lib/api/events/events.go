@@ -23,7 +23,7 @@ THE SOFTWARE.
 package events
 
 import (
-	"github.com/jeffail/leaps/lib/text"
+	"github.com/Jeffail/leaps/lib/text"
 )
 
 //------------------------------------------------------------------------------

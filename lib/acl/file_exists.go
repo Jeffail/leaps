@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeffail/util/log"
+	"github.com/Jeffail/leaps/lib/util/service/log"
 )
 
 //--------------------------------------------------------------------------------------------------

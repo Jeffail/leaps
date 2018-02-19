@@ -20,26 +20,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package store
+/*
+Package log - Some utilities for logging and stats aggregation/pushing. This package wraps third
+party libraries in agnostic API calls so they can be swapped.
+*/
+package log
 
-import "github.com/Jeffail/leaps/lib/util"
+import "errors"
 
-//------------------------------------------------------------------------------
-
-// Document - A representation of a leap document, must have a unique ID.
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
-}
-
-//------------------------------------------------------------------------------
-
-// NewDocument - Create a document with content and a generated UUID.
-func NewDocument(content string) Document {
-	return Document{
-		ID:      util.GenerateStampedUUID(),
-		Content: content,
-	}
-}
-
-//------------------------------------------------------------------------------
+// Errors used throughout the package.
+var (
+	ErrClientNil = errors.New("the client pointer was nil")
+)

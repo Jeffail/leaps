@@ -20,26 +20,42 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package store
+package path
 
-import "github.com/Jeffail/leaps/lib/util"
+import (
+	"path/filepath"
 
-//------------------------------------------------------------------------------
+	"github.com/kardianos/osext"
+)
 
-// Document - A representation of a leap document, must have a unique ID.
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
+var (
+	executablePath string
+	resolveError   error
+)
+
+func init() {
+	// Get the location of the executing binary
+	executablePath, resolveError = osext.ExecutableFolder()
 }
 
-//------------------------------------------------------------------------------
-
-// NewDocument - Create a document with content and a generated UUID.
-func NewDocument(content string) Document {
-	return Document{
-		ID:      util.GenerateStampedUUID(),
-		Content: content,
+/*
+FromBinaryIfRelative - Takes a path and, if the path is relative, resolves the path from the
+location of the binary file rather than the current working directory. Returns an error when the
+path is relative and cannot be resolved.
+*/
+func FromBinaryIfRelative(path *string) error {
+	if !filepath.IsAbs(*path) {
+		if resolveError != nil {
+			return resolveError
+		}
+		*path = filepath.Join(executablePath, *path)
 	}
+	return nil
 }
 
-//------------------------------------------------------------------------------
+/*
+BinaryPath - Returns the path of the executing binary, or an error if it couldn't be resolved.
+*/
+func BinaryPath() (string, error) {
+	return executablePath, resolveError
+}

@@ -38,16 +38,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Jeffail/leaps/lib/acl"
+	"github.com/Jeffail/leaps/lib/api"
+	apiio "github.com/Jeffail/leaps/lib/api/io"
+	"github.com/Jeffail/leaps/lib/audit"
+	"github.com/Jeffail/leaps/lib/curator"
+	"github.com/Jeffail/leaps/lib/store"
+	"github.com/Jeffail/leaps/lib/util"
+	"github.com/Jeffail/leaps/lib/util/service/log"
+	"github.com/Jeffail/leaps/lib/util/service/metrics"
 	"github.com/gorilla/websocket"
-	"github.com/jeffail/leaps/lib/acl"
-	"github.com/jeffail/leaps/lib/api"
-	apiio "github.com/jeffail/leaps/lib/api/io"
-	"github.com/jeffail/leaps/lib/audit"
-	"github.com/jeffail/leaps/lib/curator"
-	"github.com/jeffail/leaps/lib/store"
-	"github.com/jeffail/leaps/lib/util"
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
 )
 
 //------------------------------------------------------------------------------
@@ -201,9 +201,10 @@ If a path is not specified the current directory is shared instead.
 	logger := log.NewLogger(os.Stdout, logConf)
 
 	statConf := metrics.NewConfig()
-	statConf.Prefix = "leaps"
+	statConf.Type = "http"
+	statConf.HTTP.Prefix = "leaps"
 
-	stats, err := metrics.New(statConf)
+	stats, err := metrics.NewHTTP(statConf)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Metrics init error: %v\n", err))
 		return
@@ -323,7 +324,9 @@ If a path is not specified the current directory is shared instead.
 			w.Write(data)
 		})
 
-	handle("/stats", "Lists all aggregated metrics as a json blob.", stats.JSONHandler())
+	if hStats, ok := stats.(*metrics.HTTP); ok {
+		handle("/stats", "Lists all aggregated metrics as a json blob.", hStats.JSONHandler())
+	}
 
 	wwwPath := gopath.Join("/", subdirPath)
 	stripPath := ""

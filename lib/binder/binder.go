@@ -27,11 +27,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeffail/leaps/lib/audit"
-	"github.com/jeffail/leaps/lib/store"
-	"github.com/jeffail/leaps/lib/text"
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
+	"github.com/Jeffail/leaps/lib/audit"
+	"github.com/Jeffail/leaps/lib/store"
+	"github.com/Jeffail/leaps/lib/text"
+	"github.com/Jeffail/leaps/lib/util/service/log"
+	"github.com/Jeffail/leaps/lib/util/service/metrics"
 )
 
 //------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ type impl struct {
 	auditor  audit.Auditor
 
 	log   log.Modular
-	stats metrics.Aggregator
+	stats metrics.Type
 
 	// Clients
 	clients       []*binderClient
@@ -92,7 +92,7 @@ func New(
 	config Config,
 	errorChan chan<- Error,
 	log log.Modular,
-	stats metrics.Aggregator,
+	stats metrics.Type,
 	auditor audit.Auditor,
 ) (Type, error) {
 	binder := impl{

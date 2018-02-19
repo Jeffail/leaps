@@ -21,7 +21,7 @@
 package audit
 
 import (
-	"github.com/jeffail/leaps/lib/text"
+	"github.com/Jeffail/leaps/lib/text"
 )
 
 //------------------------------------------------------------------------------

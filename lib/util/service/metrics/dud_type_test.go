@@ -20,26 +20,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package store
+package metrics
 
-import "github.com/Jeffail/leaps/lib/util"
+import "testing"
 
-//------------------------------------------------------------------------------
-
-// Document - A representation of a leap document, must have a unique ID.
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
-}
-
-//------------------------------------------------------------------------------
-
-// NewDocument - Create a document with content and a generated UUID.
-func NewDocument(content string) Document {
-	return Document{
-		ID:      util.GenerateStampedUUID(),
-		Content: content,
+func TestDudInterface(t *testing.T) {
+	d := DudType{}
+	if Type(d) == nil {
+		t.Errorf("DudType does not satisfy Type interface.")
 	}
 }
-
-//------------------------------------------------------------------------------

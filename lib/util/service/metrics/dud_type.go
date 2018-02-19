@@ -20,26 +20,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package store
+package metrics
 
-import "github.com/Jeffail/leaps/lib/util"
+//--------------------------------------------------------------------------------------------------
 
-//------------------------------------------------------------------------------
+// DudType - Implements the Type interface but doesn't actual do anything.
+type DudType struct{}
 
-// Document - A representation of a leap document, must have a unique ID.
-type Document struct {
-	ID      string `json:"id" yaml:"id"`
-	Content string `json:"content" yaml:"content"`
-}
+// Incr - Does nothing.
+func (d DudType) Incr(path string, count int64) error { return nil }
 
-//------------------------------------------------------------------------------
+// Decr - Does nothing.
+func (d DudType) Decr(path string, count int64) error { return nil }
 
-// NewDocument - Create a document with content and a generated UUID.
-func NewDocument(content string) Document {
-	return Document{
-		ID:      util.GenerateStampedUUID(),
-		Content: content,
-	}
-}
+// Timing - Does nothing.
+func (d DudType) Timing(path string, delta int64) error { return nil }
 
-//------------------------------------------------------------------------------
+// Gauge - Does nothing.
+func (d DudType) Gauge(path string, value int64) error { return nil }
+
+// Close - Does nothing.
+func (d DudType) Close() error { return nil }
+
+//--------------------------------------------------------------------------------------------------

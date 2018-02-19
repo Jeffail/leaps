@@ -3,11 +3,11 @@ package binder
 import (
 	"os"
 
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
+	"github.com/Jeffail/leaps/lib/util/service/log"
+	"github.com/Jeffail/leaps/lib/util/service/metrics"
 )
 
-func loggerAndStats() (log.Modular, metrics.Aggregator) {
+func loggerAndStats() (log.Modular, metrics.Type) {
 	logConf := log.NewLoggerConfig()
 	logConf.LogLevel = "OFF"
 

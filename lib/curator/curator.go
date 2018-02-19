@@ -28,12 +28,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeffail/leaps/lib/acl"
-	"github.com/jeffail/leaps/lib/audit"
-	"github.com/jeffail/leaps/lib/binder"
-	"github.com/jeffail/leaps/lib/store"
-	"github.com/jeffail/util/log"
-	"github.com/jeffail/util/metrics"
+	"github.com/Jeffail/leaps/lib/acl"
+	"github.com/Jeffail/leaps/lib/audit"
+	"github.com/Jeffail/leaps/lib/binder"
+	"github.com/Jeffail/leaps/lib/store"
+	"github.com/Jeffail/leaps/lib/util/service/log"
+	"github.com/Jeffail/leaps/lib/util/service/metrics"
 )
 
 //------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ type Impl struct {
 	auditors AuditorContainer
 
 	log   log.Modular
-	stats metrics.Aggregator
+	stats metrics.Type
 
 	// Binders
 	openBinders map[string]binder.Type
@@ -83,7 +83,7 @@ type Impl struct {
 func New(
 	config Config,
 	log log.Modular,
-	stats metrics.Aggregator,
+	stats metrics.Type,
 	auth acl.Authenticator,
 	store store.Type,
 	auditors AuditorContainer,
