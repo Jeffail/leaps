@@ -98,9 +98,8 @@ Contributions are very welcome, just fork and submit a pull request.
 ## Contact
 
 Ashley Jeffs
-* Web: [http://jeffs.eu](http://jeffs.eu)
+* Web: [http://jeffail.uk](http://jeffail.uk)
 * Twitter: [@Jeffail](https://twitter.com/Jeffail "@jeffail")
-* Email: [ash@jeffs.eu](mailto:ash@jeffs.eu)
 
 [1]: https://godoc.org/github.com/Jeffail/leaps
 [2]: client/javascript/README.md
