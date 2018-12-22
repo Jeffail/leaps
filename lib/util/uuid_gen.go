@@ -29,7 +29,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -48,7 +48,8 @@ func GenerateStampedUUID() string {
 GenerateUUID - Generates a UUID and returns it as a hex encoded string.
 */
 func GenerateUUID() string {
-	return uuid.NewV4().String()
+	u, _ := uuid.NewV4()
+	return u.String()
 }
 
 /*--------------------------------------------------------------------------------------------------

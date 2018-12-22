@@ -66,8 +66,8 @@
   name = "github.com/lib/pq"
 
 [[constraint]]
-  name = "github.com/satori/go.uuid"
-  version = "1.2.0"
+  name = "github.com/gofrs/uuid"
+  version = "3.1.2"
 
 [[constraint]]
   name = "gopkg.in/alexcesaro/statsd.v2"
