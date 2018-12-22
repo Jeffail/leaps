@@ -27,6 +27,7 @@ package util
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -47,8 +48,12 @@ func GenerateStampedUUID() string {
 /*
 GenerateUUID - Generates a UUID and returns it as a hex encoded string.
 */
+// TODO: handle the error more gracefully
 func GenerateUUID() string {
-	u, _ := uuid.NewV4()
+	u, err := uuid.NewV4()
+	if err != nil {
+		log.Fatal(err)
+	}
 	return u.String()
 }
 
