@@ -27,9 +27,10 @@ package util
 
 import (
 	"fmt"
+	"log"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -47,8 +48,13 @@ func GenerateStampedUUID() string {
 /*
 GenerateUUID - Generates a UUID and returns it as a hex encoded string.
 */
+// TODO: handle the error more gracefully
 func GenerateUUID() string {
-	return uuid.NewV4().String()
+	u, err := uuid.NewV4()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return u.String()
 }
 
 /*--------------------------------------------------------------------------------------------------
