@@ -72,15 +72,6 @@ go get github.com/Jeffail/leaps/cmd/...
 leaps -h
 ```
 
-## Vendoring
-
-Leaps uses [dep][https://github.com/golang/dep] for managing its dependencies.
-To obtain the correct versions of all dependencies use:
-
-``` sh
-dep ensure
-```
-
 ## System compatibility
 
 OS                 | Status
