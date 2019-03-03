@@ -174,8 +174,7 @@ func main() {
 	flag.Usage = func() {
 		fmt.Println(`Usage: leaps [flags...] [path/to/share]
 
-If a path is not specified the current directory is shared instead.
-`)
+If a path is not specified the current directory is shared instead.`)
 		flag.PrintDefaults()
 	}
 

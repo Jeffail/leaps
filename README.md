@@ -7,6 +7,8 @@ Leaps is a service for collaboratively editing your local files over a web UI,
 using operational transforms to ensure zero-collision synchronization across any
 number of editing clients.
 
+WARNING: This project is no longer actively maintained.
+
 ![Screenshot](leaps_ss.png "Leaps screenshot")
 
 ## Run
