@@ -16,7 +16,7 @@ require (
 	github.com/garyburd/redigo v1.6.0
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gofrs/uuid v3.2.0+incompatible
-	github.com/gorilla/websocket v1.4.0
+	github.com/gorilla/websocket v1.4.1
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/lib/pq v1.0.0
 	github.com/marstr/guid v1.1.0 // indirect
